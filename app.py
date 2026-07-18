@@ -751,6 +751,47 @@ ul[data-baseweb="menu"] li[role="option"]:focus-visible{
 """)
 
 # ─────────────────────────────────────────────────────────────────────────────
+# PASS A — coherent tab navigation + neutral "Open Case File" action + Case File
+# empty states. CSS only; existing vars/colors and stable BaseWeb/keyed selectors
+# only. No tab renaming/reordering, no permission or behavior change, no routing
+# or callback change. Layered last, so it composes over the earlier tab/button CSS.
+# ─────────────────────────────────────────────────────────────────────────────
+st.html("""<style>
+/* Five-tab bar as ONE connected navigation control (not five floating labels).
+   Additive over the existing tab CSS: bound the whole group, separate the tabs
+   with thin dividers so adjacent tabs read as connected segments, and add a
+   keyboard focus ring. The existing teal active indicator is preserved. */
+div[data-testid="stTabs"]>div:first-child{
+  border:1px solid #cdd6de !important;border-bottom:2px solid #cdd6de !important;
+  border-radius:6px 6px 0 0 !important;}
+button[data-baseweb="tab"]{border-right:1px solid #cdd6de !important;}
+button[data-baseweb="tab"]:last-of-type{border-right:none !important;}
+button[data-baseweb="tab"]:focus-visible{
+  outline:2px solid var(--accent) !important;outline-offset:-3px !important;border-radius:2px !important;}
+
+/* "Open Case File" (Manager Review) — a neutral OUTLINED secondary action, clearly
+   distinct from the filled green Approve and filled red Reject on the same card.
+   Keyed .st-key-oc_* hook; still st.button, routing/callbacks unchanged. */
+div[class*="st-key-oc_"] .stButton>button[kind="secondary"]{
+  background:#fff !important;color:var(--accent-strong) !important;
+  border:1px solid var(--accent) !important;font-weight:600 !important;
+  transition:background .12s ease,box-shadow .12s ease,transform .05s ease;}
+div[class*="st-key-oc_"] .stButton>button[kind="secondary"]:hover{
+  background:var(--surface-hover) !important;color:var(--accent-strong) !important;
+  border-color:var(--accent-strong) !important;box-shadow:0 2px 6px rgba(0,0,0,.12) !important;}
+div[class*="st-key-oc_"] .stButton>button[kind="secondary"]:active{
+  background:var(--accent-tint) !important;transform:translateY(1px);box-shadow:none !important;}
+div[class*="st-key-oc_"] .stButton>button[kind="secondary"]:focus-visible{
+  outline:2px solid var(--accent) !important;outline-offset:2px !important;}
+
+/* Case File neutral empty states (alert with no human review on file). No verdict,
+   no fabricated review — just parity with the panels that would otherwise appear. */
+.gate-empty{border-left-color:#cdd6de !important;}
+.gate-empty .gate-title{color:#5a6570 !important;font-weight:700 !important;}
+.case-empty{padding:14px 16px;color:#5a6570;font-size:14px;line-height:1.5;}
+</style>""")
+
+# ─────────────────────────────────────────────────────────────────────────────
 # TOP BAR
 # ─────────────────────────────────────────────────────────────────────────────
 emp = st.session_state.current_user
@@ -963,6 +1004,26 @@ def show_case_dialog(alert_id: str, source: dict) -> None:
                 '<div class="gate-foot">Enforcement: enabled</div></div>'
             )
         st.markdown(_gate_html, unsafe_allow_html=True)
+
+    else:
+        # No human review exists for this alert. Render neutral empty states in the
+        # same positions the Human Review and Human-Review Gate panels occupy when a
+        # review IS on file — additive consistency only. No fabricated review, no
+        # disposition, no PASS/FAIL/BLOCKED verdict, and NO audit event (audit belongs
+        # to a real pipeline execution, never to a Case File render).
+        st.markdown("""
+        <div class="case-panel" style="margin-top:12px;">
+          <div class="case-panel-hdr"><span class="case-panel-title">Human Review</span></div>
+          <div class="case-empty">No human review recorded for this alert.</div>
+        </div>
+        """, unsafe_allow_html=True)
+        st.markdown(
+            '<div class="gate-panel gate-empty">'
+            '<div class="gate-title">HUMAN-REVIEW GATE</div>'
+            '<div class="gate-body">Not evaluated because no human review exists.</div>'
+            '</div>',
+            unsafe_allow_html=True,
+        )
 
     if st.button("Close", key="close_case_dialog", type="primary"):
         st.session_state.open_case = None
