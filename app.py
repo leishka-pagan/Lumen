@@ -227,6 +227,22 @@ def case_target_for_override(override_row, valid_alert_ids) -> str | None:
     return aid if aid in set(valid_alert_ids) else None
 
 
+def derive_ai_verification(ai_claims: list) -> str:
+    """One-line AI-verification result for an alert's claims. Mirrors the Case File
+    summary derivation exactly (display-only; reads results, changes nothing):
+    PASS only -> PASS; FAIL only -> FAIL; PASS and FAIL -> MIXED; unresolved
+    without FAIL -> NEEDS REVIEW; no claims -> NOT EVALUATED.
+    """
+    results = [cl["result"] for cl in ai_claims]
+    if not results:
+        return "NOT EVALUATED"
+    if "FAIL" in results:
+        return "MIXED" if "PASS" in results else "FAIL"
+    if any(r not in ("PASS", "FAIL") for r in results):
+        return "NEEDS REVIEW"
+    return "PASS"
+
+
 def get_case_detail(alert_id: str, source: dict) -> dict:
     alerts = source["alerts"]
     arow = alerts[alerts["alert_id"] == alert_id].iloc[0]
@@ -1364,130 +1380,355 @@ with tab2:
           Use the <b>→ Manager</b> button at the top of the page.
         </div>""", unsafe_allow_html=True)
     else:
-        st.markdown("""
-        <div class="panel">
-          <div class="panel-header">
-            <span class="panel-title">Pending Override Requests</span>
-          </div>
-        </div>""", unsafe_allow_html=True)
+        # ══ HUMAN REVIEW OVERSIGHT ══════════════════════════════════════════
+        # Independent, DERIVED, display-only view of the stored human reviews,
+        # separated from pending field overrides. Reads existing review/alert/
+        # customer/claim/gate data; hardcodes nothing. Completeness always uses the
+        # shared gate with enforce=True (even if the Risk Settings toggle is off).
+        # Pure: evaluate_review / get_case_detail write NO audit event.
+        st.html("""<style>
+.st-key-human_review_oversight{background:#ffffff;border:1px solid #cdd6de;border-radius:10px;
+  padding:16px;margin-bottom:22px;box-shadow:0 4px 14px rgba(23,52,83,.10);}
+.hro-title{font-size:18px;font-weight:800;color:#173453;margin-bottom:4px;}
+.hro-subtitle{font-size:13px;color:#5d6573;margin-bottom:14px;}
+.hro-rail{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;background:#f4f7fa;
+  border:1px solid #cdd6de;border-radius:8px;padding:10px;margin-bottom:18px;}
+.hro-metric{padding:10px 12px;border-radius:6px;border:1px solid;}
+.hro-metric-lbl{font-size:11px;text-transform:uppercase;font-weight:700;letter-spacing:.04em;}
+.hro-metric-val{font-size:22px;font-weight:800;margin-top:3px;}
+.hro-metric-attention{background:#fff1f1;border-color:#e9a0a0;}
+.hro-metric-attention .hro-metric-lbl,.hro-metric-attention .hro-metric-val{color:#a00000;}
+.hro-metric-complete{background:#e8f4f8;border-color:#9fc6d8;}
+.hro-metric-complete .hro-metric-lbl,.hro-metric-complete .hro-metric-val{color:#1a5276;}
+.hro-metric-pending{background:#fff8e1;border-color:#eab308;}
+.hro-metric-pending .hro-metric-lbl,.hro-metric-pending .hro-metric-val{color:#8a5a00;}
+.hro-warn{background:#fff8e1;border:1px solid #eab308;color:#8a5a00;border-radius:6px;
+  padding:9px 12px;font-size:13px;font-weight:600;margin-bottom:14px;}
+.hro-subhead{font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;
+  color:#173453;margin:16px 0 8px;}
+.hro-empty{font-size:13px;color:#5d6573;padding:6px 2px;}
+.hro-metric-total{background:#f4f7fa;border-color:#cdd6de;}
+.hro-metric-total .hro-metric-lbl,.hro-metric-total .hro-metric-val{color:#173453;}
+/* Requires Attention card — the keyed container OWNS the card (bg/border/left-border/
+   radius/padding/shadow); the Open Case File button renders INSIDE it, not detached. */
+div[class*="st-key-hro_att_"]{background:#fff1f1;border:1px solid #e9a0a0;border-left:5px solid #a00000;
+  border-radius:8px;padding:14px 16px;margin-bottom:10px;box-shadow:0 3px 10px rgba(23,52,83,.08);}
+/* Completed Reviews — two compact cards side by side (keyed grid); one column below 700px. */
+div[class*="st-key-completed_review_grid"]{display:flex;flex-wrap:wrap;gap:12px;align-items:stretch;}
+div[class*="st-key-hro_done_"]{flex:1 1 420px;min-width:360px;background:#ffffff;border:1px solid #cdd6de;
+  border-left:5px solid #2e728f;border-radius:8px;padding:14px 16px;box-shadow:0 3px 10px rgba(23,52,83,.08);margin-bottom:0;}
+/* Open Case File button sits INSIDE the card, 12px below the content (block gap). */
+div[class*="st-key-hro_att_"] [data-testid="stVerticalBlock"],
+div[class*="st-key-hro_done_"] [data-testid="stVerticalBlock"]{gap:12px !important;}
+.hro-card-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:8px;}
+.hro-card-title{font-size:16px;font-weight:800;color:#173453;}
+.hro-card-sub{font-size:12px;color:#5d6573;}
+.hro-badges{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
+.hro-badge{text-transform:uppercase;font-size:11px;font-weight:800;padding:4px 8px;border-radius:999px;border:1px solid;white-space:nowrap;}
+.badge-red{background:#fff1f1;border-color:#e9a0a0;color:#a00000;}
+.badge-green{background:#edf8f0;border-color:#9ed3aa;color:#176437;}
+.badge-amber{background:#fff8e1;border-color:#eab308;color:#8a5a00;}
+.badge-blue{background:#e8f4f8;border-color:#9fc6d8;color:#1a5276;}
+.badge-neutral{background:#f4f7fa;border-color:#cdd6de;color:#5d6573;}
+.hro-details{display:flex;flex-wrap:wrap;gap:16px;}
+.hro-field{display:flex;flex-direction:column;min-width:0;}
+.hro-lbl{font-size:11px;text-transform:uppercase;font-weight:700;color:#5d6573;}
+.hro-val{font-size:13px;font-weight:600;color:#173453;overflow-wrap:anywhere;}
+div[class*="st-key-hro_"] .stButton>button{
+  background:#ffffff !important;color:#1a5276 !important;border:1px solid #2e728f !important;
+  border-radius:6px !important;height:38px !important;min-height:38px !important;padding:0 16px !important;
+  font-weight:600 !important;white-space:nowrap !important;width:auto !important;
+  transition:background .15s ease,border-color .15s ease,box-shadow .15s ease,transform .15s ease !important;}
+div[class*="st-key-hro_"] .stButton>button:hover{
+  background:#e8f4f8 !important;border-color:#1a5276 !important;transform:translateY(-1px) !important;}
+div[class*="st-key-hro_"] .stButton>button:focus-visible{
+  outline:3px solid #4a8ba5 !important;outline-offset:2px !important;}
+/* Secondary nav — Manager Review view segmented control. Scoped under the keyed
+   wrapper so the Alert Queue severity/status controls are untouched. */
+.st-key-manager_review_view div[data-testid="stButtonGroup"]{
+  display:inline-flex !important;width:fit-content !important;background:#dfe4ea !important;
+  border:1px solid #b8ccd8 !important;border-radius:10px !important;padding:5px !important;gap:5px !important;
+  margin-bottom:18px !important;box-shadow:0 2px 6px rgba(23,52,83,.12) !important;}
+.st-key-manager_review_view button[kind="segmented_control"]{
+  background:#ffffff !important;border:1px solid #cdd6de !important;color:#173453 !important;
+  border-radius:6px !important;height:40px !important;padding:0 18px !important;font-size:13px !important;font-weight:700 !important;
+  transition:background .15s ease,border-color .15s ease,box-shadow .15s ease,transform .15s ease !important;}
+.st-key-manager_review_view button[kind="segmented_control"] p{color:#173453 !important;}
+.st-key-manager_review_view button[kind="segmented_control"]:hover{
+  background:#e8f4f8 !important;border-color:#4a8ba5 !important;color:#173453 !important;
+  transform:translateY(-1px) !important;box-shadow:0 2px 5px rgba(23,52,83,.12) !important;}
+.st-key-manager_review_view button[kind="segmented_controlActive"]{
+  background:#2e728f !important;border:1px solid #1a5276 !important;color:#ffffff !important;
+  border-radius:6px !important;height:40px !important;padding:0 18px !important;font-size:13px !important;font-weight:700 !important;
+  box-shadow:0 2px 6px rgba(23,52,83,.18) !important;}
+.st-key-manager_review_view button[kind="segmented_controlActive"] p{color:#ffffff !important;}
+.st-key-manager_review_view button[kind="segmented_controlActive"]:hover{
+  background:#1a5276 !important;border-color:#1a5276 !important;color:#ffffff !important;}
+.st-key-manager_review_view button[kind="segmented_control"]:focus-visible,
+.st-key-manager_review_view button[kind="segmented_controlActive"]:focus-visible{
+  outline:3px solid #4a8ba5 !important;outline-offset:2px !important;}
+@media (max-width:700px){.hro-rail{grid-template-columns:1fr;}.hro-details{flex-direction:column;gap:8px;}
+  div[class*="st-key-hro_done_"]{flex-basis:100%;min-width:0;}}
+</style>""")
 
-        ov_fresh   = load_overrides()
-        pending_ov = (
-            ov_fresh[ov_fresh["status"] == "pending"]
-            if not ov_fresh.empty else pd.DataFrame()
-        )
+        # Derive: partition the stored reviews by the shared gate (enforce=True).
+        _hr_rows = source["human_reviews"]
+        _attention, _completed = [], []
+        for _, _hrow in _hr_rows.iterrows():
+            _rv = _hrow.to_dict()
+            _gate = evaluate_review(_rv, enforce=True)
+            (_attention if _gate.blocked else _completed).append((_rv, _gate))
+        _attention.sort(key=lambda x: x[0]["alert_id"])
+        _completed.sort(key=lambda x: x[0]["alert_id"])
+        _review_total = len(_attention) + len(_completed)
+        _ov_now = load_overrides()
+        _pending_ct = int((_ov_now["status"] == "pending").sum()) if not _ov_now.empty else 0
+        _mr_valid = alerts_df["alert_id"].tolist()
 
-        if pending_ov.empty:
-            st.markdown(
-                '<div style="background:#fff;border:1px solid #b0b0b0;'
-                'padding:20px;font-size:14px;color:#5a6570">'
-                'No pending override requests.</div>',
-                unsafe_allow_html=True,
+        def _hro_badge(dim, value, blocked_ctx):
+            v = str(value).upper()
+            if v == "PASS":
+                cls = "badge-green"
+            elif v in ("FAIL", "BLOCKED"):
+                cls = "badge-red"
+            elif v in ("MIXED", "NEEDS REVIEW"):
+                cls = "badge-amber"
+            elif v == "NONE":
+                cls = "badge-red" if blocked_ctx else "badge-neutral"
+            elif v == "NOT EVALUATED":
+                cls = "badge-neutral"
+            else:                                     # COMPLETE / EDITED / allowed disposition
+                cls = "badge-blue"
+            return f'<span class="hro-badge {cls}">{dim}: {v}</span>'
+
+        def _hro_render_card(rv, gate, kind):
+            alert_id = rv.get("alert_id", "")
+            valid = alert_id in _mr_valid
+            if valid:
+                _case = get_case_detail(alert_id, source)
+                cust = _case["customer"].get("name", alert_id)
+                ai = derive_ai_verification(_case["ai_claims"])
+            else:
+                cust, ai = alert_id, "NOT EVALUATED"
+            blocked = gate.blocked
+            review_req = "BLOCKED" if blocked else "COMPLETE"
+            disp = "NONE" if (blocked or not gate.disposition) else str(gate.disposition).upper()
+            badges = (
+                _hro_badge("AI VERIFICATION", ai, blocked)
+                + _hro_badge("REVIEW REQUIREMENTS", review_req, blocked)
+                + _hro_badge("RECORDED DISPOSITION", disp, blocked)
             )
-        else:
-            mr_valid_alerts = alerts_df["alert_id"].tolist()
-            for _, row in pending_ov.iterrows():
-                st.markdown(f"""
-                <div class="ov-card">
-                  <div class="ov-card-top">
-                    <span class="ov-card-id">{row['change_id']}</span>
-                    <span class="ov-card-ts">{row['changed_at']}</span>
-                  </div>
-                  <div class="ov-card-body">
-                    <b>Alert:</b> {row['alert_id']} &nbsp;·&nbsp;
-                    <b>Field:</b> {row['field_changed']} &nbsp;·&nbsp;
-                    <b>From:</b>
-                    <span class="ov-old">{sev_label(row['field_changed'], row['old_value'])}</span>
-                    &nbsp;→&nbsp;
-                    <b>To:</b>
-                    <span class="ov-new">{sev_label(row['field_changed'], row['new_value'])}</span>
-                  </div>
-                  <div class="ov-card-meta">
-                    <b>Submitted by:</b> {row['changed_by_name']} ({row['changed_by_id']})
-                  </div>
-                  <div class="ov-card-reason">
-                    <b>Reason:</b> {row['reason']}
-                  </div>
-                </div>""", unsafe_allow_html=True)
-
-                # Responsive action row: one keyed horizontal container per override
-                # (replaces the old 4-column + spacer layout, which starved the buttons
-                # on narrow windows). Order, keys, types, callbacks, and the Open-Case
-                # guard condition are unchanged; only the layout mechanism changed.
-                _target = case_target_for_override(row, mr_valid_alerts)
-                with st.container(
-                    key=f"ov_actions_{row['change_id']}",
-                    horizontal=True,
-                    horizontal_alignment="left",
-                    vertical_alignment="center",
-                    gap="small",
-                ):
-                    if _target and st.button("Open Case File", key=f"oc_{row['change_id']}", width="content"):
-                        # CORRECTION 1: inspect THIS override's evidence in the existing
-                        # Case File dialog (reuses the tab-1 open_case trigger). Only this
-                        # control is interactive — the card itself is not clickable.
-                        st.session_state.open_case = _target
-                        st.rerun()
-                    if st.button("✓ Approve", key=f"apr_{row['change_id']}", type="primary", width="content"):
-                        update_override_status(
-                            row["change_id"], "approved",
-                            st.session_state.current_user["name"],
-                        )
-                        st.success("Approved — change is now live.")
-                        st.rerun()
-                    if st.button("✕ Reject", key=f"rej_{row['change_id']}", type="secondary", width="content"):
-                        update_override_status(
-                            row["change_id"], "rejected",
-                            st.session_state.current_user["name"],
-                        )
-                        st.warning("Rejected.")
-                        st.rerun()
-
-        if not ov_fresh.empty:
-            OV_STATUS_STYLE = {
-                "pending":  "background:#fff8e1;color:#7d4e00;border:1px solid #f0c040;",
-                "approved": "background:#e8f5e8;color:#1a5c1a;border:1px solid #9c9;",
-                "rejected": "background:#fde8e8;color:#7b0000;border:1px solid #c88;",
-            }
-
-            def _hesc(v):
-                return (str(v).replace("&", "&amp;").replace("<", "&lt;")
-                        .replace(">", "&gt;"))
-
-            hist_rows = "".join(
-                f'<tr>'
-                f'<td style="white-space:nowrap;font-weight:700;color:#1a5276;">{_hesc(r["change_id"])}</td>'
-                f'<td style="white-space:nowrap;">{_hesc(r["alert_id"])}</td>'
-                f'<td>{_hesc(r["field_changed"])}</td>'
-                f'<td><span class="ov-old">{_hesc(sev_label(r["field_changed"], r["old_value"]))}</span>'
-                f' → <span class="ov-new">{_hesc(sev_label(r["field_changed"], r["new_value"]))}</span></td>'
-                f'<td style="white-space:nowrap;">{_hesc(r["changed_by_name"])}</td>'
-                f'<td><span style="display:inline-block;padding:3px 9px;border-radius:3px;'
-                f'font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;'
-                f'{OV_STATUS_STYLE.get(r["status"], "")}">{_hesc(r["status"])}</span></td>'
-                f'<td style="white-space:nowrap;">{_hesc(r["reviewed_by"]) or "—"}</td>'
-                f'<td style="color:#888;font-variant-numeric:tabular-nums;white-space:nowrap;">{_hesc(r["reviewed_at"]) or "—"}</td>'
-                f'</tr>'
-                for _, r in ov_fresh.iterrows()
-            )
-            # Wrap ONLY the Override History heading + table in a keyed container so
-            # this panel is boxed without affecting Change Log or Audit Trail.
-            with st.container(key="override_history_panel"):
-                st.markdown("""
-                <div class="panel" style="margin-top:20px">
-                  <div class="panel-header">
-                    <span class="panel-title">Override History</span>
-                    <span class="panel-subtitle">All submitted overrides</span>
-                  </div>
-                </div>""", unsafe_allow_html=True)
+            if kind == "attention":
+                _extra = (
+                    '<div class="hro-field"><span class="hro-lbl">Missing Requirements</span>'
+                    f'<span class="hro-val">{", ".join(gate.missing) if gate.missing else "none"}</span></div>'
+                )
+                _card_key = f"hro_att_{alert_id}"
+            else:
+                _extra = (
+                    '<div class="hro-field"><span class="hro-lbl">Final Action</span>'
+                    f'<span class="hro-val">{rv.get("final_action") or "—"}</span></div>'
+                )
+                _card_key = f"hro_done_{alert_id}"
+            # The keyed container OWNS the visual card; content + Open Case File button
+            # render INSIDE it (no detached button, no separate visual card).
+            with st.container(key=_card_key):
                 st.markdown(
-                    f'<table class="log-tbl">'
-                    f'<thead><tr><th>Request ID</th><th>Alert</th><th>Field</th>'
-                    f'<th>Change</th><th>Submitted By</th><th>Status</th>'
-                    f'<th>Reviewed By</th><th>Reviewed At</th></tr></thead>'
-                    f'<tbody>{hist_rows}</tbody></table>',
+                    f'<div class="hro-card-head"><span class="hro-card-title">{alert_id} · {cust}</span>'
+                    f'<span class="hro-card-sub">Review ID: {rv.get("review_id","—")}</span></div>'
+                    f'<div class="hro-badges">{badges}</div>'
+                    '<div class="hro-details">'
+                    '<div class="hro-field"><span class="hro-lbl">Reviewer</span>'
+                    f'<span class="hro-val">{rv.get("reviewer","—")}</span></div>'
+                    f'{_extra}</div>',
                     unsafe_allow_html=True,
                 )
+                if valid and st.button("Open Case File", key=f"hro_{alert_id}", width="content"):
+                    # Open THIS review's Case File. Clear any stale pending-override
+                    # routing first so oversight never inherits an override's target.
+                    st.session_state.selected_alert = alert_id
+                    st.session_state.open_case = alert_id
+                    st.rerun()
+
+        # ── Secondary navigation: one local segmented control separating the two
+        #    Manager Review workflows. Internal option values are stable; labels carry
+        #    the dynamic counts via format_func. Switching reruns (no audit write).
+        _mr_view = st.segmented_control(
+            "Manager Review view",
+            options=["human_reviews", "override_requests"],
+            format_func=lambda v: {
+                "human_reviews": f"Human Reviews ({_review_total})",
+                "override_requests": f"Override Requests ({_pending_ct})",
+            }[v],
+            selection_mode="single",
+            default="human_reviews",
+            key="manager_review_view",
+            label_visibility="collapsed",
+        )
+        if _mr_view is None:                        # single-select guard: always show a view
+            _mr_view = "human_reviews"
+
+        if _mr_view == "human_reviews":
+            with st.container(key="human_review_oversight"):
+                st.markdown(
+                    '<div class="hro-title">Human Review Oversight</div>'
+                    '<div class="hro-subtitle">Independent visibility into incomplete and completed human reviews.</div>'
+                    '<div class="hro-rail">'
+                    '<div class="hro-metric hro-metric-attention"><div class="hro-metric-lbl">Requires Attention</div>'
+                    f'<div class="hro-metric-val">{len(_attention)}</div></div>'
+                    '<div class="hro-metric hro-metric-complete"><div class="hro-metric-lbl">Completed Reviews</div>'
+                    f'<div class="hro-metric-val">{len(_completed)}</div></div>'
+                    '<div class="hro-metric hro-metric-total"><div class="hro-metric-lbl">Total Human Reviews</div>'
+                    f'<div class="hro-metric-val">{_review_total}</div></div>'
+                    '</div>',
+                    unsafe_allow_html=True,
+                )
+                if not st.session_state.risk_settings.get("block_rubber_stamp", True):
+                    st.markdown(
+                        '<div class="hro-warn">Governance enforcement is currently disabled, '
+                        'but incomplete reviews remain visible for oversight.</div>',
+                        unsafe_allow_html=True,
+                    )
+                st.markdown('<div class="hro-subhead">Requires Attention</div>', unsafe_allow_html=True)
+                if _attention:
+                    for _rv, _gate in _attention:
+                        _hro_render_card(_rv, _gate, "attention")
+                else:
+                    st.markdown('<div class="hro-empty">No incomplete reviews on file.</div>', unsafe_allow_html=True)
+                st.markdown('<div class="hro-subhead">Completed Reviews</div>', unsafe_allow_html=True)
+                if _completed:
+                    with st.container(key="completed_review_grid", horizontal=True,
+                                      horizontal_alignment="left", vertical_alignment="top", gap="medium"):
+                        for _rv, _gate in _completed:
+                            _hro_render_card(_rv, _gate, "complete")
+                else:
+                    st.markdown('<div class="hro-empty">No completed reviews on file.</div>', unsafe_allow_html=True)
+
+        else:
+            st.markdown("""
+            <div class="panel">
+              <div class="panel-header">
+                <span class="panel-title">Pending Override Requests</span>
+              </div>
+            </div>""", unsafe_allow_html=True)
+
+            ov_fresh   = load_overrides()
+            pending_ov = (
+                ov_fresh[ov_fresh["status"] == "pending"]
+                if not ov_fresh.empty else pd.DataFrame()
+            )
+
+            if pending_ov.empty:
+                st.markdown(
+                    '<div style="background:#fff;border:1px solid #b0b0b0;'
+                    'padding:20px;font-size:14px;color:#5a6570">'
+                    'No pending override requests.</div>',
+                    unsafe_allow_html=True,
+                )
+            else:
+                mr_valid_alerts = alerts_df["alert_id"].tolist()
+                for _, row in pending_ov.iterrows():
+                    st.markdown(f"""
+                    <div class="ov-card">
+                      <div class="ov-card-top">
+                        <span class="ov-card-id">{row['change_id']}</span>
+                        <span class="ov-card-ts">{row['changed_at']}</span>
+                      </div>
+                      <div class="ov-card-body">
+                        <b>Alert:</b> {row['alert_id']} &nbsp;·&nbsp;
+                        <b>Field:</b> {row['field_changed']} &nbsp;·&nbsp;
+                        <b>From:</b>
+                        <span class="ov-old">{sev_label(row['field_changed'], row['old_value'])}</span>
+                        &nbsp;→&nbsp;
+                        <b>To:</b>
+                        <span class="ov-new">{sev_label(row['field_changed'], row['new_value'])}</span>
+                      </div>
+                      <div class="ov-card-meta">
+                        <b>Submitted by:</b> {row['changed_by_name']} ({row['changed_by_id']})
+                      </div>
+                      <div class="ov-card-reason">
+                        <b>Reason:</b> {row['reason']}
+                      </div>
+                    </div>""", unsafe_allow_html=True)
+
+                    # Responsive action row: one keyed horizontal container per override
+                    # (replaces the old 4-column + spacer layout, which starved the buttons
+                    # on narrow windows). Order, keys, types, callbacks, and the Open-Case
+                    # guard condition are unchanged; only the layout mechanism changed.
+                    _target = case_target_for_override(row, mr_valid_alerts)
+                    with st.container(
+                        key=f"ov_actions_{row['change_id']}",
+                        horizontal=True,
+                        horizontal_alignment="left",
+                        vertical_alignment="center",
+                        gap="small",
+                    ):
+                        if _target and st.button("Open Case File", key=f"oc_{row['change_id']}", width="content"):
+                            # CORRECTION 1: inspect THIS override's evidence in the existing
+                            # Case File dialog (reuses the tab-1 open_case trigger). Only this
+                            # control is interactive — the card itself is not clickable.
+                            st.session_state.open_case = _target
+                            st.rerun()
+                        if st.button("✓ Approve", key=f"apr_{row['change_id']}", type="primary", width="content"):
+                            update_override_status(
+                                row["change_id"], "approved",
+                                st.session_state.current_user["name"],
+                            )
+                            st.success("Approved — change is now live.")
+                            st.rerun()
+                        if st.button("✕ Reject", key=f"rej_{row['change_id']}", type="secondary", width="content"):
+                            update_override_status(
+                                row["change_id"], "rejected",
+                                st.session_state.current_user["name"],
+                            )
+                            st.warning("Rejected.")
+                            st.rerun()
+
+            if not ov_fresh.empty:
+                OV_STATUS_STYLE = {
+                    "pending":  "background:#fff8e1;color:#7d4e00;border:1px solid #f0c040;",
+                    "approved": "background:#e8f5e8;color:#1a5c1a;border:1px solid #9c9;",
+                    "rejected": "background:#fde8e8;color:#7b0000;border:1px solid #c88;",
+                }
+
+                def _hesc(v):
+                    return (str(v).replace("&", "&amp;").replace("<", "&lt;")
+                            .replace(">", "&gt;"))
+
+                hist_rows = "".join(
+                    f'<tr>'
+                    f'<td style="white-space:nowrap;font-weight:700;color:#1a5276;">{_hesc(r["change_id"])}</td>'
+                    f'<td style="white-space:nowrap;">{_hesc(r["alert_id"])}</td>'
+                    f'<td>{_hesc(r["field_changed"])}</td>'
+                    f'<td><span class="ov-old">{_hesc(sev_label(r["field_changed"], r["old_value"]))}</span>'
+                    f' → <span class="ov-new">{_hesc(sev_label(r["field_changed"], r["new_value"]))}</span></td>'
+                    f'<td style="white-space:nowrap;">{_hesc(r["changed_by_name"])}</td>'
+                    f'<td><span style="display:inline-block;padding:3px 9px;border-radius:3px;'
+                    f'font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;'
+                    f'{OV_STATUS_STYLE.get(r["status"], "")}">{_hesc(r["status"])}</span></td>'
+                    f'<td style="white-space:nowrap;">{_hesc(r["reviewed_by"]) or "—"}</td>'
+                    f'<td style="color:#888;font-variant-numeric:tabular-nums;white-space:nowrap;">{_hesc(r["reviewed_at"]) or "—"}</td>'
+                    f'</tr>'
+                    for _, r in ov_fresh.iterrows()
+                )
+                # Wrap ONLY the Override History heading + table in a keyed container so
+                # this panel is boxed without affecting Change Log or Audit Trail.
+                with st.container(key="override_history_panel"):
+                    st.markdown("""
+                    <div class="panel" style="margin-top:20px">
+                      <div class="panel-header">
+                        <span class="panel-title">Override History</span>
+                        <span class="panel-subtitle">All submitted overrides</span>
+                      </div>
+                    </div>""", unsafe_allow_html=True)
+                    st.markdown(
+                        f'<table class="log-tbl">'
+                        f'<thead><tr><th>Request ID</th><th>Alert</th><th>Field</th>'
+                        f'<th>Change</th><th>Submitted By</th><th>Status</th>'
+                        f'<th>Reviewed By</th><th>Reviewed At</th></tr></thead>'
+                        f'<tbody>{hist_rows}</tbody></table>',
+                        unsafe_allow_html=True,
+                    )
 
     st.markdown('</div>', unsafe_allow_html=True)
 

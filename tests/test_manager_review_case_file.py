@@ -33,6 +33,9 @@ def test_manager_review_open_case_file_opens_correct_case():
     at.session_state["view_as"] = "Manager"
     at.run()
     assert not at.exception, f"Manager Review raised: {[str(e.value) for e in at.exception]}"
+    # Pending overrides now live in the "Override Requests" subview; switch to it.
+    at.segmented_control(key="manager_review_view").set_value("override_requests").run()
+    assert not at.exception, f"Override Requests view raised: {[str(e.value) for e in at.exception]}"
     # 1. an "Open Case File" control renders for pending overrides
     oc = [b for b in at.button if b.key and b.key.startswith("oc_")]
     assert oc, "no 'Open Case File' control rendered for pending overrides"
