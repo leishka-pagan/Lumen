@@ -499,7 +499,7 @@ div[data-testid="stColumn"]:last-of-type .stButton>button{
 /* Alert Queue filter bar — one aligned panel, not scattered controls */
 div[data-testid="stVerticalBlockBorderWrapper"]:has(.filter-bar-labels){
   padding:14px 16px 16px 16px !important;background:#fff;}
-.filter-bar-labels{display:grid;grid-template-columns:2.1fr 1.6fr 2.3fr 2.6fr;
+.filter-bar-labels{display:grid;grid-template-columns:2.1fr 1.6fr 2.3fr;
   gap:1rem;margin-bottom:6px;}
 .filter-bar-labels span{font-size:12px;font-weight:700;color:#5a6570;
   letter-spacing:.05em;text-transform:uppercase;}
@@ -526,15 +526,7 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.filter-bar-labels) div[data
 .ov-old{color:#8b0000;font-weight:700;}
 .ov-new{color:#1a5c1a;font-weight:700;}
 
-/* Approve / Reject — match the app's semantic colors instead of stock Streamlit */
-div[class*="st-key-apr_"] .stButton>button[kind="primary"]{
-  background:linear-gradient(to bottom,#27865a,#1e8449) !important;
-  color:#fff !important;border-color:#176437 !important;}
-div[class*="st-key-apr_"] .stButton>button[kind="primary"]:hover{background:linear-gradient(to bottom,#2f9c69,#238c50) !important;}
-div[class*="st-key-rej_"] .stButton>button[kind="secondary"]{
-  background:linear-gradient(to bottom,#f5f5f5,#e8e8e8) !important;
-  color:#a01818 !important;border-color:#c88 !important;}
-div[class*="st-key-rej_"] .stButton>button[kind="secondary"]:hover{background:#fde8e8 !important;}
+/* Approve / Reject button styling moved to the UI CLOSE-OUT PASS 1 block below (Task 2). */
 
 div[data-testid="stButtonGroup"] button{font-size:13px !important;font-weight:700 !important;padding:7px 14px !important;}
 /* Anchor spans exist only so the CSS below can target the *next* sibling —
@@ -556,6 +548,120 @@ div[data-testid="stElementContainer"]:has(.sta-filter-anchor)+div[data-testid="s
 div[data-testid="stElementContainer"]:has(.sta-filter-anchor)+div[data-testid="stElementContainer"] button:nth-of-type(2)[kind="segmented_controlActive"]{background:#e8f5e8 !important;}
 div[data-testid="stElementContainer"]:has(.sta-filter-anchor)+div[data-testid="stElementContainer"] button:nth-of-type(3){color:#555 !important;border-color:#bbb !important;}
 div[data-testid="stElementContainer"]:has(.sta-filter-anchor)+div[data-testid="stElementContainer"] button:nth-of-type(3)[kind="segmented_controlActive"]{background:#f0f0f0 !important;}
+</style>
+""", unsafe_allow_html=True)
+
+# ═════════════════════════════════════════════════════════════════════════════
+# UI CLOSE-OUT PASS 1 — NEW styling only (one consolidated block, existing
+# injection pattern). Every new color is a CSS custom property in :root, each set
+# to a hex ALREADY present in app.py (no invented colors). Protected/existing
+# rules above are untouched. Tasks: 2 Approve/Reject, 3 card hover, 4 tab bar,
+# 5 draft radio, 6 checkboxes, 7 dropdown menu, 8 banner button.
+# ═════════════════════════════════════════════════════════════════════════════
+st.markdown("""
+<style>
+:root{
+  /* Accent = brand teal (tabs, checkboxes, radio, dropdown) */
+  --accent:#2e728f;          /* existing: id-bar / table header / lv-open */
+  --accent-strong:#1a5276;   /* existing: navy — active-tab text / strong accent */
+  --accent-tint:#e8eeff;     /* existing: kw-chip bg / selected-option tint */
+  --surface-hover:#eef3f5;   /* existing: table row hover */
+  /* PASS / positive -> Approve */
+  --pass:#1e8449;            /* existing: claim-card.pass */
+  --pass-grad-a:#27865a;     /* existing: approve gradient top */
+  --pass-strong:#176437;     /* existing: approve border / active */
+  --pass-hover-a:#2f9c69;    /* existing: approve hover top */
+  --pass-hover-b:#238c50;    /* existing: approve hover bottom */
+  /* FAIL / danger -> Reject */
+  --fail:#7b0000;            /* existing: v-fail text */
+  --fail-strong:#a01818;     /* existing: reject text / metric danger */
+  /* Neutral / secondary -> banner button */
+  --neutral-a:#f0f0f0;       /* existing: secondary button top */
+  --neutral-b:#e0e0e0;       /* existing: secondary button bottom */
+  --neutral-text:#333;       /* existing: secondary button text */
+  --neutral-border:#aaa;     /* existing: secondary button border */
+}
+
+/* TASK 2 — Approve (PASS green) vs Reject (FAIL red): distinct from each other
+   and from every other button. Keyed .st-key-* hooks (Streamlit 1.58 >= 1.39).
+   Stay st.button; callbacks unchanged. */
+div[class*="st-key-apr_"] .stButton>button[kind="primary"]{
+  background:linear-gradient(to bottom,var(--pass-grad-a),var(--pass)) !important;
+  color:#fff !important;border-color:var(--pass-strong) !important;
+  transition:filter .12s ease,box-shadow .12s ease,transform .05s ease;}
+div[class*="st-key-apr_"] .stButton>button[kind="primary"]:hover{
+  background:linear-gradient(to bottom,var(--pass-hover-a),var(--pass-hover-b)) !important;
+  box-shadow:0 2px 6px rgba(0,0,0,.12) !important;}
+div[class*="st-key-apr_"] .stButton>button[kind="primary"]:active{
+  background:var(--pass-strong) !important;transform:translateY(1px);box-shadow:none !important;}
+div[class*="st-key-rej_"] .stButton>button[kind="secondary"]{
+  background:linear-gradient(to bottom,var(--fail-strong),var(--fail)) !important;
+  color:#fff !important;border-color:var(--fail) !important;
+  transition:filter .12s ease,box-shadow .12s ease,transform .05s ease;}
+div[class*="st-key-rej_"] .stButton>button[kind="secondary"]:hover{
+  filter:brightness(1.12) !important;box-shadow:0 2px 6px rgba(0,0,0,.12) !important;}
+div[class*="st-key-rej_"] .stButton>button[kind="secondary"]:active{
+  background:var(--fail) !important;transform:translateY(1px);box-shadow:none !important;}
+
+/* TASK 3 — pending override card hover (accent border + lift). Base .ov-card
+   radius/shadow/spacing is protected; this adds ONLY the hover rule, animated by
+   the transition already declared on .ov-card. Supersedes the prior hover. */
+.ov-card:hover{
+  border-color:var(--accent) !important;
+  box-shadow:0 4px 14px rgba(0,0,0,.12) !important;}
+
+/* TASK 4 — tab bar: accent active indicator, inactive hover, no default
+   Streamlit tab accent left visible. */
+button[data-baseweb="tab"][aria-selected="true"]{
+  color:var(--accent-strong) !important;
+  border-bottom:3px solid var(--accent) !important;}
+button[data-baseweb="tab"][aria-selected="false"]:hover{
+  color:var(--accent-strong) !important;
+  background:var(--surface-hover) !important;}
+div[data-baseweb="tab-highlight"]{background-color:var(--accent) !important;}
+div[data-baseweb="tab-border"]{background-color:transparent !important;}
+
+/* TASK 5 — Draft decision radio (accept/edit/reject) accent. NOTE: no st.radio
+   exists in the Case File popup yet, so this is inert until one is added (adding
+   the widget would be a logic change, out of scope here). */
+[data-testid="stRadio"] [role="radiogroup"] label:hover{color:var(--accent-strong) !important;}
+[data-testid="stRadio"] [data-baseweb="radio"] div:first-child{border-color:var(--accent) !important;}
+[data-testid="stRadio"] input[type="radio"]:checked+div,
+[data-testid="stRadio"] [data-baseweb="radio"][aria-checked="true"] div:first-child{
+  background-color:var(--accent) !important;border-color:var(--accent) !important;}
+
+/* TASK 6 — Risk Settings checkboxes use the accent when checked. All st.checkbox
+   in the app are the four Risk Settings toggles. Best-effort BaseWeb targeting
+   for Streamlit 1.58 (verify visually). */
+[data-testid="stCheckbox"] [data-baseweb="checkbox"] span:first-child{
+  border-color:var(--accent) !important;}
+[data-testid="stCheckbox"] [data-baseweb="checkbox"] input:checked~span:first-child,
+[data-testid="stCheckbox"] [data-baseweb="checkbox"][aria-checked="true"] span:first-child,
+[data-testid="stCheckbox"] [data-baseweb="checkbox"] span[data-checked="true"]{
+  background-color:var(--accent) !important;border-color:var(--accent) !important;}
+
+/* TASK 7 — BaseWeb dropdown menu (renders in a PORTAL outside the widget), so
+   target it at the menu/listbox level. NOTE: the severity filter is a
+   segmented_control (chips, protected) with no dropdown; this styles the app's
+   real dropdown menus (search, typology, remove-keyword). */
+ul[data-baseweb="menu"] li[role="option"]:hover,
+ul[role="listbox"] li[role="option"]:hover{
+  background:var(--surface-hover) !important;color:var(--accent-strong) !important;}
+ul[data-baseweb="menu"] li[role="option"][aria-selected="true"],
+ul[role="listbox"] li[role="option"][aria-selected="true"]{
+  background:var(--accent-tint) !important;color:var(--accent-strong) !important;}
+
+/* TASK 8 — demo-mode banner / role-switch button: neutral secondary variant of
+   the Task 2 button system (NOT approve/reject colors), scoped to the row with
+   the .role-bar banner. The session ID is display text, not a button. */
+div[data-testid="stHorizontalBlock"]:has(.role-bar) .stButton>button{
+  background:linear-gradient(to bottom,var(--neutral-a),var(--neutral-b)) !important;
+  color:var(--neutral-text) !important;border-color:var(--neutral-border) !important;
+  transition:filter .12s ease,box-shadow .12s ease,transform .05s ease;}
+div[data-testid="stHorizontalBlock"]:has(.role-bar) .stButton>button:hover{
+  filter:brightness(.97) !important;box-shadow:0 2px 6px rgba(0,0,0,.12) !important;}
+div[data-testid="stHorizontalBlock"]:has(.role-bar) .stButton>button:active{
+  filter:brightness(.93) !important;transform:translateY(1px);box-shadow:none !important;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -757,9 +863,9 @@ with tab1:
     with st.container(border=True):
         st.markdown('<div class="filter-bar-labels">'
                      '<span>Search</span><span>Severity</span>'
-                     '<span>Status</span><span>Sort</span></div>',
+                     '<span>Status</span></div>',
                      unsafe_allow_html=True)
-        fc0, fc1, fc2, fc3 = st.columns([2.1, 1.6, 2.3, 2.6])
+        fc0, fc1, fc2 = st.columns([2.1, 1.6, 2.3])
         with fc0:
             def _pick_case():
                 v = st.session_state.case_search
@@ -795,30 +901,19 @@ with tab1:
                 key="status_filter",
                 label_visibility="collapsed",
             )
-        with fc3:
-            sort_order = st.segmented_control(
-                "Sort by severity",
-                ["Default", "High → Low", "Low → High"],
-                selection_mode="single",
-                default="Default",
-                key="severity_sort",
-                label_visibility="collapsed",
-            ) or "Default"
 
     if severity_filter:
         display_df = display_df[display_df["severity"].isin(severity_filter)]
     if status_filter:
         display_df = display_df[display_df["status"].isin(status_filter)]
 
+    # TASK 1: Sort chips removed — severity ordering is automatic. Always sort
+    # highest severity first; a stable sort keeps the prior (queue) order as the
+    # tiebreaker within each severity band.
     SEV_RANK = {"High": 0, "Medium": 1, "Low": 2}
-    if sort_order == "High → Low":
-        display_df = display_df.sort_values(
-            by="severity", key=lambda s: s.map(SEV_RANK)
-        )
-    elif sort_order == "Low → High":
-        display_df = display_df.sort_values(
-            by="severity", key=lambda s: s.map(SEV_RANK), ascending=False
-        )
+    display_df = display_df.sort_values(
+        by="severity", key=lambda s: s.map(SEV_RANK), kind="stable"
+    )
 
     rows_html = ""
     for i, (_, r) in enumerate(display_df.iterrows()):
