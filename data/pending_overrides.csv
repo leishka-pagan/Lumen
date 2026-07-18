@@ -1,4 +1,4 @@
-change_id,alert_id,field_changed,old_value,new_value,changed_by_id,changed_by_name,changed_at,reason,status,reviewed_by,reviewed_at
-CHG-SEED-001,ALERT002,severity,high,med,EMP-204,Jordan Avery,2026-05-23T09:15:00,Customer supplied a scholarship grant letter explaining the 45000 inflow. Recommend downgrading severity pending manager sign-off.,pending,,
-CHG-SEED-002,ALERT005,disposition,open,escalate,EMP-217,Priya Raman,2026-05-26T13:40:00,Dormant business account moved 60000 to a high-risk jurisdiction. Requesting escalation to investigations.,pending,,
-CHG-SEED-003,ALERT001,risk_rating,high,medium,EMP-204,Jordan Avery,2026-05-22T10:05:00,"AI prior SAR claim was rejected on review. With that claim removed, residual risk is medium. Manager confirmation requested.",pending,,
+change_id,alert_id,field_changed,old_value,new_value,changed_by_id,changed_by_name,changed_at,reason,status,reviewed_by,reviewed_at,review_note
+CHG-SEED-001,ALERT002,severity,high,med,EMP-204,Jordan Avery,2026-05-23T09:15:00,Customer supplied a scholarship grant letter explaining the 45000 inflow. Recommend downgrading severity pending manager sign-off.,pending,,,
+CHG-SEED-002,ALERT005,disposition,open,escalate,EMP-217,Priya Raman,2026-05-26T13:40:00,Dormant business account moved 60000 to a high-risk jurisdiction. Requesting escalation to investigations.,pending,,,
+CHG-SEED-003,ALERT001,risk_rating,high,medium,EMP-204,Jordan Avery,2026-05-22T10:05:00,"AI prior SAR claim was rejected on review. With that claim removed, residual risk is medium. Manager confirmation requested.",pending,,,

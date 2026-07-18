@@ -758,7 +758,7 @@ def build_dataset() -> dict[str, pd.DataFrame]:
 PENDING_OVERRIDE_COLUMNS = [
     "change_id", "alert_id", "field_changed", "old_value", "new_value",
     "changed_by_id", "changed_by_name", "changed_at", "reason",
-    "status", "reviewed_by", "reviewed_at",
+    "status", "reviewed_by", "reviewed_at", "review_note",
 ]
 
 AUDIT_COLUMNS = ["log_id", "timestamp", "actor", "action", "alert_id", "details_json"]
@@ -789,7 +789,7 @@ def build_pending_overrides() -> list[dict]:
             "changed_by_id": "EMP-204", "changed_by_name": "Jordan Avery",
             "changed_at": iso(datetime(2026, 5, 23, 9, 15)),
             "reason": "Customer supplied a scholarship grant letter explaining the 45000 inflow. Recommend downgrading severity pending manager sign-off.",
-            "status": "pending", "reviewed_by": "", "reviewed_at": "",
+            "status": "pending", "reviewed_by": "", "reviewed_at": "", "review_note": "",
         },
         {
             "change_id": "CHG-SEED-002", "alert_id": "ALERT005",
@@ -797,7 +797,7 @@ def build_pending_overrides() -> list[dict]:
             "changed_by_id": "EMP-217", "changed_by_name": "Priya Raman",
             "changed_at": iso(datetime(2026, 5, 26, 13, 40)),
             "reason": "Dormant business account moved 60000 to a high-risk jurisdiction. Requesting escalation to investigations.",
-            "status": "pending", "reviewed_by": "", "reviewed_at": "",
+            "status": "pending", "reviewed_by": "", "reviewed_at": "", "review_note": "",
         },
         {
             "change_id": "CHG-SEED-003", "alert_id": "ALERT001",
@@ -805,7 +805,7 @@ def build_pending_overrides() -> list[dict]:
             "changed_by_id": "EMP-204", "changed_by_name": "Jordan Avery",
             "changed_at": iso(datetime(2026, 5, 22, 10, 5)),
             "reason": "AI prior SAR claim was rejected on review. With that claim removed, residual risk is medium. Manager confirmation requested.",
-            "status": "pending", "reviewed_by": "", "reviewed_at": "",
+            "status": "pending", "reviewed_by": "", "reviewed_at": "", "review_note": "",
         },
     ]
 

@@ -28,7 +28,7 @@ LIVE_AUDIT_ACTIONS = {
 EXPECTED_OVERRIDE_COLUMNS = [
     "change_id", "alert_id", "field_changed", "old_value", "new_value",
     "changed_by_id", "changed_by_name", "changed_at", "reason",
-    "status", "reviewed_by", "reviewed_at",
+    "status", "reviewed_by", "reviewed_at", "review_note",
 ]
 
 

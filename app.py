@@ -15,6 +15,7 @@ import pandas as pd
 from datetime import datetime, timezone
 
 import json
+import os
 
 
 # Project root is the parent of lumen_ui/. Add it to sys.path so `src` can be
@@ -33,7 +34,8 @@ st.set_page_config(
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
 DATA_DIR        = PROJECT_ROOT / "data"
-OVERRIDES_CSV   = DATA_DIR / "pending_overrides.csv"
+# Tests point these at temp files (env vars) so they never touch the committed CSVs.
+OVERRIDES_CSV   = Path(os.environ.get("LUMEN_OVERRIDES_CSV") or (DATA_DIR / "pending_overrides.csv"))
 ALERTS_CSV      = DATA_DIR / "alerts.csv"
 CUSTOMERS_CSV   = DATA_DIR / "customers.csv"
 TRANSACTIONS_CSV = DATA_DIR / "transactions.csv"
@@ -96,7 +98,7 @@ def load_overrides() -> pd.DataFrame:
     cols = [
         "change_id", "alert_id", "field_changed", "old_value", "new_value",
         "changed_by_id", "changed_by_name", "changed_at", "reason",
-        "status", "reviewed_by", "reviewed_at",
+        "status", "reviewed_by", "reviewed_at", "review_note",
     ]
     if OVERRIDES_CSV.exists():
         return pd.read_csv(OVERRIDES_CSV, dtype=str, keep_default_na=False)
@@ -147,6 +149,143 @@ def update_override_status(change_id: str, status: str, reviewer: str) -> None:
         "decision":  status,
         "reviewer":  reviewer,
     }, alert_id=alert_id)
+
+
+def record_override_decision(change_id, decision, reviewer, rationale, actor,
+                             overrides_path=None, log_path=None):
+    """Persist one manager Approve/Reject decision on a pending override and write a
+    single audit event. Paths are injectable so tests never touch committed CSVs
+    (env-var defaults keep production writing to data/). Returns the alert_id.
+
+    Updates status / reviewed_by / reviewed_at / review_note on the matching row.
+    Audit details include change_id, decision, rationale, old_value, new_value.
+    """
+    opath = Path(overrides_path) if overrides_path else OVERRIDES_CSV
+    lpath = (Path(log_path) if log_path
+             else (Path(os.environ["LUMEN_AUDIT_LOG"]) if os.environ.get("LUMEN_AUDIT_LOG") else None))
+    df = pd.read_csv(opath, dtype=str, keep_default_na=False)
+    if "review_note" not in df.columns:
+        df["review_note"] = ""
+    mask = df["change_id"] == change_id
+    if not mask.any():
+        return None
+    row = df.loc[mask].iloc[0].to_dict()
+    df.loc[mask, "status"]      = decision
+    df.loc[mask, "reviewed_by"] = reviewer
+    df.loc[mask, "reviewed_at"] = datetime.now(timezone.utc).isoformat()
+    df.loc[mask, "review_note"] = rationale
+    df.to_csv(opath, index=False)
+    audit.log_event(
+        actor=actor,
+        action="override_review",
+        alert_id=row.get("alert_id"),
+        details={
+            "change_id": change_id,
+            "decision":  decision,
+            "rationale": rationale,
+            "old_value": row.get("old_value"),
+            "new_value": row.get("new_value"),
+            "reviewer":  reviewer,
+        },
+        log_path=lpath,
+    )
+    return row.get("alert_id")
+
+
+OVERRIDE_RATIONALE_MAX = 500
+
+
+def override_rationale_valid(text) -> bool:
+    """Valid = non-empty after trimming whitespace (max length is enforced by the
+    textarea's max_chars). No arbitrary minimum length."""
+    return bool(str(text or "").strip())
+
+
+def _close_override_dialog():
+    st.session_state.pending_override = None
+    st.rerun()
+
+
+def _render_override_decision(decision: str):
+    """Shared body for the Approve/Reject dialogs. The rationale and BOTH actions live
+    inside one st.form, so the typed value is submitted together with the click. This
+    fixes the real-browser bug where a disabled= button never saw the typed value (the
+    counter never updated and the button never enabled). No disabled= on the submit
+    buttons — they are always clickable; validation happens on submit."""
+    po = st.session_state.get("pending_override")
+    if not po:
+        return
+    change_id = po.get("change_id")
+    match = load_overrides()
+    match = match[match["change_id"] == change_id]
+    if match.empty:
+        _close_override_dialog()
+        return
+    row = match.iloc[0].to_dict()
+    confirm_label = "Approve Override" if decision == "approved" else "Reject Override"
+    with st.container(key="override_decision_dialog"):
+        st.markdown(
+            '<div class="ovd-summary">'
+            f'<div class="ovd-row"><span class="ovd-lbl">Request ID</span><span class="ovd-val">{row.get("change_id","—")}</span></div>'
+            f'<div class="ovd-row"><span class="ovd-lbl">Alert ID</span><span class="ovd-val">{row.get("alert_id","—")}</span></div>'
+            f'<div class="ovd-row"><span class="ovd-lbl">Requested change</span>'
+            f'<span class="ovd-val">{sev_label(row["field_changed"], row["old_value"])} → {sev_label(row["field_changed"], row["new_value"])}</span></div>'
+            f'<div class="ovd-row"><span class="ovd-lbl">Submitted by</span>'
+            f'<span class="ovd-val">{row.get("changed_by_name","—")} ({row.get("changed_by_id","—")})</span></div>'
+            f'<div class="ovd-row"><span class="ovd-lbl">Analyst request reason</span>'
+            f'<span class="ovd-val">{row.get("reason","—")}</span></div>'
+            '</div>',
+            unsafe_allow_html=True,
+        )
+        with st.form(key=f"override_decision_form_{change_id}_{decision}",
+                     clear_on_submit=False, border=False):
+            rationale = st.text_area(
+                "Manager decision rationale",
+                key=f"override_rationale_{change_id}_{decision}",
+                placeholder="Document why this override should be approved or rejected…",
+                height=120,
+                max_chars=OVERRIDE_RATIONALE_MAX,
+            )
+            st.markdown(
+                '<div class="ovd-help">Required • Maximum 500 characters</div>',
+                unsafe_allow_html=True,
+            )
+            cancel_col, confirm_col = st.columns(2)
+            with cancel_col:
+                cancelled = st.form_submit_button(
+                    "Cancel", type="secondary", use_container_width=True,
+                    key=f"override_submit_cancel_{change_id}_{decision}",
+                )
+            with confirm_col:
+                confirmed = st.form_submit_button(
+                    confirm_label, type="primary", use_container_width=True,
+                    key=f"override_submit_confirm_{change_id}_{decision}",
+                )
+        if cancelled:
+            _close_override_dialog()
+        elif confirmed:
+            _trimmed = str(rationale or "").strip()
+            if not _trimmed:
+                st.error("Manager decision rationale is required.")
+            else:
+                emp = st.session_state.current_user
+                record_override_decision(
+                    change_id, decision, reviewer=emp["name"],
+                    rationale=_trimmed, actor=f"ui:{emp['id']}",
+                )
+                st.session_state.override_toast = decision
+                st.session_state._force_override_view = True   # deferred: keep this subview
+                _close_override_dialog()
+
+
+@st.dialog("Approve Override Request")
+def _approve_override_dialog():
+    _render_override_decision("approved")
+
+
+@st.dialog("Reject Override Request")
+def _reject_override_dialog():
+    _render_override_decision("rejected")
 
 
 def get_approved_overrides() -> dict:
@@ -1380,6 +1519,10 @@ with tab2:
           Use the <b>→ Manager</b> button at the top of the page.
         </div>""", unsafe_allow_html=True)
     else:
+        # After an override decision, keep Manager Review on the override subview.
+        # Set BEFORE the segmented control instantiates so no widget-state error occurs.
+        if st.session_state.pop("_force_override_view", False):
+            st.session_state["manager_review_view"] = "override_requests"
         # ══ HUMAN REVIEW OVERSIGHT ══════════════════════════════════════════
         # Independent, DERIVED, display-only view of the stored human reviews,
         # separated from pending field overrides. Reads existing review/alert/
@@ -1605,6 +1748,48 @@ div[class*="st-key-hro_"] .stButton>button:focus-visible{
                     st.markdown('<div class="hro-empty">No completed reviews on file.</div>', unsafe_allow_html=True)
 
         else:
+            # Manager override decision dialog CSS (the modal renders in a portal, so
+            # this is global). st.html injects CSS with no layout container.
+            st.html("""<style>
+div[data-testid="stDialog"] div[role="dialog"]{
+  background:#ffffff !important;border:1px solid #cdd6de !important;border-radius:10px !important;
+  box-shadow:0 10px 30px rgba(23,52,83,.18) !important;}
+.ovd-summary{background:#f4f7fa;border:1px solid #cdd6de;border-radius:7px;padding:14px 16px;margin-bottom:14px;}
+.ovd-row{display:flex;gap:12px;margin-bottom:7px;font-size:13px;align-items:baseline;}
+.ovd-row:last-child{margin-bottom:0;}
+.ovd-lbl{flex:0 0 150px;font-size:11px;font-weight:700;color:#5d6573;text-transform:uppercase;letter-spacing:.03em;}
+.ovd-val{color:#173453;font-weight:600;overflow-wrap:anywhere;}
+.ovd-help{font-size:12px;color:#5d6570;text-align:right;margin-top:4px;margin-bottom:10px;}
+.st-key-override_decision_dialog textarea{border:1px solid #8aaabe !important;border-radius:6px !important;}
+.st-key-override_decision_dialog textarea:focus{
+  border-color:#2e728f !important;box-shadow:0 0 0 3px rgba(46,114,143,.18) !important;}
+/* Cancel + Confirm are form submit buttons — always enabled (no disabled=), always
+   clickable. Approve green / Reject red keyed by the decision suffix in the key. */
+div[class*="st-key-override_submit_cancel_"] button{
+  background:#ffffff !important;color:#173453 !important;border:1px solid #8aaabe !important;
+  border-radius:6px !important;height:40px !important;min-height:40px !important;font-weight:600 !important;
+  cursor:pointer !important;opacity:1 !important;}
+div[class*="st-key-override_submit_confirm_"][class*="_approved"] button{
+  background:linear-gradient(180deg,#27865a,#1e8449) !important;border:1px solid #176437 !important;
+  color:#ffffff !important;border-radius:6px !important;height:40px !important;min-height:40px !important;
+  font-weight:700 !important;cursor:pointer !important;opacity:1 !important;}
+div[class*="st-key-override_submit_confirm_"][class*="_rejected"] button{
+  background:linear-gradient(180deg,#a01818,#7b0000) !important;border:1px solid #650000 !important;
+  color:#ffffff !important;border-radius:6px !important;height:40px !important;min-height:40px !important;
+  font-weight:700 !important;cursor:pointer !important;opacity:1 !important;}
+</style>""")
+            # Exactly one success toast after a completed decision.
+            if st.session_state.get("override_toast"):
+                _dec = st.session_state.pop("override_toast")
+                st.toast("Override request approved and moved to Override History."
+                         if _dec == "approved"
+                         else "Override request rejected and moved to Override History.")
+            # Approve/Reject open a required manager-decision dialog. Opening writes nothing.
+            if st.session_state.get("pending_override"):
+                _po = st.session_state["pending_override"]
+                (_approve_override_dialog if _po.get("decision") == "approved"
+                 else _reject_override_dialog)()
+
             st.markdown("""
             <div class="panel">
               <div class="panel-header">
@@ -1670,18 +1855,11 @@ div[class*="st-key-hro_"] .stButton>button:focus-visible{
                             st.session_state.open_case = _target
                             st.rerun()
                         if st.button("✓ Approve", key=f"apr_{row['change_id']}", type="primary", width="content"):
-                            update_override_status(
-                                row["change_id"], "approved",
-                                st.session_state.current_user["name"],
-                            )
-                            st.success("Approved — change is now live.")
+                            # Open the required decision dialog; nothing is persisted yet.
+                            st.session_state.pending_override = {"change_id": row["change_id"], "decision": "approved"}
                             st.rerun()
                         if st.button("✕ Reject", key=f"rej_{row['change_id']}", type="secondary", width="content"):
-                            update_override_status(
-                                row["change_id"], "rejected",
-                                st.session_state.current_user["name"],
-                            )
-                            st.warning("Rejected.")
+                            st.session_state.pending_override = {"change_id": row["change_id"], "decision": "rejected"}
                             st.rerun()
 
             if not ov_fresh.empty:
@@ -1708,6 +1886,7 @@ div[class*="st-key-hro_"] .stButton>button:focus-visible{
                     f'{OV_STATUS_STYLE.get(r["status"], "")}">{_hesc(r["status"])}</span></td>'
                     f'<td style="white-space:nowrap;">{_hesc(r["reviewed_by"]) or "—"}</td>'
                     f'<td style="color:#888;font-variant-numeric:tabular-nums;white-space:nowrap;">{_hesc(r["reviewed_at"]) or "—"}</td>'
+                    f'<td>{(_hesc(r["review_note"]) if (r["status"] in ("approved", "rejected") and r["review_note"]) else "—")}</td>'
                     f'</tr>'
                     for _, r in ov_fresh.iterrows()
                 )
@@ -1722,10 +1901,16 @@ div[class*="st-key-hro_"] .stButton>button:focus-visible{
                       </div>
                     </div>""", unsafe_allow_html=True)
                     st.markdown(
+                        '<div style="font-size:12px;color:#5d6570;margin-top:3px;margin-bottom:10px;">'
+                        'Pending, approved, and rejected requests remain here as the permanent decision record.'
+                        '</div>',
+                        unsafe_allow_html=True,
+                    )
+                    st.markdown(
                         f'<table class="log-tbl">'
                         f'<thead><tr><th>Request ID</th><th>Alert</th><th>Field</th>'
                         f'<th>Change</th><th>Submitted By</th><th>Status</th>'
-                        f'<th>Reviewed By</th><th>Reviewed At</th></tr></thead>'
+                        f'<th>Reviewed By</th><th>Reviewed At</th><th>Decision Rationale</th></tr></thead>'
                         f'<tbody>{hist_rows}</tbody></table>',
                         unsafe_allow_html=True,
                     )
