@@ -213,6 +213,19 @@ def build_queue_row(alert_row: pd.Series, source: dict) -> dict:
     }
 
 
+def case_target_for_override(override_row, valid_alert_ids) -> str | None:
+    """Alert whose Case File the Manager Review 'Open Case File' action opens.
+
+    Returns the override's OWN alert_id when it refers to a real alert, so the
+    manager inspects the evidence behind that specific override before approving
+    or rejecting it. Returns None when the alert_id is missing or dangling, so no
+    broken 'Open Case File' control is shown. Pure and testable: no Streamlit, no
+    I/O. Accepts a dict or a pandas Series (both expose .get).
+    """
+    aid = override_row.get("alert_id")
+    return aid if aid in set(valid_alert_ids) else None
+
+
 def get_case_detail(alert_id: str, source: dict) -> dict:
     alerts = source["alerts"]
     arow = alerts[alerts["alert_id"] == alert_id].iloc[0]
@@ -516,7 +529,8 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.filter-bar-labels) div[data
   border-radius:6px;padding:16px 18px;margin:0 0 16px 0;
   box-shadow:0 1px 2px rgba(0,0,0,.06);
   transition:box-shadow .15s ease,border-color .15s ease;}
-.ov-card:hover{box-shadow:0 3px 10px rgba(23,52,83,.14);border-color:#8aaabf;}
+/* CORRECTION 1: whole-card hover removed — the card must NOT read as clickable.
+   Interactivity lives only in the per-card "Open Case File" button. */
 .ov-card-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;}
 .ov-card-id{font-size:15px;font-weight:700;color:#173453;}
 .ov-card-ts{font-size:13px;color:#5a6570;font-variant-numeric:tabular-nums;}
@@ -603,12 +617,9 @@ div[class*="st-key-rej_"] .stButton>button[kind="secondary"]:hover{
 div[class*="st-key-rej_"] .stButton>button[kind="secondary"]:active{
   background:var(--fail) !important;transform:translateY(1px);box-shadow:none !important;}
 
-/* TASK 3 — pending override card hover (accent border + lift). Base .ov-card
-   radius/shadow/spacing is protected; this adds ONLY the hover rule, animated by
-   the transition already declared on .ov-card. Supersedes the prior hover. */
-.ov-card:hover{
-  border-color:var(--accent) !important;
-  box-shadow:0 4px 14px rgba(0,0,0,.12) !important;}
+/* TASK 3 (pass 1) removed by CORRECTION 1: the pending-card hover created a false
+   "whole card is clickable" affordance. Card interactivity now lives only in the
+   per-card "Open Case File" button (Manager Review). */
 
 /* TASK 4 — tab bar: accent active indicator, inactive hover, no default
    Streamlit tab accent left visible. */
@@ -662,6 +673,64 @@ div[data-testid="stHorizontalBlock"]:has(.role-bar) .stButton>button:hover{
   filter:brightness(.97) !important;box-shadow:0 2px 6px rgba(0,0,0,.12) !important;}
 div[data-testid="stHorizontalBlock"]:has(.role-bar) .stButton>button:active{
   filter:brightness(.93) !important;transform:translateY(1px);box-shadow:none !important;}
+</style>
+""", unsafe_allow_html=True)
+
+# ═════════════════════════════════════════════════════════════════════════════
+# UI CORRECTIVE PASS — CSS for corrections 2, 3, 4, 5 (one consolidated block).
+# No invented colors: every value is an existing app hex or a :root var above.
+# Corrections 1 (card-hover removal + Open Case File) and 3's content are Python.
+# ═════════════════════════════════════════════════════════════════════════════
+st.markdown("""
+<style>
+:root{
+  --warn:#eab308;        /* existing: role-bar border */
+  --warn-bg:#fff8e1;     /* existing: warn-box background */
+  --warn-text:#5d4000;   /* existing: warn-box text */
+}
+
+/* CORRECTION 4 — remove the top strip. The prior tag-qualified
+   `header[data-testid="stHeader"]` rule did not match in Streamlit 1.58 (the
+   header still rendered as a role=banner strip). Target the stable testids
+   directly; do not touch app content. */
+[data-testid="stHeader"]{display:none !important;}
+[data-testid="stDecoration"]{display:none !important;}
+
+/* CORRECTION 2 — Case File verification is the hero: AI CLAIM → SOURCE EVIDENCE →
+   VERDICT. Existing PASS/FAIL/NEEDS-REVIEW colors kept; only hierarchy, spacing,
+   and emphasis are strengthened (existing vars only). */
+.hero-claim{border-left-width:6px !important;}
+.hero-claim .claim-line{padding:10px 16px;align-items:center;}
+.hero-claim .claim-tag{color:var(--accent-strong) !important;min-width:134px;}
+.hero-claim .claim-val{font-size:14px !important;line-height:1.45;}
+.hero-claim .claim-result-line{padding:11px 16px;}
+.hero-verdict{font-size:15px !important;font-weight:800 !important;
+  padding:5px 14px !important;border-radius:3px !important;letter-spacing:.03em;}
+
+/* CORRECTION 3 — verification → human-outcome linkage banner (text computed in
+   Python from existing values). */
+.outcome-link{border-radius:6px;padding:12px 16px;margin-top:12px;font-size:14px;
+  line-height:1.5;border:1px solid #cdd6de;border-left:5px solid var(--accent);
+  background:#fff;color:#1a1a1a;}
+.outcome-link.ok{border-left-color:var(--pass);}
+.outcome-link.warn{border-left-color:var(--warn);background:var(--warn-bg);color:var(--warn-text);}
+.outcome-link b{color:var(--accent-strong);}
+.outcome-link.warn b{color:#3d2b00;}
+
+/* CORRECTION 5 — real BaseWeb dropdown menus (Search, Typology, Remove Keyword):
+   visible hover, selected, and keyboard-focus states with readable contrast, at
+   the portal (menu) level. Existing vars only. */
+ul[data-baseweb="menu"] li[role="option"]{color:#1a1a1a !important;}
+ul[data-baseweb="menu"] li[role="option"]:hover,
+ul[data-baseweb="menu"] li[role="option"][data-highlighted="true"]{
+  background:var(--surface-hover) !important;color:var(--accent-strong) !important;}
+ul[data-baseweb="menu"] li[role="option"][aria-selected="true"]{
+  background:var(--accent-tint) !important;color:var(--accent-strong) !important;
+  font-weight:600 !important;}
+ul[data-baseweb="menu"] li[role="option"]:focus,
+ul[data-baseweb="menu"] li[role="option"]:focus-visible{
+  outline:2px solid var(--accent) !important;outline-offset:-2px !important;
+  background:var(--surface-hover) !important;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -744,13 +813,13 @@ def show_case_dialog(alert_id: str, source: dict) -> None:
         cls = "pass" if cl["result"] == "PASS" else "fail" if cl["result"] == "FAIL" else "review"
         badge = f'v-{cls}'
         return (
-            f'<div class="claim-card {cls}">'
-            f'<div class="claim-line"><span class="claim-tag">AI Asserted</span>'
+            f'<div class="claim-card {cls} hero-claim">'
+            f'<div class="claim-line"><span class="claim-tag">① AI Claim</span>'
             f'<span class="claim-val">{cl["type"]} = {cl["asserted_value"]}</span></div>'
-            f'<div class="claim-line"><span class="claim-tag">Evidence Shows</span>'
+            f'<div class="claim-line"><span class="claim-tag">② Source Evidence</span>'
             f'<span class="claim-val">{cl["note"]}</span></div>'
-            f'<div class="claim-result-line"><span class="claim-tag">Verification Result</span>'
-            f'<span class="{badge}" style="font-size:12px;padding:3px 9px;">{cl["result"]}</span></div>'
+            f'<div class="claim-result-line"><span class="claim-tag">③ Verdict</span>'
+            f'<span class="{badge} hero-verdict">{cl["result"]}</span></div>'
             f'</div>'
         )
 
@@ -793,6 +862,34 @@ def show_case_dialog(alert_id: str, source: dict) -> None:
       </div>
     </div>
     """, unsafe_allow_html=True)
+
+    # CORRECTION 3 — make the verification → human-outcome relationship explicit.
+    # Computed from existing case values only; nothing saved is read or altered.
+    _fails = [cl for cl in case["ai_claims"] if cl["result"] == "FAIL"]
+    if _fails:
+        _n = len(_fails)
+        _rv = case["review"]
+        _disp = str(_rv.get("draft_disposition", "")).lower() if _rv else ""
+        if _rv and _disp in ("edited", "rejected"):
+            _cls, _msg = "ok", (
+                f"<b>{_n} AI claim(s) failed verification.</b> The human reviewer "
+                f"({_rv.get('reviewer', '—')}) did not accept the AI draft as-is "
+                f"(disposition: <b>{_rv.get('draft_disposition')}</b>). The unsupported "
+                f"claim did not silently become the final decision."
+            )
+        elif _rv and _disp == "accepted":
+            _cls, _msg = "warn", (
+                f"<b>{_n} AI claim(s) failed verification, yet the recorded disposition "
+                f"is 'accepted'.</b> Confirm the human sign-off is complete before this "
+                f"stands as the final decision."
+            )
+        else:
+            _cls, _msg = "warn", (
+                f"<b>{_n} AI claim(s) failed verification.</b> No completed human review "
+                f"is on file — the unsupported claim must not be accepted without human "
+                f"sign-off."
+            )
+        st.markdown(f'<div class="outcome-link {_cls}">{_msg}</div>', unsafe_allow_html=True)
 
     if case["review"]:
         rv = case["review"]
@@ -1049,6 +1146,7 @@ with tab2:
                 unsafe_allow_html=True,
             )
         else:
+            mr_valid_alerts = alerts_df["alert_id"].tolist()
             for _, row in pending_ov.iterrows():
                 st.markdown(f"""
                 <div class="ov-card">
@@ -1073,7 +1171,15 @@ with tab2:
                   </div>
                 </div>""", unsafe_allow_html=True)
 
-                mc1, mc2, _ = st.columns([1.1, 1.1, 7.8])
+                oc, mc1, mc2, _ = st.columns([1.7, 1.1, 1.1, 6.1])
+                with oc:
+                    _target = case_target_for_override(row, mr_valid_alerts)
+                    if _target and st.button("Open Case File", key=f"oc_{row['change_id']}"):
+                        # CORRECTION 1: inspect THIS override's evidence in the existing
+                        # Case File dialog (reuses the tab-1 open_case trigger). Only this
+                        # control is interactive — the card itself is not clickable.
+                        st.session_state.open_case = _target
+                        st.rerun()
                 with mc1:
                     if st.button("✓ Approve", key=f"apr_{row['change_id']}", type="primary"):
                         update_override_status(
