@@ -44,11 +44,11 @@ ALERT004,proof_of_address,True,2026-05-28T09:00:00
 ALERT004,source_of_funds,True,2026-05-28T09:00:00
 ALERT004,kyc_refresh,True,2026-05-28T09:00:00
 ALERT004,transaction_history,True,2026-05-28T09:00:00
-ALERT004,counterparty_screening,False,2026-05-28T09:00:00
-ALERT004,sanctions_screening,False,2026-05-28T09:00:00
-ALERT004,adverse_media_check,False,2026-05-28T09:00:00
-ALERT004,beneficial_ownership,False,2026-05-28T09:00:00
-ALERT004,expected_activity_profile,False,2026-05-28T09:00:00
+ALERT004,counterparty_screening,True,2026-05-28T09:00:00
+ALERT004,sanctions_screening,True,2026-05-28T09:00:00
+ALERT004,adverse_media_check,True,2026-05-28T09:00:00
+ALERT004,beneficial_ownership,True,2026-05-28T09:00:00
+ALERT004,expected_activity_profile,True,2026-05-28T09:00:00
 ALERT005,id_document,True,2026-05-28T09:00:00
 ALERT005,proof_of_address,True,2026-05-28T09:00:00
 ALERT005,source_of_funds,True,2026-05-28T09:00:00

@@ -697,10 +697,11 @@ def build_dataset() -> dict[str, pd.DataFrame]:
     # per alert (case_readiness_pct). We do NOT store a readiness score, which
     # would duplicate and drift from that live formula. Instead we shape each
     # alert's evidence completeness so the COMPUTED distribution is:
-    #   - 2 blocked alerts at ~50% (Hero Moment 2): ALERT004, ALERT006
+    #   - 1 fully-ready positive control at 100%: ALERT004 (Hero Moment 3)
+    #   - 1 readiness-blocked demo case at ~50%: ALERT006
     #   - 2 below-threshold alerts at 60-70%: ALERT002 (60%), ALERT005 (70%)
     #   - every other alert at 88-97% (Lumen pre-assembled, demo-ready)
-    #   - overall average lands at about 89%
+    #   - overall average lands at about 91%
     # This pass rebuilds evidence_items so the readiness math is exact and
     # deterministic. It supersedes the piecemeal evidence added above.
     # ======================================================================
@@ -711,7 +712,10 @@ def build_dataset() -> dict[str, pd.DataFrame]:
         "pep_screening", "account_opening_docs", "wire_details",
         "customer_correspondence", "risk_assessment_memo", "edd_review",
     ]
-    BLOCKED_RATIOS = {"ALERT004": (5, 10), "ALERT006": (5, 10)}      # 50%
+    # ALERT004 is the fully-ready positive control for Hero Moment 3.
+    FULLY_READY = {"ALERT004": (10, 10)}                            # 100%
+    # ALERT006 is the readiness-blocked demo case at 50%.
+    BLOCKED_RATIOS = {"ALERT006": (5, 10)}                          # 50%
     BELOW_RATIOS = {"ALERT002": (6, 10), "ALERT005": (7, 10)}        # 60%, 70%
     READY_RATIOS = [(14, 15), (15, 16)]                             # 93%, 94%
     readiness_checked = datetime(2026, 5, 28, 9, 0)
@@ -719,7 +723,9 @@ def build_dataset() -> dict[str, pd.DataFrame]:
     rebuilt_evidence: list[dict] = []
     for a_idx, a in enumerate(alerts):
         aid = a["alert_id"]
-        if aid in BLOCKED_RATIOS:
+        if aid in FULLY_READY:
+            available, total = FULLY_READY[aid]
+        elif aid in BLOCKED_RATIOS:
             available, total = BLOCKED_RATIOS[aid]
         elif aid in BELOW_RATIOS:
             available, total = BELOW_RATIOS[aid]
