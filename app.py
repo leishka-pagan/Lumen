@@ -350,7 +350,7 @@ if "keywords" not in st.session_state:
 # ─────────────────────────────────────────────────────────────────────────────
 # CSS
 # ─────────────────────────────────────────────────────────────────────────────
-st.markdown("""
+st.html("""
 <style>
 *,html,body,[class*="css"]{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif !important;box-sizing:border-box;}
 .stApp{background:#eef1f4;}
@@ -564,7 +564,7 @@ div[data-testid="stElementContainer"]:has(.sta-filter-anchor)+div[data-testid="s
 div[data-testid="stElementContainer"]:has(.sta-filter-anchor)+div[data-testid="stElementContainer"] button:nth-of-type(3){color:#555 !important;border-color:#bbb !important;}
 div[data-testid="stElementContainer"]:has(.sta-filter-anchor)+div[data-testid="stElementContainer"] button:nth-of-type(3)[kind="segmented_controlActive"]{background:#f0f0f0 !important;}
 </style>
-""", unsafe_allow_html=True)
+""")
 
 # ═════════════════════════════════════════════════════════════════════════════
 # UI CLOSE-OUT PASS 1 — NEW styling only (one consolidated block, existing
@@ -573,7 +573,7 @@ div[data-testid="stElementContainer"]:has(.sta-filter-anchor)+div[data-testid="s
 # rules above are untouched. Tasks: 2 Approve/Reject, 3 card hover, 4 tab bar,
 # 5 draft radio, 6 checkboxes, 7 dropdown menu, 8 banner button.
 # ═════════════════════════════════════════════════════════════════════════════
-st.markdown("""
+st.html("""
 <style>
 :root{
   /* Accent = brand teal (tabs, checkboxes, radio, dropdown) */
@@ -675,14 +675,14 @@ div[data-testid="stHorizontalBlock"]:has(.role-bar) .stButton>button:hover{
 div[data-testid="stHorizontalBlock"]:has(.role-bar) .stButton>button:active{
   filter:brightness(.93) !important;transform:translateY(1px);box-shadow:none !important;}
 </style>
-""", unsafe_allow_html=True)
+""")
 
 # ═════════════════════════════════════════════════════════════════════════════
 # UI CORRECTIVE PASS — CSS for corrections 2, 3, 4, 5 (one consolidated block).
 # No invented colors: every value is an existing app hex or a :root var above.
 # Corrections 1 (card-hover removal + Open Case File) and 3's content are Python.
 # ═════════════════════════════════════════════════════════════════════════════
-st.markdown("""
+st.html("""
 <style>
 :root{
   --warn:#eab308;        /* existing: role-bar border */
@@ -748,7 +748,7 @@ ul[data-baseweb="menu"] li[role="option"]:focus-visible{
 .gate-disabled{border-left-color:var(--warn);background:var(--warn-bg);}
 .gate-disabled .gate-title,.gate-disabled .gate-body{color:var(--warn-text);}
 </style>
-""", unsafe_allow_html=True)
+""")
 
 # ─────────────────────────────────────────────────────────────────────────────
 # TOP BAR
