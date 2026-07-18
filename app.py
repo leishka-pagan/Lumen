@@ -757,17 +757,45 @@ ul[data-baseweb="menu"] li[role="option"]:focus-visible{
 # or callback change. Layered last, so it composes over the earlier tab/button CSS.
 # ─────────────────────────────────────────────────────────────────────────────
 st.html("""<style>
-/* Five-tab bar as ONE connected navigation control (not five floating labels).
-   Additive over the existing tab CSS: bound the whole group, separate the tabs
-   with thin dividers so adjacent tabs read as connected segments, and add a
-   keyboard focus ring. The existing teal active indicator is preserved. */
-div[data-testid="stTabs"]>div:first-child{
-  border:1px solid #cdd6de !important;border-bottom:2px solid #cdd6de !important;
-  border-radius:6px 6px 0 0 !important;}
-button[data-baseweb="tab"]{border-right:1px solid #cdd6de !important;}
-button[data-baseweb="tab"]:last-of-type{border-right:none !important;}
+/* Five-tab bar as a NAVIGATION TRAY: a fit-content, visibly bounded soft
+   blue-gray container holds five discrete white tabs. Every tab (active or not)
+   renders as its own bordered tab — no floating text, no pipe separators. The
+   active tab is a strong solid-teal selected state. Targets the actual BaseWeb
+   tab-list (scoped under stTabs so it wins the cascade over the base tab CSS).
+   Exact listed colors + stable BaseWeb selectors only; labels/order/behavior
+   unchanged. */
+/* the tray — fit-content so it reads as a bounded control, not a full-width band */
+div[data-testid="stTabs"] div[data-baseweb="tab-list"]{
+  display:inline-flex !important;width:fit-content !important;
+  background:#dfe4ea !important;border:1px solid #b8ccd8 !important;
+  border-radius:10px !important;padding:6px !important;gap:6px !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.6),0 1px 3px rgba(0,0,0,.12) !important;}
+/* every tab, including inactive: its own white bordered tab, equal height */
+button[data-baseweb="tab"]{
+  background:#ffffff !important;color:#173453 !important;
+  border:1px solid #cdd6de !important;border-radius:6px !important;
+  padding:8px 18px !important;
+  box-shadow:0 1px 2px rgba(0,0,0,.08) !important;
+  transition:background .12s ease,border-color .12s ease,box-shadow .12s ease,color .12s ease,transform .08s ease !important;}
+/* inactive hover: light-teal surface, teal-blue border, lifts 1px */
+button[data-baseweb="tab"][aria-selected="false"]:hover{
+  background:#e8f4f8 !important;border-color:#4a8ba5 !important;color:#173453 !important;
+  transform:translateY(-1px) !important;box-shadow:0 2px 4px rgba(0,0,0,.12) !important;}
+/* active tab: strong solid-teal selected state, white text */
+button[data-baseweb="tab"][aria-selected="true"]{
+  background:#2e728f !important;color:#ffffff !important;
+  border-color:#1a5276 !important;
+  box-shadow:0 2px 5px rgba(0,0,0,.18) !important;}
+/* active hover: stay teal with white text, darken toward navy (never white) */
+button[data-baseweb="tab"][aria-selected="true"]:hover{
+  background:#1a5276 !important;color:#ffffff !important;border-color:#1a5276 !important;
+  box-shadow:0 2px 6px rgba(0,0,0,.20) !important;}
+/* strong keyboard focus */
 button[data-baseweb="tab"]:focus-visible{
-  outline:2px solid var(--accent) !important;outline-offset:-3px !important;border-radius:2px !important;}
+  outline:3px solid #1a5276 !important;outline-offset:2px !important;border-radius:6px !important;}
+/* no separate sliding underline — each tab's own border is the boundary */
+div[data-baseweb="tab-highlight"]{background-color:transparent !important;height:0 !important;}
+div[data-baseweb="tab-border"]{background-color:transparent !important;height:0 !important;}
 
 /* "Open Case File" (Manager Review) — a neutral OUTLINED secondary action, clearly
    distinct from the filled green Approve and filled red Reject on the same card.
