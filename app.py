@@ -774,6 +774,19 @@ ul[data-baseweb="menu"] li[role="option"]:focus-visible{
 .gate-passed .gate-title{color:var(--pass);}
 .gate-disabled{border-left-color:var(--warn);background:var(--warn-bg);}
 .gate-disabled .gate-title,.gate-disabled .gate-body{color:var(--warn-text);}
+/* Gate ALLOWED, shown as a neutral BLUE "review requirements complete" panel —
+   deliberately NOT green (green over-signals correctness for mere completeness). */
+.gate-complete{border-left:5px solid #2e728f;background:#e8f4f8;}
+.gate-complete .gate-title,.gate-complete .gate-body{color:#1a5276;}
+/* Case File outcome summary rail — three equal derived-status cards. Per-card
+   background/border/text color is set inline from the derived value. */
+.case-summary-rail{background:#f4f7fa;border:1px solid #cdd6de;border-radius:8px;
+  box-shadow:0 3px 10px rgba(23,52,83,.08);padding:10px;margin-bottom:12px;
+  display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+.case-summary-card{border-radius:6px;padding:10px 12px;}
+.case-summary-label{font-size:11px;text-transform:uppercase;font-weight:700;letter-spacing:.04em;}
+.case-summary-value{font-size:15px;font-weight:800;margin-top:4px;}
+@media (max-width:700px){.case-summary-rail{grid-template-columns:1fr;}}
 </style>
 """)
 
@@ -922,6 +935,61 @@ def show_case_dialog(alert_id: str, source: dict) -> None:
     </div>
     """, unsafe_allow_html=True)
 
+    # ── Case outcome summary: three DERIVED status cards (AI Verification, Review
+    #    Requirements, Recorded Disposition), directly below the identity header and
+    #    above AI Claim Verification. DISPLAY ONLY — computed from existing case
+    #    values; no stored value, verifier, gate, pipeline, or audit logic changes.
+    def _summary_style(v):
+        if v == "PASS":
+            return "background:#eef7ee;border:1px solid #9c9;color:#1a5c1a;"
+        if v in ("FAIL", "BLOCKED"):
+            return "background:#fde8e8;border:1px solid #c88;color:#7b0000;"
+        if v in ("MIXED", "NEEDS REVIEW"):
+            return "background:#fff8e1;border:1px solid #e0b877;color:#7d4e00;"
+        if v in ("NOT RECORDED", "NONE", "NOT EVALUATED"):
+            return "background:#f7f8f9;border:1px solid #cdd6de;color:#5a6570;"
+        return "background:#e8f4f8;border:1px solid #8aaabf;color:#1a5276;"  # COMPLETE / allowed disposition
+
+    _sum_review = case["review"]
+    _sum_gate = (evaluate_review(
+        _sum_review,
+        enforce=bool(st.session_state.risk_settings.get("block_rubber_stamp", True)),
+    ) if _sum_review else None)
+    _sum_results = [cl["result"] for cl in case["ai_claims"]]
+    if not _sum_results:
+        _ai_verif = "NOT EVALUATED"
+    elif "FAIL" in _sum_results:
+        _ai_verif = "MIXED" if "PASS" in _sum_results else "FAIL"
+    elif any(r not in ("PASS", "FAIL") for r in _sum_results):
+        _ai_verif = "NEEDS REVIEW"
+    else:
+        _ai_verif = "PASS"
+    if _sum_review is None:
+        _review_req = "NOT RECORDED"
+    elif _sum_gate.blocked:
+        _review_req = "BLOCKED"
+    else:
+        _review_req = "COMPLETE"
+    if _sum_review is not None and _sum_gate is not None and not _sum_gate.blocked and _sum_gate.disposition:
+        _recorded_disp = str(_sum_gate.disposition).upper()
+    else:
+        _recorded_disp = "NONE"
+
+    st.markdown(
+        '<div class="case-summary-rail">'
+        f'<div class="case-summary-card" style="{_summary_style(_ai_verif)}">'
+        '<div class="case-summary-label">AI VERIFICATION</div>'
+        f'<div class="case-summary-value">{_ai_verif}</div></div>'
+        f'<div class="case-summary-card" style="{_summary_style(_review_req)}">'
+        '<div class="case-summary-label">REVIEW REQUIREMENTS</div>'
+        f'<div class="case-summary-value">{_review_req}</div></div>'
+        f'<div class="case-summary-card" style="{_summary_style(_recorded_disp)}">'
+        '<div class="case-summary-label">RECORDED DISPOSITION</div>'
+        f'<div class="case-summary-value">{_recorded_disp}</div></div>'
+        '</div>',
+        unsafe_allow_html=True,
+    )
+
     def _claim_card(cl):
         cls = "pass" if cl["result"] == "PASS" else "fail" if cl["result"] == "FAIL" else "review"
         badge = f'v-{cls}'
@@ -1053,8 +1121,8 @@ def show_case_dialog(alert_id: str, source: dict) -> None:
             )
         else:
             _gate_html = (
-                '<div class="gate-panel gate-passed">'
-                '<div class="gate-title">HUMAN-REVIEW GATE: PASSED</div>'
+                '<div class="gate-panel gate-complete">'
+                '<div class="gate-title">REVIEW REQUIREMENTS: COMPLETE</div>'
                 '<div class="gate-body">All required review fields are present. '
                 f'Final disposition accepted: <b>{_gate.disposition}</b>.</div>'
                 '<div class="gate-foot">Enforcement: enabled</div></div>'

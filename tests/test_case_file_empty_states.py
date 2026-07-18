@@ -77,3 +77,41 @@ def test_alert007_review_present_path_intact_prior_sar_pass_and_gate_blocked():
     assert ">PASS<" in md                                     # prior_sar_history PASS (contrast case)
     assert "reviewer:jdoe" in md
     assert "HUMAN-REVIEW GATE: BLOCKED" in md
+
+
+# ── Case outcome summary rail (three derived display values) ──────────────────
+
+def _summary_pair(label: str, value: str) -> str:
+    """The exact label->value adjacency the summary rail renders."""
+    return f'case-summary-label">{label}</div><div class="case-summary-value">{value}</div>'
+
+
+def test_case_outcome_summary_alert001_fail_complete_edited():
+    md = _open("ALERT001")
+    assert _summary_pair("AI VERIFICATION", "FAIL") in md
+    assert _summary_pair("REVIEW REQUIREMENTS", "COMPLETE") in md
+    assert _summary_pair("RECORDED DISPOSITION", "EDITED") in md
+
+
+def test_case_outcome_summary_alert007_mixed_blocked_none():
+    md = _open("ALERT007")
+    assert _summary_pair("AI VERIFICATION", "MIXED") in md
+    assert _summary_pair("REVIEW REQUIREMENTS", "BLOCKED") in md
+    assert _summary_pair("RECORDED DISPOSITION", "NONE") in md
+
+
+def test_case_outcome_summary_alert002_pass_notrecorded_none():
+    md = _open("ALERT002")
+    assert _summary_pair("AI VERIFICATION", "PASS") in md
+    assert _summary_pair("REVIEW REQUIREMENTS", "NOT RECORDED") in md
+    assert _summary_pair("RECORDED DISPOSITION", "NONE") in md
+
+
+def test_gate_allowed_panel_is_blue_complete_not_green_passed():
+    # A gate-allowed review shows the neutral blue "REVIEW REQUIREMENTS: COMPLETE"
+    # panel — never the old green "HUMAN-REVIEW GATE: PASSED".
+    md = _open("ALERT001")
+    assert "gate-panel gate-complete" in md
+    assert "REVIEW REQUIREMENTS: COMPLETE" in md
+    assert "HUMAN-REVIEW GATE: PASSED" not in md
+    assert "gate-passed" not in md
