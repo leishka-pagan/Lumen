@@ -30,6 +30,22 @@ HIGH_RISK_COUNTRIES = ["IR", "KP", "SY", "MM", "CU", "VE", "RU"]  # used by high
 NORMAL_COUNTRIES = ["US", "GB", "CA", "DE", "FR", "JP", "AU"]
 OCCUPATIONS = ["Teacher", "Engineer", "Nurse", "Retired", "Accountant", "Driver", "Consultant"]
 
+# Display names for the filler customers CUST0009..CUST0030, in that id order. These
+# replace the earlier generic "Customer NN" placeholders with plausible, ordinary,
+# fictional individuals — no public figures, no duplicates, and distinct from both the
+# designed hero customers and the employee names used elsewhere. Assigning a name does
+# not consume the RNG, so every other generated field stays byte-for-byte identical.
+# Every filler profile is an individual (the dataset's only business is the designed
+# CUST0005, Eastgate Trading LLC), so each entry here is an individual name.
+FILLER_NAMES = [
+    "Emi Ishikawa", "Bradley Coleman", "Haruto Sato", "Margaret Dawson",
+    "Nathan Cormier", "Stefan Vogel", "Ingrid Baumann", "Colin Hartley",
+    "Owen Tremblay", "Yuki Nakamura", "Barbara Hollis", "Camille Laurent",
+    "Lukas Weber", "Chloe Beaumont", "Derek Olson", "Vanessa Pruitt",
+    "Kenji Okada", "Alan Pemberton", "Sylvie Marchand", "Ren Kobayashi",
+    "Gregory Fuentes", "Ethan Callahan",
+]
+
 
 def iso(dt: datetime | date) -> str:
     return dt.isoformat()
@@ -581,7 +597,7 @@ def build_dataset() -> dict[str, pd.DataFrame]:
         customers.append(
             {
                 "customer_id": cid,
-                "name": f"Customer {i:02d}",
+                "name": FILLER_NAMES[i - (designed_count + 1)],
                 "kyc_status": rng.choice(["verified", "verified", "pending"]),
                 "expected_monthly_volume": float(rng.choice([3000, 5000, 8000, 12000, 20000])),
                 "country": rng.choice(NORMAL_COUNTRIES),

@@ -12,6 +12,7 @@ Run:  python -m pytest
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import sys
 import tempfile
@@ -216,3 +217,49 @@ def test_audit_log_appends():
         assert json.loads(df.iloc[1].details_json) == {"k": 2}
     finally:
         shutil.rmtree(workdir, ignore_errors=True)
+
+
+# --------------------------------------------------------------------------
+# Synthetic customer display names (no generic "Customer NN" placeholders)
+# --------------------------------------------------------------------------
+
+PLACEHOLDER_RE = re.compile(r"^Customer\s+\d+$")
+
+# The designed hero/scenario customers. Their display names must never change.
+HERO_CUSTOMER_NAMES = {
+    "CUST0001": "Dana Whitfield", "CUST0002": "Marcus Reed", "CUST0003": "Priya Nair",
+    "CUST0004": "Tomas Herrera", "CUST0005": "Eastgate Trading LLC", "CUST0006": "Helen Voss",
+    "CUST0007": "Roland Beck", "CUST0008": "Grace Lin",
+}
+
+
+def test_no_generic_placeholder_customer_names():
+    """The customer table must carry real display names, not 'Customer NN' fillers."""
+    cust = load("customers")
+    placeholders = [(r.customer_id, r["name"]) for _, r in cust.iterrows()
+                    if PLACEHOLDER_RE.match(r["name"])]
+    assert not placeholders, f"generic placeholder customer names remain: {placeholders}"
+
+
+def test_customer_display_names_are_unique():
+    names = list(load("customers")["name"])
+    dupes = sorted({n for n in names if names.count(n) > 1})
+    assert not dupes, f"duplicate customer display names: {dupes}"
+
+
+def test_designed_hero_customer_names_unchanged():
+    cust = load("customers")
+    for cid, expected in HERO_CUSTOMER_NAMES.items():
+        got = cust[cust.customer_id == cid].iloc[0]["name"]
+        assert got == expected, f"{cid} display name changed: {got!r} != {expected!r}"
+
+
+def test_generator_reproduces_committed_customer_names():
+    """The committed customers.csv must match the generator, so regenerating the
+    dataset will not silently revert the display names (build_dataset does no I/O)."""
+    sys.path.insert(0, str(ROOT / "scripts"))
+    import generate_data  # noqa: E402
+    gen = generate_data.build_dataset()["customers"].reset_index(drop=True)
+    cur = load("customers")
+    assert list(gen["customer_id"]) == list(cur["customer_id"]), "customer id order diverged"
+    assert list(gen["name"]) == list(cur["name"]), "generator display names diverge from committed CSV"
