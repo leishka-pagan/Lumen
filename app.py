@@ -23,6 +23,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from src import audit, verifier  # noqa: E402
+from src.review_gate import evaluate_review  # noqa: E402
 
 st.set_page_config(
     page_title="Lumen Verify | AML Workbench",
@@ -731,6 +732,21 @@ ul[data-baseweb="menu"] li[role="option"]:focus,
 ul[data-baseweb="menu"] li[role="option"]:focus-visible{
   outline:2px solid var(--accent) !important;outline-offset:-2px !important;
   background:var(--surface-hover) !important;}
+
+/* HERO CASE B — human-review gate panel in the Case File (display of the shared
+   src/review_gate rule). Existing semantic colors/vars only; no new colors. */
+.gate-panel{border-radius:6px;padding:12px 16px;margin-top:12px;font-size:14px;
+  line-height:1.5;border:1px solid #cdd6de;border-left:6px solid var(--accent);background:#fff;}
+.gate-panel .gate-title{font-size:15px;font-weight:800;letter-spacing:.03em;margin-bottom:4px;}
+.gate-panel .gate-body{color:#1a1a1a;}
+.gate-panel .gate-missing{margin-top:6px;color:#1a1a1a;}
+.gate-panel .gate-foot{margin-top:6px;font-size:12px;color:#5a6570;text-transform:uppercase;letter-spacing:.05em;}
+.gate-blocked{border-left-color:var(--fail);background:#fdecec;}
+.gate-blocked .gate-title{color:var(--fail);}
+.gate-passed{border-left-color:var(--pass);background:#eef7ee;}
+.gate-passed .gate-title{color:var(--pass);}
+.gate-disabled{border-left-color:var(--warn);background:var(--warn-bg);}
+.gate-disabled .gate-title,.gate-disabled .gate-body{color:var(--warn-text);}
 </style>
 """, unsafe_allow_html=True)
 
@@ -909,6 +925,44 @@ def show_case_dialog(alert_id: str, source: dict) -> None:
           </div>
         </div>
         """, unsafe_allow_html=True)
+
+        # HERO CASE B — anti-rubber-stamp human-review gate. PURE evaluation for
+        # DISPLAY ONLY: this writes no audit event (audit belongs to an actual
+        # pipeline execution). It applies the SAME shared rule the decision pipeline
+        # uses (src/pipeline.py Step 3 -> src/review_gate.evaluate_review). This is a
+        # stored, seeded review — no reviewer clicked Submit or Approve here.
+        _enforce = bool(st.session_state.risk_settings.get("block_rubber_stamp", True))
+        _gate = evaluate_review(rv, enforce=_enforce)
+        _missing = ", ".join(_gate.missing) if _gate.missing else "none"
+        if not _gate.enforcement_enabled:
+            _would = (f" It would fail on: <b>{_missing}</b>." if _gate.missing
+                      else " This review is complete and would pass.")
+            _gate_html = (
+                '<div class="gate-panel gate-disabled">'
+                '<div class="gate-title">⚠ GOVERNANCE ENFORCEMENT DISABLED</div>'
+                '<div class="gate-body">The anti-rubber-stamp gate is turned OFF in '
+                f'Risk Settings, so this stored review is not being enforced.{_would}'
+                '</div></div>'
+            )
+        elif _gate.blocked:
+            _gate_html = (
+                '<div class="gate-panel gate-blocked">'
+                '<div class="gate-title">HUMAN-REVIEW GATE: BLOCKED</div>'
+                '<div class="gate-body">Incomplete review detected. This stored review '
+                'fails the same enforcement rule used by the decision pipeline. '
+                '<b>No final disposition is accepted.</b></div>'
+                f'<div class="gate-missing">Missing or invalid: <b>{_missing}</b></div>'
+                '<div class="gate-foot">Enforcement: enabled</div></div>'
+            )
+        else:
+            _gate_html = (
+                '<div class="gate-panel gate-passed">'
+                '<div class="gate-title">HUMAN-REVIEW GATE: PASSED</div>'
+                '<div class="gate-body">All required review fields are present. '
+                f'Final disposition accepted: <b>{_gate.disposition}</b>.</div>'
+                '<div class="gate-foot">Enforcement: enabled</div></div>'
+            )
+        st.markdown(_gate_html, unsafe_allow_html=True)
 
     if st.button("Close", key="close_case_dialog", type="primary"):
         st.session_state.open_case = None
@@ -1284,8 +1338,17 @@ with tab3:
             st.markdown('<div class="settings-section-title">AI & Governance Controls</div>', unsafe_allow_html=True)
             st.markdown('<p class="field-desc-txt"><b>Block AI draft until readiness passes</b> — core build principle. Disabling violates the governance posture.</p>', unsafe_allow_html=True)
             new_ai_gate = st.checkbox("Block AI draft until readiness check passes", value=rs["ai_draft_requires_readiness"])
-            st.markdown('<p class="field-desc-txt"><b>Anti-rubber-stamp gate</b> — all decision fields required before saving.</p>', unsafe_allow_html=True)
+            st.markdown('<p class="field-desc-txt"><b>Anti-rubber-stamp gate</b> — a human review with a missing required field (evidence reviewed, decision reason, final note, final action, disposition) is blocked by src/review_gate + the decision pipeline.</p>', unsafe_allow_html=True)
             new_rubber  = st.checkbox("Enforce anti-rubber-stamp gate", value=rs["block_rubber_stamp"])
+            if not rs["block_rubber_stamp"]:
+                st.markdown(
+                    '<div class="gate-panel gate-disabled" style="margin-top:8px;">'
+                    '<div class="gate-title">⚠ GOVERNANCE ENFORCEMENT DISABLED</div>'
+                    '<div class="gate-body">The anti-rubber-stamp gate is OFF. Incomplete '
+                    'human reviews will not be held. Re-enable to restore enforcement.'
+                    '</div></div>',
+                    unsafe_allow_html=True,
+                )
 
         st.markdown('<div style="height:14px"></div>', unsafe_allow_html=True)
 

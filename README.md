@@ -66,14 +66,34 @@ The synthetic data has planted demo moments. See `scripts/generate_data.py`
 (search for "HERO CASE") and the "Hero cases" section of `docs/schema.md` for
 exactly where each one lives and what it demonstrates.
 
+## Anti-rubber-stamp review gate (Hero Case B)
+
+The anti-rubber-stamp gate is implemented as a shared, deterministic, pure rule in
+`src/review_gate.py` (`evaluate_review`). A human review is acceptable only when
+`evidence_reviewed` is true and `draft_disposition`, `decision_reason`, `final_note`,
+and `final_action` are all present and valid; otherwise it is a rubber stamp.
+
+- **Pipeline enforcement.** `src/pipeline.py` `process_alert()` Step 3 evaluates the
+  alert's human review through this gate. It fails closed: a blocked review yields no
+  final disposition and is never treated as finalized, and exactly one structured
+  `review_blocked` audit event is written (or `review_bypassed` when enforcement is
+  explicitly disabled). Enforcement state is passed explicitly and defaults to on.
+- **UI display.** The Case File evaluates a stored review with the *same* shared rule
+  to show a "HUMAN-REVIEW GATE" panel (e.g. BLOCKED for the seeded REV001 / ALERT007).
+  This is display only and writes no audit event.
+- **Honest scope.** The live Streamlit UI does not submit or finalize human
+  dispositions — there is no disposition-submission workflow. It evaluates and displays
+  stored/seeded reviews; the decision pipeline is the enforcement path.
+
 ## Module map
 
 | Module           | Status | Purpose                                          |
 |------------------|-------------------|--------------------------------------------------|
 | `src/schema.py`  | Complete          | Pydantic v2 models for all 9 tables              |
 | `src/audit.py`   | Complete          | Append-only audit log writer                     |
-| `src/verifier.py`| Stub              | Claim verification dispatcher (logic in wk 5-6)  |
-| `src/pipeline.py`| Stub              | End-to-end orchestration outline                 |
+| `src/verifier.py`| Complete          | Deterministic claim verification for all 9 claim types |
+| `src/pipeline.py`| Complete          | Orchestration; Step 3 invokes the anti-rubber-stamp review gate |
+| `src/review_gate.py`| Complete       | Pure deterministic human-review gate (Hero Case B) |
 | `src/llm_drafter.py`| Complete       | Calls Anthropic API via tool use to draft structured claims |
 
 ## Documentation

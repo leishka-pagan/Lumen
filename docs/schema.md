@@ -120,7 +120,7 @@ alert, or the alert's own `evidence_items`).
 | Hero case | Where to look | What it shows |
 |-----------|---------------|---------------|
 | HERO CASE A (the catch) | `ai_outputs` row CLM001 on ALERT001 (customer CUST0001) asserts `prior_sar_history = true`; `prior_cases` for CUST0001 has `prior_sar_count = 0` | The AI makes a claim the records contradict. The verifier will catch it. |
-| HERO CASE B (rubber stamp) | `human_reviews` row REV001 on ALERT007 (customer CUST0007): `draft_disposition = accepted` but `decision_reason` and `final_note` are empty and `evidence_reviewed = false` | A human approved without justifying or reviewing evidence. The approval gate must block this. |
+| HERO CASE B (rubber stamp) | `human_reviews` row REV001 on ALERT007 (customer CUST0007): `draft_disposition = accepted` but `decision_reason` and `final_note` are empty and `evidence_reviewed = false` | A human approved without justifying or reviewing evidence. The anti-rubber-stamp gate (`src/review_gate.py`, invoked by `src/pipeline.py` Step 3) blocks it and fails closed; the Case File shows it BLOCKED using the same shared rule. |
 | Contrast (true positive) | `prior_cases` for CUST0007 has `prior_sar_count = 2`; claim CLM010 asserting `prior_sar_history = true` is therefore correct | Shows the verifier should PASS a true claim, not just fail false ones. |
 | expected_activity_mismatch | CUST0002 (student), expected 2,000/mo, receives a 45,000 inflow; claim CLM002 | Pattern claim with a real underlying mismatch. |
 | rapid_movement | CUST0003, four 9,000 transactions on one day; claim CLM003 | Real rapid in/out pattern. |

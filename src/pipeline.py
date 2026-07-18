@@ -12,7 +12,12 @@ Step 1 (structured claims) supports two modes:
   mode never crashes the pipeline: on empty output or any failure it falls back
   to the seeded claims so the alert still gets processed.
 
-Step 2 (verification) and Step 3 (human approval handoff) are unchanged.
+Step 2 (verification) is deterministic (src/verifier.py). Step 3 (human approval)
+runs the anti-rubber-stamp gate: the alert's human review is evaluated through the
+shared, pure rule src/review_gate.evaluate_review. A review missing any required
+field is blocked and fails closed (no final disposition), and exactly one structured
+audit event is written for an actual pipeline evaluation (review_blocked, or
+review_bypassed when enforcement is explicitly disabled).
 """
 
 from __future__ import annotations
@@ -25,6 +30,7 @@ from typing import Any
 import pandas as pd
 
 from . import audit, llm_drafter, verifier
+from .review_gate import evaluate_review
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DATA = PROJECT_ROOT / "data"
@@ -44,6 +50,21 @@ def _read_table(name: str) -> pd.DataFrame:
 def _load_source_tables() -> dict[str, pd.DataFrame]:
     """Full source tables for the verifier loop."""
     return {name: _read_table(name) for name in SOURCE_TABLE_NAMES}
+
+
+def _load_review(alert_id: str) -> dict[str, Any] | None:
+    """Load the human review for an alert via the pipeline's table abstraction.
+
+    Kept out of the gate itself: ``evaluate_review`` stays a pure function over a
+    review mapping, while data loading uses the same ``_read_table`` abstraction as
+    the rest of the pipeline. Returns None when no review is on file for the alert.
+    """
+    try:
+        hr = _read_table("human_reviews")
+    except FileNotFoundError:
+        return None
+    rows = hr[hr["alert_id"] == alert_id]
+    return rows.iloc[0].to_dict() if len(rows) else None
 
 
 def _load_seeded_claims(alert_id: str) -> list[dict[str, Any]]:
@@ -117,6 +138,9 @@ def process_alert(
     alert_id: str,
     source: Any = None,
     use_live_llm: bool = False,
+    human_review: Any = None,
+    enforce_gate: bool = True,
+    log_path: Path | None = None,
 ) -> dict[str, Any]:
     """Run one alert through the pipeline.
 
@@ -124,10 +148,18 @@ def process_alert(
     source: full source tables for verification. Loaded from data/ if not given.
     use_live_llm: when True (or env LUMEN_USE_LIVE_LLM=1), draft claims with the
         live LLM instead of the seeded data. Defaults to False (demo-safe).
+    human_review: the reviewer's disposition for this alert. If None it is loaded
+        via the pipeline's own table abstraction (never read inside the gate).
+    enforce_gate: whether the anti-rubber-stamp gate is enforced (HERO CASE B).
+        Defaults to True. When False an incomplete review is allowed through as an
+        explicit, audited governance bypass.
+    log_path: audit destination override, forwarded to every audit event so tests
+        redirect the trail away from data/audit_log.csv.
     """
     live = use_live_llm or os.getenv("LUMEN_USE_LIVE_LLM") == "1"
 
-    audit.log_event(actor="pipeline", action="alert_processing_started", alert_id=alert_id)
+    audit.log_event(actor="pipeline", action="alert_processing_started",
+                    alert_id=alert_id, log_path=log_path)
 
     # The verifier needs the full source tables. Load them if the caller did not
     # supply them, so verification is real rather than defaulting to NEEDS_REVIEW.
@@ -147,7 +179,8 @@ def process_alert(
                 claims = drafted
             else:
                 # Live mode returned nothing usable. Fall back to seeded claims.
-                audit.log_event(actor="pipeline", action="draft_empty", alert_id=alert_id)
+                audit.log_event(actor="pipeline", action="draft_empty",
+                                alert_id=alert_id, log_path=log_path)
                 claims = _load_seeded_claims(alert_id)
         except Exception as exc:  # never crash the pipeline on a drafter or data failure
             audit.log_event(
@@ -155,6 +188,7 @@ def process_alert(
                 action="draft_failed",
                 alert_id=alert_id,
                 details={"reason": f"{type(exc).__name__}: {exc}"},
+                log_path=log_path,
             )
             claims = _load_seeded_claims(alert_id)
     else:
@@ -177,20 +211,58 @@ def process_alert(
                 "status": result.status,
                 "reason": result.reason,
             },
+            log_path=log_path,
         )
 
-    # Step 3: HUMAN APPROVAL LAST.
-    # TODO (UI, teammate): present claims and verification results to a reviewer,
-    # require a disposition with decision_reason and final_note, then persist a
-    # human_reviews row. The rubber-stamp gate (see HERO CASE B) lives here: a
-    # disposition missing required fields must be blocked.
-    disposition = None  # TODO: collected from the reviewer via the UI.
+    # Step 3: HUMAN APPROVAL LAST — anti-rubber-stamp gate (HERO CASE B).
+    # Evaluate the human review (explicit input, else loaded via the pipeline's own
+    # table abstraction) through the shared deterministic gate. Fail closed: a
+    # blocked review yields NO final disposition and is never treated as finalized.
+    review = human_review if human_review is not None else _load_review(alert_id)
+    gate = evaluate_review(review, enforce=enforce_gate)
+    disposition = gate.disposition  # None unless the gate allowed a finalized disposition
+
+    if review is not None:
+        if gate.blocked:
+            # Exactly one structured block event per actual pipeline evaluation.
+            audit.log_event(
+                actor="review_gate",
+                action="review_blocked",
+                alert_id=alert_id,
+                details={
+                    "review_id": gate.review_id,
+                    "missing": list(gate.missing),
+                    "enforcement_enabled": gate.enforcement_enabled,
+                },
+                log_path=log_path,
+            )
+        elif not gate.enforcement_enabled and gate.missing:
+            # Enforcement intentionally disabled AND the review would otherwise have
+            # failed: record one explicit governance-bypass event.
+            audit.log_event(
+                actor="review_gate",
+                action="review_bypassed",
+                alert_id=alert_id,
+                details={
+                    "review_id": gate.review_id,
+                    "missing_bypassed": list(gate.missing),
+                    "enforcement_enabled": False,
+                },
+                log_path=log_path,
+            )
 
     audit.log_event(
         actor="pipeline",
         action="alert_processing_finished",
         alert_id=alert_id,
-        details={"claim_count": len(claims), "disposition": disposition},
+        details={"claim_count": len(claims), "disposition": disposition,
+                 "review_blocked": gate.blocked},
+        log_path=log_path,
     )
 
-    return {"alert_id": alert_id, "results": results, "disposition": disposition}
+    return {
+        "alert_id": alert_id,
+        "results": results,
+        "disposition": disposition,
+        "review_gate": gate,
+    }
