@@ -525,11 +525,11 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.filter-bar-labels) div[data
 div[data-testid="stVerticalBlockBorderWrapper"]:has(.filter-bar-labels) div[data-testid="stButtonGroup"] button{
   white-space:nowrap !important;flex:1 1 auto;}
 
-/* Manager Review — pending override cards: separated, readable, hoverable */
-.ov-card{background:#fff;border:1px solid #cdd6de;border-left:5px solid #f0c040;
-  border-radius:6px;padding:16px 18px;margin:0 0 16px 0;
-  box-shadow:0 1px 2px rgba(0,0,0,.06);
-  transition:box-shadow .15s ease,border-color .15s ease;}
+/* Manager Review — pending override cards: static, NOT clickable (no whole-card
+   hover / translate / border shift / pointer). Content and font sizes preserved. */
+.ov-card{background:#ffffff;border:1px solid #cdd6de;border-left:5px solid #f0c040;
+  border-radius:8px;padding:16px 18px;margin:0 0 16px 0;
+  box-shadow:0 4px 12px rgba(23,52,83,.12);}
 /* CORRECTION 1: whole-card hover removed — the card must NOT read as clickable.
    Interactivity lives only in the per-card "Open Case File" button. */
 .ov-card-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;}
@@ -538,6 +538,25 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.filter-bar-labels) div[data
 .ov-card-body{font-size:14px;color:#1a1a1a;margin-bottom:8px;line-height:1.5;}
 .ov-card-meta{font-size:14px;color:#4a5560;margin-bottom:6px;}
 .ov-card-reason{font-size:14px;color:#1a1a1a;line-height:1.5;}
+/* Manager Review — Override History panel wrapper (keyed st.container). Boxes only
+   this panel; Change Log and Audit Trail are unaffected. */
+.st-key-override_history_panel{background:#ffffff;border:1px solid #cdd6de;
+  border-radius:8px;box-shadow:0 4px 12px rgba(23,52,83,.10);overflow:hidden;
+  margin-top:18px;margin-bottom:16px;}
+/* Manager Review — responsive action row (keyed horizontal st.container). Layout
+   and sizing ONLY; button colors/gradients/borders/shadows/hover/active/focus are
+   defined by the .st-key-oc_/apr_/rej_ rules and are left exactly unchanged. */
+div[class*="st-key-ov_actions_"]{
+  display:flex !important;align-items:center !important;justify-content:flex-start !important;
+  gap:12px !important;flex-wrap:wrap !important;margin-top:10px !important;margin-bottom:14px !important;}
+div[class*="st-key-ov_actions_"] .stButton>button{
+  white-space:nowrap !important;min-height:38px !important;font-weight:600 !important;}
+div[class*="st-key-ov_actions_"] div[class*="st-key-oc_"] .stButton>button{min-width:132px !important;}
+div[class*="st-key-ov_actions_"] div[class*="st-key-apr_"] .stButton>button{min-width:112px !important;}
+div[class*="st-key-ov_actions_"] div[class*="st-key-rej_"] .stButton>button{min-width:102px !important;}
+@media (max-width:700px){
+  div[class*="st-key-ov_actions_"]{gap:8px !important;flex-wrap:wrap !important;}
+}
 .ov-old{color:#8b0000;font-weight:700;}
 .ov-new{color:#1a5c1a;font-weight:700;}
 
@@ -597,26 +616,34 @@ st.html("""
   --neutral-border:#aaa;     /* existing: secondary button border */
 }
 
-/* TASK 2 — Approve (PASS green) vs Reject (FAIL red): distinct from each other
-   and from every other button. Keyed .st-key-* hooks (Streamlit 1.58 >= 1.39).
-   Stay st.button; callbacks unchanged. */
+/* Manager Review action buttons — Approve (apr_, green) and Reject (rej_, red).
+   Exact spec colors; keyed .st-key-* hooks; st.button + callbacks unchanged. */
 div[class*="st-key-apr_"] .stButton>button[kind="primary"]{
-  background:linear-gradient(to bottom,var(--pass-grad-a),var(--pass)) !important;
-  color:#fff !important;border-color:var(--pass-strong) !important;
-  transition:filter .12s ease,box-shadow .12s ease,transform .05s ease;}
+  background:linear-gradient(to bottom,#27865a,#1e8449) !important;
+  color:#ffffff !important;border:1px solid #176437 !important;border-radius:6px !important;
+  box-shadow:0 2px 4px rgba(23,52,83,.12) !important;
+  transition:background .15s ease,border-color .15s ease,box-shadow .15s ease,transform .15s ease !important;}
 div[class*="st-key-apr_"] .stButton>button[kind="primary"]:hover{
-  background:linear-gradient(to bottom,var(--pass-hover-a),var(--pass-hover-b)) !important;
-  box-shadow:0 2px 6px rgba(0,0,0,.12) !important;}
+  background:linear-gradient(to bottom,#2f9c69,#238c50) !important;
+  transform:translateY(-1px) !important;box-shadow:0 3px 7px rgba(23,52,83,.18) !important;}
 div[class*="st-key-apr_"] .stButton>button[kind="primary"]:active{
-  background:var(--pass-strong) !important;transform:translateY(1px);box-shadow:none !important;}
+  background:#176437 !important;transform:translateY(0) !important;
+  box-shadow:inset 0 1px 3px rgba(0,0,0,.18) !important;}
+div[class*="st-key-apr_"] .stButton>button[kind="primary"]:focus-visible{
+  outline:3px solid #4a8ba5 !important;outline-offset:2px !important;}
 div[class*="st-key-rej_"] .stButton>button[kind="secondary"]{
-  background:linear-gradient(to bottom,var(--fail-strong),var(--fail)) !important;
-  color:#fff !important;border-color:var(--fail) !important;
-  transition:filter .12s ease,box-shadow .12s ease,transform .05s ease;}
+  background:linear-gradient(to bottom,#a01818,#7b0000) !important;
+  color:#ffffff !important;border:1px solid #7b0000 !important;border-radius:6px !important;
+  box-shadow:0 2px 4px rgba(23,52,83,.12) !important;
+  transition:background .15s ease,border-color .15s ease,box-shadow .15s ease,transform .15s ease !important;}
 div[class*="st-key-rej_"] .stButton>button[kind="secondary"]:hover{
-  filter:brightness(1.12) !important;box-shadow:0 2px 6px rgba(0,0,0,.12) !important;}
+  background:linear-gradient(to bottom,#b03a2e,#a01818) !important;
+  transform:translateY(-1px) !important;box-shadow:0 3px 7px rgba(23,52,83,.18) !important;}
 div[class*="st-key-rej_"] .stButton>button[kind="secondary"]:active{
-  background:var(--fail) !important;transform:translateY(1px);box-shadow:none !important;}
+  background:#7b0000 !important;transform:translateY(0) !important;
+  box-shadow:inset 0 1px 3px rgba(0,0,0,.18) !important;}
+div[class*="st-key-rej_"] .stButton>button[kind="secondary"]:focus-visible{
+  outline:3px solid #4a8ba5 !important;outline-offset:2px !important;}
 
 /* TASK 3 (pass 1) removed by CORRECTION 1: the pending-card hover created a false
    "whole card is clickable" affordance. Card interactivity now lives only in the
@@ -797,20 +824,21 @@ button[data-baseweb="tab"]:focus-visible{
 div[data-baseweb="tab-highlight"]{background-color:transparent !important;height:0 !important;}
 div[data-baseweb="tab-border"]{background-color:transparent !important;height:0 !important;}
 
-/* "Open Case File" (Manager Review) — a neutral OUTLINED secondary action, clearly
-   distinct from the filled green Approve and filled red Reject on the same card.
-   Keyed .st-key-oc_* hook; still st.button, routing/callbacks unchanged. */
+/* "Open Case File" (Manager Review) — neutral outlined secondary action, exact
+   spec colors; keyed .st-key-oc_* hook; st.button + routing/callbacks unchanged. */
 div[class*="st-key-oc_"] .stButton>button[kind="secondary"]{
-  background:#fff !important;color:var(--accent-strong) !important;
-  border:1px solid var(--accent) !important;font-weight:600 !important;
-  transition:background .12s ease,box-shadow .12s ease,transform .05s ease;}
+  background:#ffffff !important;color:#1a5276 !important;
+  border:1px solid #2e728f !important;border-radius:6px !important;
+  box-shadow:0 1px 2px rgba(23,52,83,.08) !important;
+  transition:background .15s ease,border-color .15s ease,box-shadow .15s ease,transform .15s ease !important;}
 div[class*="st-key-oc_"] .stButton>button[kind="secondary"]:hover{
-  background:var(--surface-hover) !important;color:var(--accent-strong) !important;
-  border-color:var(--accent-strong) !important;box-shadow:0 2px 6px rgba(0,0,0,.12) !important;}
+  background:#e8f4f8 !important;color:#173453 !important;border-color:#245d74 !important;
+  box-shadow:0 2px 5px rgba(23,52,83,.14) !important;transform:translateY(-1px) !important;}
 div[class*="st-key-oc_"] .stButton>button[kind="secondary"]:active{
-  background:var(--accent-tint) !important;transform:translateY(1px);box-shadow:none !important;}
+  background:#d5eaf1 !important;transform:translateY(0) !important;
+  box-shadow:inset 0 1px 2px rgba(23,52,83,.14) !important;}
 div[class*="st-key-oc_"] .stButton>button[kind="secondary"]:focus-visible{
-  outline:2px solid var(--accent) !important;outline-offset:2px !important;}
+  outline:3px solid #4a8ba5 !important;outline-offset:2px !important;}
 
 /* Case File neutral empty states (alert with no human review on file). No verdict,
    no fabricated review — just parity with the panels that would otherwise appear. */
@@ -1314,25 +1342,32 @@ with tab2:
                   </div>
                 </div>""", unsafe_allow_html=True)
 
-                oc, mc1, mc2, _ = st.columns([1.7, 1.1, 1.1, 6.1])
-                with oc:
-                    _target = case_target_for_override(row, mr_valid_alerts)
-                    if _target and st.button("Open Case File", key=f"oc_{row['change_id']}"):
+                # Responsive action row: one keyed horizontal container per override
+                # (replaces the old 4-column + spacer layout, which starved the buttons
+                # on narrow windows). Order, keys, types, callbacks, and the Open-Case
+                # guard condition are unchanged; only the layout mechanism changed.
+                _target = case_target_for_override(row, mr_valid_alerts)
+                with st.container(
+                    key=f"ov_actions_{row['change_id']}",
+                    horizontal=True,
+                    horizontal_alignment="left",
+                    vertical_alignment="center",
+                    gap="small",
+                ):
+                    if _target and st.button("Open Case File", key=f"oc_{row['change_id']}", width="content"):
                         # CORRECTION 1: inspect THIS override's evidence in the existing
                         # Case File dialog (reuses the tab-1 open_case trigger). Only this
                         # control is interactive — the card itself is not clickable.
                         st.session_state.open_case = _target
                         st.rerun()
-                with mc1:
-                    if st.button("✓ Approve", key=f"apr_{row['change_id']}", type="primary"):
+                    if st.button("✓ Approve", key=f"apr_{row['change_id']}", type="primary", width="content"):
                         update_override_status(
                             row["change_id"], "approved",
                             st.session_state.current_user["name"],
                         )
                         st.success("Approved — change is now live.")
                         st.rerun()
-                with mc2:
-                    if st.button("✕ Reject", key=f"rej_{row['change_id']}", type="secondary"):
+                    if st.button("✕ Reject", key=f"rej_{row['change_id']}", type="secondary", width="content"):
                         update_override_status(
                             row["change_id"], "rejected",
                             st.session_state.current_user["name"],
@@ -1341,14 +1376,6 @@ with tab2:
                         st.rerun()
 
         if not ov_fresh.empty:
-            st.markdown("""
-            <div class="panel" style="margin-top:20px">
-              <div class="panel-header">
-                <span class="panel-title">Override History</span>
-                <span class="panel-subtitle">All submitted overrides</span>
-              </div>
-            </div>""", unsafe_allow_html=True)
-
             OV_STATUS_STYLE = {
                 "pending":  "background:#fff8e1;color:#7d4e00;border:1px solid #f0c040;",
                 "approved": "background:#e8f5e8;color:#1a5c1a;border:1px solid #9c9;",
@@ -1375,14 +1402,24 @@ with tab2:
                 f'</tr>'
                 for _, r in ov_fresh.iterrows()
             )
-            st.markdown(
-                f'<table class="log-tbl">'
-                f'<thead><tr><th>Change ID</th><th>Alert</th><th>Field</th>'
-                f'<th>Change</th><th>Submitted By</th><th>Status</th>'
-                f'<th>Reviewed By</th><th>Reviewed At</th></tr></thead>'
-                f'<tbody>{hist_rows}</tbody></table>',
-                unsafe_allow_html=True,
-            )
+            # Wrap ONLY the Override History heading + table in a keyed container so
+            # this panel is boxed without affecting Change Log or Audit Trail.
+            with st.container(key="override_history_panel"):
+                st.markdown("""
+                <div class="panel" style="margin-top:20px">
+                  <div class="panel-header">
+                    <span class="panel-title">Override History</span>
+                    <span class="panel-subtitle">All submitted overrides</span>
+                  </div>
+                </div>""", unsafe_allow_html=True)
+                st.markdown(
+                    f'<table class="log-tbl">'
+                    f'<thead><tr><th>Request ID</th><th>Alert</th><th>Field</th>'
+                    f'<th>Change</th><th>Submitted By</th><th>Status</th>'
+                    f'<th>Reviewed By</th><th>Reviewed At</th></tr></thead>'
+                    f'<tbody>{hist_rows}</tbody></table>',
+                    unsafe_allow_html=True,
+                )
 
     st.markdown('</div>', unsafe_allow_html=True)
 
