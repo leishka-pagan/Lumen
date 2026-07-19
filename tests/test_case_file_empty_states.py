@@ -1,11 +1,14 @@
 """Pass A — Case File consistency: neutral empty states for alerts with no human
 review, plus regression that the review-present path is undisturbed.
 
-The additive change (app.show_case_dialog) renders two neutral empty states —
-"No human review recorded for this alert." and a HUMAN-REVIEW GATE panel reading
-"Not evaluated because no human review exists." — in the exact positions the Human
-Review and Human-Review Gate panels occupy when a review IS on file. It fabricates
-no review, shows no PASS/FAIL/BLOCKED verdict, and writes no audit event.
+The additive change (app.show_case_dialog) renders two neutral empty states — a
+Human Review panel reading "No formal disposition review has been submitted for this
+alert. Analyst override requests and their reasons are displayed separately above
+when present." and a HUMAN-REVIEW GATE panel reading "Not evaluated. This gate
+applies only to submitted disposition reviews. Analyst override requests follow a
+separate manager-decision workflow." — in the exact positions the Human Review and
+Human-Review Gate panels occupy when a review IS on file. It fabricates no review,
+shows no PASS/FAIL/BLOCKED verdict, and writes no audit event.
 
 Manager Review → correct Case File routing is proven separately in
 tests/test_manager_review_case_file.py: both entry points (the Alert Queue

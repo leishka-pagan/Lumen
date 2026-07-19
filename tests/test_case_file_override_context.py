@@ -3,7 +3,7 @@
 The Case File shows the analyst's pending/decided override request for the open
 alert, DERIVED LIVE from the runtime pending_overrides.csv. It is a governance
 record DISTINCT from a Human Review: it never fabricates a HumanReview and never
-changes the honest "No human review recorded for this alert." statement.
+changes the honest "no formal disposition review has been submitted" empty state.
 
 Isolation: the app's override CSV + audit log are redirected to temp files via env
 vars (the `runtime` fixture); committed CSVs are never mutated.
@@ -72,7 +72,7 @@ def runtime(tmp_path, monkeypatch):
     return {"pending": ov, "audit": lg}
 
 
-# 1 — ALERT002: pending override context AND honest "no human review"
+# 1 — ALERT002: pending override context AND honest "no formal disposition review"
 def test_alert002_shows_pending_override_and_no_human_review(runtime):
     md = _md(_run(open_case="ALERT002"))
     assert "OVERRIDE REQUEST" in md
@@ -85,7 +85,7 @@ def test_alert002_shows_pending_override_and_no_human_review(runtime):
     assert "Human Review" not in _ovreq(_run(open_case="ALERT002"))  # not mislabeled
 
 
-# 2 — ALERT005: pending override context AND honest "no human review"
+# 2 — ALERT005: pending override context AND honest "no formal disposition review"
 def test_alert005_shows_pending_override_and_no_human_review(runtime):
     md = _md(_run(open_case="ALERT005"))
     assert "OVERRIDE REQUEST" in md
@@ -103,7 +103,7 @@ def test_alert001_shows_both_human_review_and_pending_override(runtime):
     assert "OVERRIDE REQUEST" in md and "PENDING MANAGER DECISION" in md
     assert "residual risk is medium" in md              # the override reason
     assert "reviewer:mchen" in md                       # the completed human review
-    assert "No human review recorded for this alert." not in md
+    assert "No formal disposition review has been submitted for this alert. Analyst override requests and their reasons are displayed separately above when present." not in md
 
 
 # 4 — an APPROVED request keeps its panel, now green, with reviewer + rationale
