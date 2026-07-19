@@ -1571,13 +1571,13 @@ def show_case_dialog(alert_id: str, source: dict) -> None:
         st.markdown("""
         <div class="case-panel" style="margin-top:12px;">
           <div class="case-panel-hdr"><span class="case-panel-title">Human Review</span></div>
-          <div class="case-empty">No human review recorded for this alert.</div>
+          <div class="case-empty">No formal disposition review has been submitted for this alert. Analyst override requests and their reasons are displayed separately above when present.</div>
         </div>
         """, unsafe_allow_html=True)
         st.markdown(
             '<div class="gate-panel gate-empty">'
             '<div class="gate-title">HUMAN-REVIEW GATE</div>'
-            '<div class="gate-body">Not evaluated because no human review exists.</div>'
+            '<div class="gate-body">Not evaluated. This gate applies only to submitted disposition reviews. Analyst override requests follow a separate manager-decision workflow.</div>'
             '</div>',
             unsafe_allow_html=True,
         )

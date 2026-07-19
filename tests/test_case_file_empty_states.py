@@ -26,8 +26,8 @@ sys.path.insert(0, str(ROOT))
 APP = str(ROOT / "app.py")
 
 NO_REVIEW_ALERT = "ALERT002"   # has an AI claim, but no human_reviews row -> empty states
-REVIEW_MISSING_MSG = "No human review recorded for this alert."
-GATE_EMPTY_MSG = "Not evaluated because no human review exists."
+REVIEW_MISSING_MSG = "No formal disposition review has been submitted for this alert. Analyst override requests and their reasons are displayed separately above when present."
+GATE_EMPTY_MSG = "Not evaluated. This gate applies only to submitted disposition reviews. Analyst override requests follow a separate manager-decision workflow."
 
 
 def _open(alert_id: str) -> str:

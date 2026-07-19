@@ -81,7 +81,7 @@ def test_alert002_shows_pending_override_and_no_human_review(runtime):
     assert "High → Medium" in md
     assert "Jordan Avery" in md and "EMP-204" in md
     assert "scholarship grant" in md
-    assert "No human review recorded for this alert." in md      # still honest
+    assert "No formal disposition review has been submitted for this alert. Analyst override requests and their reasons are displayed separately above when present." in md      # still honest
     assert "Human Review" not in _ovreq(_run(open_case="ALERT002"))  # not mislabeled
 
 
@@ -94,7 +94,7 @@ def test_alert005_shows_pending_override_and_no_human_review(runtime):
     assert "Open → Escalate" in md
     assert "Priya Raman" in md and "EMP-217" in md
     assert "high-risk jurisdiction" in md
-    assert "No human review recorded for this alert." in md
+    assert "No formal disposition review has been submitted for this alert. Analyst override requests and their reasons are displayed separately above when present." in md
 
 
 # 3 — ALERT001: a completed Human Review AND a separate pending override coexist
