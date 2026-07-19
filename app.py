@@ -1556,10 +1556,17 @@ with tab2:
    radius/padding/shadow); the Open Case File button renders INSIDE it, not detached. */
 div[class*="st-key-hro_att_"]{background:#fff1f1;border:1px solid #e9a0a0;border-left:5px solid #a00000;
   border-radius:8px;padding:14px 16px;margin-bottom:10px;box-shadow:0 3px 10px rgba(23,52,83,.08);}
-/* Completed Reviews — two compact cards side by side (keyed grid); one column below 700px. */
-div[class*="st-key-completed_review_grid"]{display:flex;flex-wrap:wrap;gap:12px;align-items:stretch;}
-div[class*="st-key-hro_done_"]{flex:1 1 420px;min-width:360px;background:#ffffff;border:1px solid #cdd6de;
-  border-left:5px solid #2e728f;border-radius:8px;padding:14px 16px;box-shadow:0 3px 10px rgba(23,52,83,.08);margin-bottom:0;}
+/* Completed Reviews — two equal columns of CONTENT-HEIGHT cards. The previous flex
+   layout with align-items:stretch stretched each card down the whole row; a CSS grid
+   with grid-auto-rows:max-content + align-self:start sizes every card to its content
+   only, so the card ends 16px (its padding) below the Open Case File button. */
+div[class*="st-key-completed_review_grid"]{
+  display:grid !important;grid-template-columns:1fr 1fr !important;gap:14px !important;
+  align-items:start !important;grid-auto-rows:max-content !important;}
+div[class*="st-key-hro_done_"]{
+  background:#ffffff !important;border:1px solid #cdd6de !important;border-left:4px solid #2e728f !important;
+  border-radius:8px !important;padding:16px !important;box-shadow:0 3px 10px rgba(23,52,83,.08) !important;
+  height:auto !important;min-height:0 !important;align-self:start !important;}
 /* Open Case File button sits INSIDE the card, 12px below the content (block gap). */
 div[class*="st-key-hro_att_"] [data-testid="stVerticalBlock"],
 div[class*="st-key-hro_done_"] [data-testid="stVerticalBlock"]{gap:12px !important;}
@@ -1611,7 +1618,8 @@ div[class*="st-key-hro_"] .stButton>button:focus-visible{
 .st-key-manager_review_view button[kind="segmented_controlActive"]:focus-visible{
   outline:3px solid #4a8ba5 !important;outline-offset:2px !important;}
 @media (max-width:700px){.hro-rail{grid-template-columns:1fr;}.hro-details{flex-direction:column;gap:8px;}
-  div[class*="st-key-hro_done_"]{flex-basis:100%;min-width:0;}}
+  div[class*="st-key-completed_review_grid"]{grid-template-columns:1fr !important;gap:12px !important;}
+  div[class*="st-key-hro_done_"]{min-width:0 !important;}}
 </style>""")
 
         # Derive: partition the stored reviews by the shared gate (enforce=True).
