@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import random
+import sys
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
@@ -851,6 +852,217 @@ def build_audit_seed() -> list[dict]:
         row(14, iso(datetime(2026, 5, 28, 15, 12, 0)), "ui:EMP-108", "override_review", "ALERT007",
             {"change_id": "CHG-HIST-009", "decision": "approved"}),
     ]
+
+
+# ============================================================================
+# TARGETED CANONICAL LIFECYCLE GENERATION
+# ----------------------------------------------------------------------------
+# A separate, targeted mode (NOT part of build_dataset / main). It reconstructs
+# the canonical CaseLifecycle for all 39 alerts from the ALREADY-GENERATED source
+# CSVs, using the REAL verifier, route_review, and lifecycle projector, and writes
+# ONLY two artifacts — ai_outputs.csv (with truthful provenance columns added) and
+# case_lifecycle.csv — into an explicitly supplied output directory.
+#
+# It NEVER runs the full generator, NEVER rewrites any other CSV, makes NO network
+# or API call, writes NO audit event, and is fully deterministic. The seven demo
+# alerts are hand-authored synthetic fixtures, so their AI-draft provenance is
+# labelled synthetic_fixture with no model id; ALERT008..ALERT039 are truthfully
+# NOT_PROCESSED.
+# ============================================================================
+
+# Source tables the real verifier reads (same set/contract as src.pipeline).
+LIFECYCLE_SOURCE_TABLES = [
+    "customers", "transactions", "prior_cases",
+    "kyc_profile_status", "evidence_items", "alerts",
+]
+
+# The seven truthfully-processed demo alerts. Everything else is NOT_PROCESSED.
+PROCESSED_FIXTURE_ALERTS = tuple(f"ALERT{i:03d}" for i in range(1, 8))
+
+FIXTURE_PROCESSING_RUN_ID = "FIXTURE-SEED-V1"
+FIXTURE_ROUTING_POLICY_ID = "POL-REVIEW-ROUTING-V1"
+FIXTURE_DRAFT_SOURCE = "synthetic_fixture"
+
+# ai_outputs.csv: the seven existing columns (unchanged) then the four provenance
+# columns appended, in this order.
+AI_OUTPUT_BASE_COLUMNS = [
+    "output_id", "alert_id", "claim_id", "claim_type",
+    "asserted_value", "evidence_refs", "generated_at",
+]
+AI_OUTPUT_PROVENANCE_COLUMNS = [
+    "draft_source", "draft_reference", "model_id", "processing_run_id",
+]
+
+# Curated fixture ROUTING INPUTS, keyed by the seven demo alert IDs. These are
+# deterministic policy inputs handed to the GENERIC route_review; route_review
+# itself contains no alert-ID logic. FAIL/MIXED alerts pass no inputs because
+# route_review forces REQUIRED for them and forbids an auto-disposition there.
+CURATED_FIXTURE_ROUTING_INPUTS: dict[str, dict] = {
+    "ALERT001": {},                                                        # FAIL  -> REQUIRED
+    "ALERT002": {"auto_disposition_action": "monitor"},                    # PASS  -> NOT_REQUIRED
+    "ALERT003": {"auto_disposition_action": "monitor"},                    # PASS  -> NOT_REQUIRED
+    "ALERT004": {"mandatory_review_reasons": ("RULE_REQUIRES_HUMAN_REVIEW",)},   # PASS -> REQUIRED
+    "ALERT005": {"auto_disposition_action": "monitor"},                    # PASS  -> NOT_REQUIRED
+    "ALERT006": {"mandatory_review_reasons": ("CRITICAL_EVIDENCE_MISSING",)},    # PASS -> REQUIRED
+    "ALERT007": {},                                                        # MIXED -> REQUIRED
+}
+
+
+def _read_str_frame(path: Path) -> pd.DataFrame:
+    """Load one CSV as all-strings, keep_default_na=False so blanks stay '' not NaN
+    (the exact contract the verifier expects)."""
+    return pd.read_csv(path, keep_default_na=False, dtype=str)
+
+
+def _fixture_claims(ai_df: pd.DataFrame, alert_id: str) -> list[dict]:
+    """Claims for one alert parsed from ai_outputs, evidence_refs JSON-decoded — the
+    shape src.verifier.verify_claim expects (mirrors src.pipeline._load_seeded_claims,
+    without any audit side effect)."""
+    rows = ai_df[ai_df["alert_id"] == alert_id]
+    claims: list[dict] = []
+    for _, r in rows.iterrows():
+        try:
+            refs = json.loads(r["evidence_refs"]) if r["evidence_refs"] else []
+        except (ValueError, TypeError):
+            refs = []
+        claims.append(
+            {
+                "output_id": r["output_id"], "alert_id": r["alert_id"],
+                "claim_id": r["claim_id"], "claim_type": r["claim_type"],
+                "asserted_value": r["asserted_value"], "evidence_refs": refs,
+                "generated_at": r["generated_at"],
+            }
+        )
+    return claims
+
+
+def _review_row(hr_df: pd.DataFrame, alert_id: str):
+    rows = hr_df[hr_df["alert_id"] == alert_id]
+    return rows.iloc[0].to_dict() if len(rows) else None
+
+
+def _pending_override_id(ov_df: pd.DataFrame, alert_id: str):
+    rows = ov_df[(ov_df["alert_id"] == alert_id) & (ov_df["status"] == "pending")]
+    return rows.iloc[0]["change_id"] if len(rows) else None
+
+
+def build_lifecycle_frames(source_dir: Path):
+    """Construct (ai_outputs_with_provenance, case_lifecycle) DataFrames in memory
+    from the already-generated source CSVs in ``source_dir``.
+
+    Deterministic and side-effect free: reads CSVs, runs the real verifier /
+    route_review / lifecycle projector, and returns two DataFrames. No writes, no
+    network/API, no audit.
+    """
+    # src.* is imported lazily so importing this module (e.g. for build_dataset)
+    # never pulls in the domain layer; PROJECT_ROOT is ensured on the path first.
+    if str(PROJECT_ROOT) not in sys.path:
+        sys.path.insert(0, str(PROJECT_ROOT))
+    import dataclasses
+    from enum import Enum
+
+    from src import verifier
+    from src.case_lifecycle import (
+        AIDraftSource, CaseLifecycle, OverrideStatus, ProcessingStatus,
+    )
+    from src.lifecycle_projector import (
+        project_processed_lifecycle, summarize_ai_verification,
+    )
+    from src.review_routing import route_review
+
+    source_dir = Path(source_dir)
+    ai_df = _read_str_frame(source_dir / "ai_outputs.csv")
+    hr_df = _read_str_frame(source_dir / "human_reviews.csv")
+    ov_df = _read_str_frame(source_dir / "pending_overrides.csv")
+    alerts_df = _read_str_frame(source_dir / "alerts.csv")
+    source = {name: _read_str_frame(source_dir / f"{name}.csv") for name in LIFECYCLE_SOURCE_TABLES}
+
+    all_alert_ids = sorted(alerts_df["alert_id"].tolist())
+
+    records = []
+    for aid in all_alert_ids:
+        if aid in PROCESSED_FIXTURE_ALERTS:
+            claims = _fixture_claims(ai_df, aid)
+            # Real, deterministic verification — status is DERIVED, never hardcoded.
+            results = [verifier.verify_claim(c, source) for c in claims]
+            ai_verification = summarize_ai_verification(results)
+            routing = route_review(
+                ai_verification=ai_verification,
+                policy_id=FIXTURE_ROUTING_POLICY_ID,
+                **CURATED_FIXTURE_ROUTING_INPUTS[aid],
+            )
+            out_rows = ai_df[ai_df["alert_id"] == aid]
+            # processed_at derived from the fixtures: the latest claim generated_at
+            # (ISO-8601, equal width, so lexicographic max == chronological max).
+            processed_at = max(out_rows["generated_at"].tolist())
+            override_id = _pending_override_id(ov_df, aid)
+            record = project_processed_lifecycle(
+                alert_id=aid,
+                processing_run_id=FIXTURE_PROCESSING_RUN_ID,
+                processed_at=processed_at,
+                ai_draft_source=AIDraftSource.SYNTHETIC_FIXTURE,
+                ai_draft_reference=f"FIXTURE-BUNDLE-{aid}",
+                model_id=None,
+                verification_results=results,
+                routing_decision=routing,
+                human_review=_review_row(hr_df, aid),
+                override_status=(OverrideStatus.PENDING if override_id else OverrideStatus.NONE),
+                override_request_id=override_id,
+            )
+        else:
+            # Truthfully NOT_PROCESSED (the dataclass defaults ARE the NOT_PROCESSED
+            # shape; __post_init__ still validates the record).
+            record = CaseLifecycle(alert_id=aid, processing_status=ProcessingStatus.NOT_PROCESSED)
+        records.append(record)
+
+    lifecycle_columns = [f.name for f in dataclasses.fields(CaseLifecycle)]
+
+    def _serialize(record) -> dict:
+        row = {}
+        for f in dataclasses.fields(record):
+            value = getattr(record, f.name)
+            if value is None:
+                row[f.name] = ""                       # None -> empty CSV field
+            elif isinstance(value, Enum):
+                row[f.name] = value.value               # enum -> lowercase .value
+            else:
+                row[f.name] = value
+        return row
+
+    lifecycle_df = pd.DataFrame([_serialize(r) for r in records], columns=lifecycle_columns)
+
+    # ai_outputs with truthful provenance columns appended; existing columns, order,
+    # and row order are preserved exactly (idempotent if provenance already present).
+    ai_out = ai_df.copy()
+    ai_out["draft_source"] = FIXTURE_DRAFT_SOURCE
+    ai_out["draft_reference"] = ai_out["alert_id"].map(lambda a: f"FIXTURE-BUNDLE-{a}")
+    ai_out["model_id"] = ""                             # hand-authored fixtures: no model id
+    ai_out["processing_run_id"] = FIXTURE_PROCESSING_RUN_ID
+    ai_out = ai_out[AI_OUTPUT_BASE_COLUMNS + AI_OUTPUT_PROVENANCE_COLUMNS]
+
+    return ai_out, lifecycle_df
+
+
+def generate_lifecycle_dataset(source_dir, out_dir, baseline_dir=None):
+    """Targeted lifecycle-generation mode.
+
+    Reads the already-generated source CSVs from ``source_dir`` and writes ONLY
+    ai_outputs.csv and case_lifecycle.csv into ``out_dir`` (and, when given,
+    byte-identical copies into ``baseline_dir``). Writes no other file, runs no full
+    generator, makes no network/API call, and produces no audit event. Returns the
+    (ai_outputs, case_lifecycle) DataFrames it wrote.
+    """
+    ai_out, lifecycle_df = build_lifecycle_frames(source_dir)
+    # Serialize once; write identical bytes to every target so runtime and baseline
+    # are guaranteed byte-for-byte equal.
+    ai_text = ai_out.to_csv(index=False)
+    lifecycle_text = lifecycle_df.to_csv(index=False)
+    targets = [Path(out_dir)] + ([Path(baseline_dir)] if baseline_dir is not None else [])
+    for directory in targets:
+        directory.mkdir(parents=True, exist_ok=True)
+        (directory / "ai_outputs.csv").write_text(ai_text, encoding="utf-8", newline="")
+        (directory / "case_lifecycle.csv").write_text(lifecycle_text, encoding="utf-8", newline="")
+    return ai_out, lifecycle_df
 
 
 def main() -> None:
