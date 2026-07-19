@@ -293,6 +293,38 @@ def _reject_override_dialog():
     _render_override_decision("rejected")
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Dialog-open helpers. Streamlit raises "Only one dialog is allowed to be opened
+# at the same time" if two @st.dialog functions are invoked in one rerun, so every
+# action that opens a modal clears the OTHER modals' state before setting its own.
+# Combined with the single if/elif/elif coordinator (end of file), this guarantees
+# at most one dialog per run. These set state only — they neither read nor write
+# any CSV and emit no audit event. (The Approve/Reject decision lives inside
+# `pending_override["decision"]`, so clearing pending_override clears it too.)
+# ─────────────────────────────────────────────────────────────────────────────
+def _open_case_file(alert_id):
+    """Route every Case File open through here: clear override + reset state first."""
+    st.session_state.pending_override = None
+    st.session_state.demo_reset_confirm = False
+    st.session_state.open_case = alert_id
+
+
+def _open_override_decision(change_id, decision):
+    """Open the Approve/Reject decision dialog, clearing Case File + reset state."""
+    st.session_state.open_case = None
+    st.session_state.selected_alert = None
+    st.session_state.demo_reset_confirm = False
+    st.session_state.pending_override = {"change_id": change_id, "decision": decision}
+
+
+def _open_demo_reset():
+    """Open the Reset Demo confirmation, clearing Case File + override state."""
+    st.session_state.open_case = None
+    st.session_state.selected_alert = None
+    st.session_state.pending_override = None
+    st.session_state.demo_reset_confirm = True
+
+
 def get_approved_overrides() -> dict:
     df = load_overrides()
     if df.empty:
@@ -481,7 +513,7 @@ if "settings_cl"       not in st.session_state: st.session_state.settings_cl    
 _qp_alert = st.query_params.get("alert")
 if _qp_alert and _qp_alert in alerts_df["alert_id"].values:
     st.session_state.selected_alert = _qp_alert
-    st.session_state.open_case = _qp_alert
+    _open_case_file(_qp_alert)          # clears conflicting modal state, then sets open_case
     st.query_params.pop("alert", None)
 
 if "risk_settings" not in st.session_state:
@@ -1138,7 +1170,10 @@ def _demo_reset_dialog():
                 for _k in [k for k in list(st.session_state.keys()) if str(k).startswith("override_rationale_")]:
                     st.session_state.pop(_k, None)
                 # Land back in Override Requests (the manager's role is left unchanged).
-                st.session_state.manager_review_view = "override_requests"
+                # Use the deferred flag consumed BEFORE the segmented control renders:
+                # the dialog coordinator now runs AFTER that widget instantiates, so
+                # manager_review_view can no longer be set directly here.
+                st.session_state._force_override_view = True
                 st.session_state.demo_reset_confirm = False
                 st.session_state.demo_reset_toast = True
                 st.rerun()
@@ -1158,8 +1193,9 @@ with rs_col1:
     )
 with rs_reset:
     if st.button("↻ Reset Demo", key="demo_reset", use_container_width=True):
-        # Open the confirmation dialog; reset happens only on confirm.
-        st.session_state.demo_reset_confirm = True
+        # Open the confirmation dialog; reset happens only on confirm. Clear any
+        # open Case File / override modal state first (single-dialog invariant).
+        _open_demo_reset()
         st.rerun()
 with rs_col2:
     if st.button(
@@ -1171,9 +1207,9 @@ with rs_col2:
         )
         st.rerun()
 
-# Reset confirmation dialog (opening it changes no data).
-if st.session_state.get("demo_reset_confirm"):
-    _demo_reset_dialog()
+# NOTE: all dialogs (Reset Demo, Approve/Reject, Case File) are invoked from the
+# single mutually-exclusive coordinator at the end of this file — never here and
+# never inside a tab — so at most one @st.dialog opens per rerun.
 
 # ─────────────────────────────────────────────────────────────────────────────
 # TABS
@@ -1693,10 +1729,8 @@ with tab1:
 
     st.markdown(table_html, unsafe_allow_html=True)
 
-    if st.session_state.open_case:
-        _aid = st.session_state.open_case
-        st.session_state.open_case = None
-        show_case_dialog(_aid, source)
+    # Case File is opened by the single dialog coordinator at the end of the file,
+    # not here, so it can never coincide with the override or reset dialog.
 
     st.markdown('</div>', unsafe_allow_html=True)
 
@@ -1889,10 +1923,10 @@ div[class*="st-key-hro_"] .stButton>button:focus-visible{
                     unsafe_allow_html=True,
                 )
                 if valid and st.button("Open Case File", key=f"hro_{alert_id}", width="content"):
-                    # Open THIS review's Case File. Clear any stale pending-override
-                    # routing first so oversight never inherits an override's target.
+                    # Open THIS review's Case File. _open_case_file clears any stale
+                    # pending-override / reset routing so oversight never inherits it.
                     st.session_state.selected_alert = alert_id
-                    st.session_state.open_case = alert_id
+                    _open_case_file(alert_id)
                     st.rerun()
 
         # ── Secondary navigation: one local segmented control separating the two
@@ -1986,11 +2020,9 @@ div[class*="st-key-override_submit_confirm_"][class*="_rejected"] button{
                 st.toast("Override request approved and moved to Override History."
                          if _dec == "approved"
                          else "Override request rejected and moved to Override History.")
-            # Approve/Reject open a required manager-decision dialog. Opening writes nothing.
-            if st.session_state.get("pending_override"):
-                _po = st.session_state["pending_override"]
-                (_approve_override_dialog if _po.get("decision") == "approved"
-                 else _reject_override_dialog)()
+            # Approve/Reject open a required manager-decision dialog via the single
+            # dialog coordinator at the end of the file (never invoked here), so the
+            # decision modal can never coincide with the Case File or reset modal.
 
             st.markdown("""
             <div class="panel">
@@ -2052,16 +2084,16 @@ div[class*="st-key-override_submit_confirm_"][class*="_rejected"] button{
                     ):
                         if _target and st.button("Open Case File", key=f"oc_{row['change_id']}", width="content"):
                             # CORRECTION 1: inspect THIS override's evidence in the existing
-                            # Case File dialog (reuses the tab-1 open_case trigger). Only this
-                            # control is interactive — the card itself is not clickable.
-                            st.session_state.open_case = _target
+                            # Case File dialog. _open_case_file clears override/reset state so
+                            # only the Case File opens. Only this control is interactive.
+                            _open_case_file(_target)
                             st.rerun()
                         if st.button("✓ Approve", key=f"apr_{row['change_id']}", type="primary", width="content"):
                             # Open the required decision dialog; nothing is persisted yet.
-                            st.session_state.pending_override = {"change_id": row["change_id"], "decision": "approved"}
+                            _open_override_decision(row["change_id"], "approved")
                             st.rerun()
                         if st.button("✕ Reject", key=f"rej_{row['change_id']}", type="secondary", width="content"):
-                            st.session_state.pending_override = {"change_id": row["change_id"], "decision": "rejected"}
+                            _open_override_decision(row["change_id"], "rejected")
                             st.rerun()
 
             if not ov_fresh.empty:
@@ -2341,3 +2373,26 @@ with tab5:
             unsafe_allow_html=True,
         )
     st.markdown('</div>', unsafe_allow_html=True)
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# DIALOG COORDINATOR — exactly one modal per rerun
+# ═════════════════════════════════════════════════════════════════════════════
+# Streamlit raises "Only one dialog is allowed to be opened at the same time" if
+# two @st.dialog functions are invoked during a single rerun (and tab1..tab5 all
+# execute every rerun). Every dialog in this app is therefore invoked ONLY from
+# this one mutually-exclusive if/elif/elif — never inside a tab, never pre-tabs —
+# in fixed priority order: Reset Demo → Override decision → Case File. The _open_*
+# helpers additionally clear the other dialogs' state on open, so conflicting
+# modal state never coexists in the first place. This invokes no CSV write and no
+# audit event; opening a modal only reads state.
+if st.session_state.get("demo_reset_confirm"):
+    _demo_reset_dialog()
+elif st.session_state.get("pending_override"):
+    _po = st.session_state["pending_override"]
+    (_approve_override_dialog if _po.get("decision") == "approved"
+     else _reject_override_dialog)()
+elif st.session_state.get("open_case"):
+    _aid = st.session_state.open_case
+    st.session_state.open_case = None          # call-once: Case File behavior unchanged
+    show_case_dialog(_aid, source)
