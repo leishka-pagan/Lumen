@@ -1021,6 +1021,38 @@ div[class*="st-key-oc_"] .stButton>button[kind="secondary"]:focus-visible{
 </style>""")
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Case File — OVERRIDE REQUEST context panel. Additive, DISPLAY-ONLY governance
+# record derived live from pending_overrides.csv (load_overrides) for the open
+# alert. DISTINCT from a Human Review: it never creates, reads, or implies a
+# HumanReview, and never alters the "No human review recorded" statement. Pending
+# is yellow; an approved decision turns the panel green, a rejected one red.
+# ─────────────────────────────────────────────────────────────────────────────
+st.html("""<style>
+.ovreq-panel{background:#fff8e1;border:1px solid #eab308;border-left:5px solid #eab308;
+  border-radius:7px;padding:14px 16px;margin-bottom:14px;
+  box-shadow:0 2px 8px rgba(23,52,83,.08);}
+.ovreq-panel.approved{background:#eef8f1;border:1px solid #6fbd88;border-left:5px solid #6fbd88;}
+.ovreq-panel.rejected{background:#fdeaea;border:1px solid #dc7c7c;border-left:5px solid #dc7c7c;}
+.ovreq-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px;}
+.ovreq-title{color:#5d4000;font-size:14px;font-weight:800;letter-spacing:.03em;}
+.ovreq-panel.approved .ovreq-title{color:#176437;}
+.ovreq-panel.rejected .ovreq-title{color:#7b0000;}
+.ovreq-badge{background:#ffffff;color:#5d4000;border:1px solid #eab308;border-radius:999px;
+  padding:4px 9px;font-size:11px;font-weight:800;white-space:nowrap;}
+.ovreq-panel.approved .ovreq-badge{color:#176437;border-color:#6fbd88;}
+.ovreq-panel.rejected .ovreq-badge{color:#7b0000;border-color:#dc7c7c;}
+.ovreq-details{display:grid;grid-template-columns:minmax(130px,180px) 1fr;gap:7px 14px;}
+.ovreq-lbl{color:#5d6570;font-size:11px;font-weight:700;text-transform:uppercase;}
+.ovreq-val{color:#173453;font-size:13px;font-weight:600;}
+.ovreq-val.reason{line-height:1.45;}
+@media (max-width:700px){
+  .ovreq-head{flex-wrap:wrap;}
+  .ovreq-details{grid-template-columns:1fr;gap:2px 0;}
+  .ovreq-lbl{margin-top:9px;}
+}
+</style>""")
+
+# ─────────────────────────────────────────────────────────────────────────────
 # TOP BAR
 # ─────────────────────────────────────────────────────────────────────────────
 emp = st.session_state.current_user
@@ -1157,6 +1189,78 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
 # ═════════════════════════════════════════════════════════════════════════════
 # CASE FILE — modal popup
 # ═════════════════════════════════════════════════════════════════════════════
+def _override_panel_html(row: dict) -> str:
+    """Render one OVERRIDE REQUEST panel for a Case File override record. DISPLAY
+    ONLY: reflects the analyst's submitted request (and, once decided, the manager's
+    recorded decision). This is an override request, NOT a Human Review."""
+    def esc(v):
+        s = "" if v is None else str(v)
+        return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+    status = (row.get("status") or "").lower()
+    field  = row.get("field_changed", "")
+    if status == "approved":
+        cls, badge = "approved", "APPROVED"
+    elif status == "rejected":
+        cls, badge = "rejected", "REJECTED"
+    else:
+        cls, badge = "pending", "PENDING MANAGER DECISION"
+
+    change = (esc(sev_label(field, row.get("old_value", ""))) + " → "
+              + esc(sev_label(field, row.get("new_value", ""))))
+    details = [
+        ("FIELD", esc(field) or "—", ""),
+        ("REQUESTED CHANGE", change, ""),
+        ("SUBMITTED BY",
+         f'{esc(row.get("changed_by_name", "—"))} ({esc(row.get("changed_by_id", "—"))})', ""),
+        ("ANALYST REQUEST REASON", esc(row.get("reason", "—")) or "—", " reason"),
+        ("SUBMITTED AT", esc(row.get("changed_at", "—")) or "—", ""),
+    ]
+    if cls in ("approved", "rejected"):
+        details += [
+            ("REVIEWED BY", esc(row.get("reviewed_by", "—")) or "—", ""),
+            ("REVIEWED AT", esc(row.get("reviewed_at", "—")) or "—", ""),
+            ("MANAGER DECISION RATIONALE", esc(row.get("review_note", "—")) or "—", " reason"),
+        ]
+    rows_html = "".join(
+        f'<div class="ovreq-lbl">{lbl}</div><div class="ovreq-val{extra}">{val}</div>'
+        for lbl, val, extra in details
+    )
+    return (
+        f'<div class="ovreq-panel {cls}">'
+        f'<div class="ovreq-head">'
+        f'<span class="ovreq-title">OVERRIDE REQUEST</span>'
+        f'<span class="ovreq-badge">{badge}</span>'
+        f'</div>'
+        f'<div class="ovreq-details">{rows_html}</div>'
+        f'</div>'
+    )
+
+
+def override_context_html(alert_id: str) -> str:
+    """Combined OVERRIDE REQUEST panel HTML for one alert, derived LIVE from the
+    runtime pending_overrides.csv via load_overrides(). Empty string when the alert
+    has no override request. Selection: the pending request first, then the most
+    recently reviewed request — at most two panels. Read-only; it never mutates or
+    filters Override History, and never touches the Human Review section."""
+    df = load_overrides()
+    if df.empty or "alert_id" not in df.columns:
+        return ""
+    recs = df[df["alert_id"] == alert_id]
+    if recs.empty:
+        return ""
+    pending  = recs[recs["status"] == "pending"]
+    reviewed = recs[recs["status"].isin(["approved", "rejected"])]
+    if not reviewed.empty:
+        reviewed = reviewed.sort_values("reviewed_at", ascending=False)
+    chosen = []
+    if not pending.empty:
+        chosen.append(pending.iloc[0].to_dict())
+    if not reviewed.empty:
+        chosen.append(reviewed.iloc[0].to_dict())
+    return "".join(_override_panel_html(r) for r in chosen[:2])
+
+
 @st.dialog("Case File", width="large")
 def show_case_dialog(alert_id: str, source: dict) -> None:
     case = get_case_detail(alert_id, source)
@@ -1224,6 +1328,16 @@ def show_case_dialog(alert_id: str, source: dict) -> None:
         '</div>',
         unsafe_allow_html=True,
     )
+
+    # ── OVERRIDE REQUEST context — directly below the Case Outcome Summary rail and
+    #    above AI Claim Verification. Renders whenever this alert has at least one
+    #    override request (regardless of entry source), derived LIVE from
+    #    pending_overrides.csv. A governance record DISTINCT from a Human Review: it
+    #    neither creates nor implies one, and never alters the Human Review section
+    #    or the "No human review recorded" statement below.
+    _ovreq_html = override_context_html(a["alert_id"])
+    if _ovreq_html:
+        st.markdown(_ovreq_html, unsafe_allow_html=True)
 
     def _claim_card(cl):
         cls = "pass" if cl["result"] == "PASS" else "fail" if cl["result"] == "FAIL" else "review"
