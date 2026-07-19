@@ -23,7 +23,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from src import audit, verifier  # noqa: E402
+from src import audit, verifier, lifecycle_store  # noqa: E402
 from src.review_gate import evaluate_review  # noqa: E402
 from src.demo_reset import reset_override_demo  # noqa: E402
 
@@ -157,10 +157,16 @@ def update_override_status(change_id: str, status: str, reviewer: str) -> None:
 
 
 def record_override_decision(change_id, decision, reviewer, rationale, actor,
-                             overrides_path=None, log_path=None):
-    """Persist one manager Approve/Reject decision on a pending override and write a
-    single audit event. Paths are injectable so tests never touch committed CSVs
-    (env-var defaults keep production writing to data/). Returns the alert_id.
+                             overrides_path=None, log_path=None, lifecycle_path=None):
+    """Persist one manager Approve/Reject decision on a pending override, synchronize
+    the canonical case lifecycle, and write a single audit event. Paths are injectable
+    so tests never touch committed CSVs (env-var defaults keep production writing to
+    data/). Returns the alert_id.
+
+    Lifecycle-first: the updated CaseLifecycle for this alert is validated and atomically
+    persisted BEFORE pending_overrides.csv or the audit log is touched. If lifecycle
+    validation fails (no record, override-request mismatch, or invariant violation),
+    this raises and leaves pending_overrides.csv and audit_log.csv unchanged.
 
     Updates status / reviewed_by / reviewed_at / review_note on the matching row.
     Audit details include change_id, decision, rationale, old_value, new_value.
@@ -175,6 +181,19 @@ def record_override_decision(change_id, decision, reviewer, rationale, actor,
     if not mask.any():
         return None
     row = df.loc[mask].iloc[0].to_dict()
+
+    # Lifecycle-first: validate + atomically persist the updated CaseLifecycle for this
+    # alert before mutating the override CSV or the audit log. Any failure raises here,
+    # leaving both workflow files untouched.
+    lifecycle_store.apply_override_decision(
+        alert_id=row.get("alert_id"),
+        change_id=change_id,
+        decision=decision,
+        field_changed=row.get("field_changed"),
+        new_value=row.get("new_value"),
+        path=lifecycle_path,
+    )
+
     df.loc[mask, "status"]      = decision
     df.loc[mask, "reviewed_by"] = reviewer
     df.loc[mask, "reviewed_at"] = datetime.now(timezone.utc).isoformat()

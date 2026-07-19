@@ -350,6 +350,57 @@ def test_pending_override_priority_beats_blocked():
     assert derive_queue_status(CaseLifecycle(**d)) is QS.AWAITING_MANAGER
 
 
+# ── Manager-override disposition provenance ──────────────────────────────────
+def kw_not_required_manager_override(alert_id="ALERT005"):
+    """A NOT_REQUIRED record whose system disposition was replaced by an APPROVED
+    manager override of the disposition field."""
+    d = _processed_base(alert_id, AV.PASS)
+    d.update(review_routing=RR.NOT_REQUIRED, review_gate=RG.NOT_APPLICABLE,
+             final_action="escalate", disposition_source=DPS.MANAGER_OVERRIDE,
+             disposition_reference="CHG-SEED-002",
+             override_status=OS.APPROVED, override_request_id="CHG-SEED-002")
+    return d
+
+
+def test_manager_override_enum_value():
+    assert DPS.MANAGER_OVERRIDE.value == "manager_override"
+
+
+def test_valid_manager_override_disposition_derives_closed():
+    rec = CaseLifecycle(**kw_not_required_manager_override())
+    assert rec.disposition_source is DPS.MANAGER_OVERRIDE
+    assert derive_queue_status(rec) is QS.CLOSED          # a manager-approved disposition closes
+
+
+def test_reject_manager_override_without_approved_status():
+    d = kw_not_required_manager_override()
+    d.update(override_status=OS.PENDING)                  # must be APPROVED
+    _rejects(d)
+
+
+def test_reject_manager_override_without_request_id():
+    # override_request_id None also violates the override-status coherence rule; either
+    # way the record must be rejected.
+    d = kw_not_required_manager_override()
+    d.update(override_status=OS.APPROVED, override_request_id=None)
+    _rejects(d)
+
+
+def test_reject_manager_override_reference_not_equal_request_id():
+    d = kw_not_required_manager_override()
+    d["disposition_reference"] = "CHG-OTHER"              # must equal override_request_id
+    _rejects(d)
+
+
+def test_system_policy_and_human_review_provenance_still_required_where_expected():
+    # A NOT_REQUIRED record with no manager override must still be SYSTEM_POLICY anchored
+    # to the routing policy; COMPLETE must still be HUMAN_REVIEW. (Behavior unchanged.)
+    d = kw_pass_not_required_system(); d["disposition_source"] = DPS.HUMAN_REVIEW
+    _rejects(d)
+    d2 = kw_fail_required_complete(); d2["disposition_source"] = DPS.MANAGER_OVERRIDE
+    _rejects(d2)                                          # COMPLETE cannot be manager_override
+
+
 # ── Frozen / deterministic ───────────────────────────────────────────────────
 def test_records_are_frozen():
     rec = CaseLifecycle(**kw_fail_required_complete())

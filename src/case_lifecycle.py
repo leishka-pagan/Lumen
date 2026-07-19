@@ -87,6 +87,7 @@ class DispositionSource(str, Enum):
     NONE = "none"
     SYSTEM_POLICY = "system_policy"
     HUMAN_REVIEW = "human_review"
+    MANAGER_OVERRIDE = "manager_override"
 
 
 class QueueStatus(str, Enum):
@@ -238,6 +239,20 @@ def _validate(r: CaseLifecycle) -> None:
         _require(r.disposition_source is not DispositionSource.NONE,
                  "disposition_reference requires a disposition_source")
 
+    # ── Manager-override disposition provenance (global) ─────────────────────
+    # An approved manager override may replace the recorded disposition. When it does,
+    # the provenance is anchored to the approved override request, not a policy or a
+    # human review. (SYSTEM_POLICY and HUMAN_REVIEW rules below are unchanged.)
+    if r.disposition_source is DispositionSource.MANAGER_OVERRIDE:
+        _require(r.override_status is OverrideStatus.APPROVED,
+                 "MANAGER_OVERRIDE disposition requires override_status APPROVED")
+        _require(r.override_request_id is not None,
+                 "MANAGER_OVERRIDE disposition requires an override_request_id")
+        _require(r.final_action is not None,
+                 "MANAGER_OVERRIDE disposition requires a final_action")
+        _require(r.disposition_reference == r.override_request_id,
+                 "MANAGER_OVERRIDE disposition_reference must equal override_request_id")
+
     # ── Processing-status branches ───────────────────────────────────────────
     ps = r.processing_status
     if ps is ProcessingStatus.NOT_PROCESSED:
@@ -324,10 +339,16 @@ def _validate(r: CaseLifecycle) -> None:
                      "NOT_REQUIRED routing: human_review_decision must be NONE")
             _require(r.human_review_id is None, "NOT_REQUIRED routing: human_review_id must be None")
             _require(r.final_action is not None, "NOT_REQUIRED routing: final_action is required")
-            _require(r.disposition_source is DispositionSource.SYSTEM_POLICY,
-                     "NOT_REQUIRED routing: disposition_source must be SYSTEM_POLICY")
-            _require(r.disposition_reference == r.routing_policy_id,
-                     "NOT_REQUIRED routing: disposition_reference must equal routing_policy_id")
+            if r.disposition_source is DispositionSource.MANAGER_OVERRIDE:
+                # An approved manager override replaced the system disposition. The
+                # global MANAGER_OVERRIDE rule above enforces APPROVED status and
+                # disposition_reference == override_request_id.
+                pass
+            else:
+                _require(r.disposition_source is DispositionSource.SYSTEM_POLICY,
+                         "NOT_REQUIRED routing: disposition_source must be SYSTEM_POLICY or MANAGER_OVERRIDE")
+                _require(r.disposition_reference == r.routing_policy_id,
+                         "NOT_REQUIRED routing: disposition_reference must equal routing_policy_id")
 
     # ── BLOCKED (wherever it appears): no final action or provenance ─────────
     if r.review_gate is ReviewGateStatus.BLOCKED:
@@ -346,7 +367,7 @@ def derive_queue_status(record: CaseLifecycle) -> QueueStatus:
       3. PENDING override        -> AWAITING_MANAGER
       4. BLOCKED review gate     -> BLOCKED
       5. REQUIRED + PENDING gate -> AWAITING_REVIEW
-      6. final_action w/ SYSTEM_POLICY or HUMAN_REVIEW provenance -> CLOSED
+      6. final_action w/ SYSTEM_POLICY, HUMAN_REVIEW, or MANAGER_OVERRIDE provenance -> CLOSED
     No other combination derives CLOSED.
     """
     if record.processing_status is ProcessingStatus.NOT_PROCESSED:
@@ -361,7 +382,9 @@ def derive_queue_status(record: CaseLifecycle) -> QueueStatus:
             and record.review_gate is ReviewGateStatus.PENDING):
         return QueueStatus.AWAITING_REVIEW
     if (record.final_action is not None
-            and record.disposition_source in (DispositionSource.SYSTEM_POLICY, DispositionSource.HUMAN_REVIEW)):
+            and record.disposition_source in (DispositionSource.SYSTEM_POLICY,
+                                              DispositionSource.HUMAN_REVIEW,
+                                              DispositionSource.MANAGER_OVERRIDE)):
         return QueueStatus.CLOSED
     # Unreachable for a valid record; defensive so the function is total.
     raise LifecycleInvariantError("no queue status is derivable for this lifecycle combination")
