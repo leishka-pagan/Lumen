@@ -26,6 +26,10 @@ if str(PROJECT_ROOT) not in sys.path:
 from src import audit, verifier, lifecycle_store  # noqa: E402
 from src.review_gate import evaluate_review  # noqa: E402
 from src.demo_reset import reset_override_demo  # noqa: E402
+from src.case_lifecycle import (  # noqa: E402
+    derive_queue_status, AIDraftSource, OverrideStatus, ProcessingStatus,
+    ReviewGateStatus, ReviewRoutingStatus, QueueStatus,
+)
 
 st.set_page_config(
     page_title="Lumen Verify | AML Workbench",
@@ -41,6 +45,9 @@ AUDIT_CSV       = Path(os.environ.get("LUMEN_AUDIT_LOG") or (DATA_DIR / "audit_l
 # Committed baseline snapshots restored by the "Reset Demo" control (read-only here).
 BASELINE_PENDING_CSV = Path(os.environ.get("LUMEN_BASELINE_PENDING") or (DATA_DIR / "demo_baseline" / "pending_overrides.csv"))
 BASELINE_AUDIT_CSV   = Path(os.environ.get("LUMEN_BASELINE_AUDIT") or (DATA_DIR / "demo_baseline" / "audit_log.csv"))
+# Canonical workflow source of truth: the running UI derives every queue/Case File
+# status from this, never from the legacy alerts.status trigger metadata.
+LIFECYCLE_CSV   = Path(os.environ.get("LUMEN_CASE_LIFECYCLE_CSV") or (DATA_DIR / "case_lifecycle.csv"))
 ALERTS_CSV      = DATA_DIR / "alerts.csv"
 CUSTOMERS_CSV   = DATA_DIR / "customers.csv"
 TRANSACTIONS_CSV = DATA_DIR / "transactions.csv"
@@ -384,7 +391,78 @@ def case_readiness_pct(alert_id: str, source: dict) -> int:
     return round(100 * available / len(rows))
 
 
-def build_queue_row(alert_row: pd.Series, source: dict) -> dict:
+# ── Canonical lifecycle → display mappings (single source of truth for the UI) ──
+# Queue status label per derive_queue_status outcome.
+QUEUE_STATUS_LABELS = {
+    QueueStatus.NOT_PROCESSED:    "Not Processed",
+    QueueStatus.PROCESSING_ERROR: "Processing Error",
+    QueueStatus.AWAITING_MANAGER: "Awaiting Manager",
+    QueueStatus.AWAITING_REVIEW:  "Awaiting Review",
+    QueueStatus.BLOCKED:          "Blocked",
+    QueueStatus.CLOSED:           "Closed",
+}
+# AI-verification rail label per lifecycle.ai_verification value.
+AI_VERIF_LABELS = {"not_evaluated": "NOT EVALUATED", "pass": "PASS",
+                   "mixed": "MIXED", "fail": "FAIL"}
+
+
+def lifecycle_queue_label(lc) -> str:
+    return QUEUE_STATUS_LABELS[derive_queue_status(lc)]
+
+
+def lifecycle_ai_verification_label(lc) -> str:
+    return AI_VERIF_LABELS.get(lc.ai_verification.value, lc.ai_verification.value.upper())
+
+
+def lifecycle_review_requirements_label(lc) -> str:
+    """Review-requirements rail value derived from the canonical lifecycle."""
+    if lc.processing_status is ProcessingStatus.NOT_PROCESSED:
+        return "NOT PROCESSED"
+    if lc.processing_status is ProcessingStatus.ERROR:
+        return "PROCESSING ERROR"
+    if lc.review_routing is ReviewRoutingStatus.NOT_REQUIRED:
+        return "NOT REQUIRED"
+    if lc.review_gate is ReviewGateStatus.PENDING:
+        return "PENDING"
+    if lc.review_gate is ReviewGateStatus.COMPLETE:
+        return "COMPLETE"
+    if lc.review_gate is ReviewGateStatus.BLOCKED:
+        return "BLOCKED"
+    return "—"
+
+
+def lifecycle_recorded_disposition_label(lc) -> str:
+    """Recorded disposition from lifecycle.final_action (never the review decision)."""
+    return lc.final_action.upper() if lc.final_action else "NONE"
+
+
+def load_lifecycle_index(alert_ids) -> dict:
+    """Load + validate the canonical lifecycle and index by alert_id. Fail closed:
+    any missing/invalid/duplicate record, or an alert with no lifecycle record, is an
+    explicit application error. NEVER falls back to alerts.status."""
+    try:
+        records = lifecycle_store.load_lifecycle(LIFECYCLE_CSV)
+    except Exception as exc:  # missing file, invalid row, duplicate alert_id, bad schema
+        st.error(
+            "Case lifecycle data could not be loaded, so the workbench cannot derive "
+            f"workflow status ({type(exc).__name__}: {exc}). Restore "
+            "data/case_lifecycle.csv (or use Reset Demo) and reload — the UI will not "
+            "fall back to legacy alert status."
+        )
+        st.stop()
+    index = {r.alert_id: r for r in records}
+    missing = [a for a in alert_ids if a not in index]
+    if missing:
+        st.error(
+            "Case lifecycle is missing records for: " + ", ".join(missing) +
+            ". Every alert must have a canonical lifecycle record; the workbench will "
+            "not infer a processed state from other data."
+        )
+        st.stop()
+    return index
+
+
+def build_queue_row(alert_row: pd.Series, source: dict, lifecycle_index: dict) -> dict:
     alert_id = alert_row["alert_id"]
     customers = source["customers"]
     crow = customers[customers["customer_id"] == alert_row["customer_id"]]
@@ -404,7 +482,8 @@ def build_queue_row(alert_row: pd.Series, source: dict) -> dict:
         "severity": SEVERITY_LABELS.get(alert_row["severity"], alert_row["severity"]),
         "readiness": case_readiness_pct(alert_id, source),
         "ai": has_ai,
-        "status": STATUS_LABELS.get(alert_row["status"], alert_row["status"]),
+        # Canonical workflow status — derived from case_lifecycle.csv, never alerts.status.
+        "status": lifecycle_queue_label(lifecycle_index[alert_id]),
         "analyst": analyst,
     }
 
@@ -499,7 +578,11 @@ def get_case_detail(alert_id: str, source: dict) -> dict:
 source = load_source_tables(mtimes_key())
 alerts_df = source["alerts"]
 
-queue_df = pd.DataFrame([build_queue_row(r, source) for _, r in alerts_df.iterrows()])
+# Canonical workflow state — loaded FRESH each run (not cached) so an override decision
+# or Reset Demo is reflected on the next rerun. Fail-closed if it cannot be loaded.
+lifecycle_index = load_lifecycle_index(alerts_df["alert_id"].tolist())
+
+queue_df = pd.DataFrame([build_queue_row(r, source, lifecycle_index) for _, r in alerts_df.iterrows()])
 if queue_df.empty:
     st.warning("No alerts to display. Check that data/alerts.csv has content.")
 
@@ -1384,38 +1467,20 @@ def show_case_dialog(alert_id: str, source: dict) -> None:
     def _summary_style(v):
         if v == "PASS":
             return "background:#eef7ee;border:1px solid #9c9;color:#1a5c1a;"
-        if v in ("FAIL", "BLOCKED"):
+        if v in ("FAIL", "BLOCKED", "PROCESSING ERROR"):
             return "background:#fde8e8;border:1px solid #c88;color:#7b0000;"
-        if v in ("MIXED", "NEEDS REVIEW"):
+        if v in ("MIXED", "NEEDS REVIEW", "PENDING"):
             return "background:#fff8e1;border:1px solid #e0b877;color:#7d4e00;"
-        if v in ("NOT RECORDED", "NONE", "NOT EVALUATED"):
+        if v in ("NOT RECORDED", "NONE", "NOT EVALUATED", "NOT PROCESSED", "NOT REQUIRED"):
             return "background:#f7f8f9;border:1px solid #cdd6de;color:#5a6570;"
         return "background:#e8f4f8;border:1px solid #8aaabf;color:#1a5276;"  # COMPLETE / allowed disposition
 
-    _sum_review = case["review"]
-    _sum_gate = (evaluate_review(
-        _sum_review,
-        enforce=bool(st.session_state.risk_settings.get("block_rubber_stamp", True)),
-    ) if _sum_review else None)
-    _sum_results = [cl["result"] for cl in case["ai_claims"]]
-    if not _sum_results:
-        _ai_verif = "NOT EVALUATED"
-    elif "FAIL" in _sum_results:
-        _ai_verif = "MIXED" if "PASS" in _sum_results else "FAIL"
-    elif any(r not in ("PASS", "FAIL") for r in _sum_results):
-        _ai_verif = "NEEDS REVIEW"
-    else:
-        _ai_verif = "PASS"
-    if _sum_review is None:
-        _review_req = "NOT RECORDED"
-    elif _sum_gate.blocked:
-        _review_req = "BLOCKED"
-    else:
-        _review_req = "COMPLETE"
-    if _sum_review is not None and _sum_gate is not None and not _sum_gate.blocked and _sum_gate.disposition:
-        _recorded_disp = str(_sum_gate.disposition).upper()
-    else:
-        _recorded_disp = "NONE"
+    # Every rail value comes from the canonical lifecycle record — never from the
+    # verifier summary, the review gate, or alerts.status.
+    lc = lifecycle_index[a["alert_id"]]
+    _ai_verif = lifecycle_ai_verification_label(lc)
+    _review_req = lifecycle_review_requirements_label(lc)
+    _recorded_disp = lifecycle_recorded_disposition_label(lc)
 
     st.markdown(
         '<div class="case-summary-rail">'
@@ -1447,7 +1512,7 @@ def show_case_dialog(alert_id: str, source: dict) -> None:
         badge = f'v-{cls}'
         return (
             f'<div class="claim-card {cls} hero-claim">'
-            f'<div class="claim-line"><span class="claim-tag">① AI Claim</span>'
+            f'<div class="claim-line"><span class="claim-tag">① Draft Claim</span>'
             f'<span class="claim-val">{cl["type"]} = {cl["asserted_value"]}</span></div>'
             f'<div class="claim-line"><span class="claim-tag">② Source Evidence</span>'
             f'<span class="claim-val">{cl["note"]}</span></div>'
@@ -1456,15 +1521,40 @@ def show_case_dialog(alert_id: str, source: dict) -> None:
             f'</div>'
         )
 
-    claim_rows = "".join(_claim_card(cl) for cl in case["ai_claims"]) \
-        or '<div class="field-desc-txt">No AI claims drafted for this alert.</div>'
+    # Draft provenance line (processed records only) + panel body. A NOT_PROCESSED alert
+    # gets the explicit "no draft exists" explanation and NO provenance line.
+    if lc.processing_status is ProcessingStatus.NOT_PROCESSED:
+        _prov_html = ""
+        _panel_body = ('<div class="case-empty">This synthetic inventory alert has not '
+                       'been run through the LUMEN processing workflow. No AI draft or '
+                       'verification result exists.</div>')
+    else:
+        if lc.ai_draft_source is AIDraftSource.CAPTURED_LIVE:
+            _prov = (f"DRAFT PROVENANCE: CAPTURED LIVE · RUN {lc.processing_run_id} · "
+                     f"MODEL: {lc.model_id}")
+        else:
+            _prov = (f"DRAFT PROVENANCE: SYNTHETIC FIXTURE · RUN {lc.processing_run_id} · "
+                     f"MODEL: NONE")
+        _prov_html = f'<div class="field-desc-txt">{_prov}</div>'
+        _panel_body = "".join(_claim_card(cl) for cl in case["ai_claims"]) \
+            or '<div class="field-desc-txt">No AI claims drafted for this alert.</div>'
 
     st.markdown(f"""
     <div class="case-panel" style="margin-top:12px;">
-      <div class="case-panel-hdr"><span class="case-panel-title">AI Claim Verification</span></div>
-      <div style="padding:14px 16px;background:#f5f5f5;">{claim_rows}</div>
+      <div class="case-panel-hdr"><span class="case-panel-title">AI Draft Verification</span></div>
+      <div style="padding:14px 16px;background:#f5f5f5;">{_prov_html}{_panel_body}</div>
     </div>
     """, unsafe_allow_html=True)
+
+    # Re-run the deterministic verifier on the displayed claims and compare its summary
+    # with the RECORDED lifecycle result. Display only — no lifecycle or audit mutation.
+    if lc.processing_status is ProcessingStatus.PROCESSED:
+        if derive_ai_verification(case["ai_claims"]) != _ai_verif:
+            st.markdown(
+                '<div class="warn-box">CURRENT VERIFICATION DIFFERS FROM THE RECORDED '
+                'PROCESSING RESULT.</div>',
+                unsafe_allow_html=True,
+            )
 
     if case["missing"]:
         st.markdown(
@@ -1524,7 +1614,51 @@ def show_case_dialog(alert_id: str, source: dict) -> None:
             )
         st.markdown(f'<div class="outcome-link {_cls}">{_msg}</div>', unsafe_allow_html=True)
 
-    if case["review"]:
+    # ── Human Review + Human-Review Gate — state driven by the canonical lifecycle. ──
+    def _render_hr_empty(hr_body, gate_title, gate_body):
+        """Render the Human Review + Human-Review Gate panels in their neutral (no
+        stored review) positions. Same panels/classes as a populated review — only the
+        lifecycle-derived text differs. No fabricated review, verdict, or audit event."""
+        st.markdown(f"""
+        <div class="case-panel" style="margin-top:12px;">
+          <div class="case-panel-hdr"><span class="case-panel-title">Human Review</span></div>
+          <div class="case-empty">{hr_body}</div>
+        </div>
+        """, unsafe_allow_html=True)
+        st.markdown(
+            '<div class="gate-panel gate-empty">'
+            f'<div class="gate-title">{gate_title}</div>'
+            f'<div class="gate-body">{gate_body}</div>'
+            '</div>',
+            unsafe_allow_html=True,
+        )
+
+    if lc.processing_status is ProcessingStatus.NOT_PROCESSED:
+        _render_hr_empty(
+            "Not evaluated. This alert has not been processed or routed for human review.",
+            "HUMAN-REVIEW GATE: NOT EVALUATED",
+            "No review gate was evaluated because this alert has not been processed.",
+        )
+    elif lc.review_routing is ReviewRoutingStatus.NOT_REQUIRED:
+        _gate_body = ("The routing policy authorized the recorded system disposition: "
+                      f"{lc.final_action}.")
+        if lc.override_status is OverrideStatus.PENDING:
+            _gate_body += " A manager override request is pending above."
+        _render_hr_empty(
+            f"Human review was not required under deterministic routing policy "
+            f"{lc.routing_policy_id}.",
+            "HUMAN-REVIEW GATE: NOT APPLICABLE",
+            _gate_body,
+        )
+    elif lc.review_gate is ReviewGateStatus.PENDING:
+        _render_hr_empty(
+            "Human review is required and awaiting submission.",
+            "HUMAN-REVIEW GATE: PENDING",
+            "No final disposition is accepted until a complete human review is submitted.",
+        )
+    else:
+        # COMPLETE or BLOCKED — a human review is on file. Preserve the populated card
+        # fields/compact layout and the anti-rubber-stamp gate exactly.
         rv = case["review"]
         st.markdown(f"""
         <div class="case-panel" style="margin-top:12px;">
@@ -1581,26 +1715,6 @@ def show_case_dialog(alert_id: str, source: dict) -> None:
             )
         st.markdown(_gate_html, unsafe_allow_html=True)
 
-    else:
-        # No human review exists for this alert. Render neutral empty states in the
-        # same positions the Human Review and Human-Review Gate panels occupy when a
-        # review IS on file — additive consistency only. No fabricated review, no
-        # disposition, no PASS/FAIL/BLOCKED verdict, and NO audit event (audit belongs
-        # to a real pipeline execution, never to a Case File render).
-        st.markdown("""
-        <div class="case-panel" style="margin-top:12px;">
-          <div class="case-panel-hdr"><span class="case-panel-title">Human Review</span></div>
-          <div class="case-empty">No formal disposition review has been submitted for this alert. Analyst override requests and their reasons are displayed separately above when present.</div>
-        </div>
-        """, unsafe_allow_html=True)
-        st.markdown(
-            '<div class="gate-panel gate-empty">'
-            '<div class="gate-title">HUMAN-REVIEW GATE</div>'
-            '<div class="gate-body">Not evaluated. This gate applies only to submitted disposition reviews. Analyst override requests follow a separate manager-decision workflow.</div>'
-            '</div>',
-            unsafe_allow_html=True,
-        )
-
     if st.button("Close", key="close_case_dialog", type="primary"):
         st.session_state.open_case = None
         st.session_state.selected_alert = None
@@ -1618,7 +1732,7 @@ with tab1:
     total = len(display_df)
 
     st.markdown(
-        f'<h2 class="section-h">Active Alerts <span class="section-count">({total})</span></h2>',
+        f'<h2 class="section-h">Alert Inventory <span class="section-count">({total})</span></h2>',
         unsafe_allow_html=True,
     )
 
@@ -1634,10 +1748,15 @@ with tab1:
         "Medium": "background:#fef3e2;color:#6b3800;border-color:#dba;",
         "Low":    "background:#e8f5e8;color:#1a5c1a;border-color:#9c9;",
     }
+    # Lifecycle-derived status badges. Each reuses an existing palette hex already used
+    # elsewhere in this file (rail/severity/override styles) — no new colors introduced.
     STA_STYLE = {
-        "Pending Review": "background:#e8eeff;color:#1a2e8c;border-color:#99a;",
-        "In Progress":    "background:#e8f5e8;color:#1a5c1a;border-color:#9c9;",
-        "Closed":         "background:#f0f0f0;color:#555;border-color:#bbb;",
+        "Not Processed":    "background:#f7f8f9;color:#5a6570;border-color:#cdd6de;",  # neutral
+        "Processing Error": "background:#fde8e8;color:#7b0000;border-color:#c88;",     # red
+        "Awaiting Manager": "background:#fff8e1;color:#7d4e00;border-color:#e0b877;",  # amber
+        "Awaiting Review":  "background:#e8eeff;color:#1a2e8c;border-color:#99a;",     # blue
+        "Blocked":          "background:#fde8e8;color:#7b0000;border-color:#c88;",     # red
+        "Closed":           "background:#f0f0f0;color:#555;border-color:#bbb;",        # gray
     }
 
     pending_alert_ids = set()
@@ -1681,9 +1800,14 @@ with tab1:
             )
         with fc2:
             st.markdown('<span class="sta-filter-anchor"></span>', unsafe_allow_html=True)
+            # Lifecycle-derived status options (canonical order, only those present) —
+            # never alerts.status.
+            _status_order = ["Not Processed", "Processing Error", "Awaiting Manager",
+                             "Awaiting Review", "Blocked", "Closed"]
+            _present_statuses = set(display_df["status"])
             status_filter = st.segmented_control(
                 "Filter by status",
-                ["Pending Review", "In Progress", "Closed"],
+                [s for s in _status_order if s in _present_statuses],
                 selection_mode="multi",
                 default=[],
                 key="status_filter",

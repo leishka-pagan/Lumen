@@ -1,13 +1,12 @@
-"""Pass A — Case File consistency: neutral empty states for alerts with no human
-review, plus regression that the review-present path is undisturbed.
+"""Pass A — Case File consistency: lifecycle-derived neutral states for alerts with
+no human review, plus regression that the review-present path is undisturbed.
 
-The additive change (app.show_case_dialog) renders two neutral empty states — a
-Human Review panel reading "No formal disposition review has been submitted for this
-alert. Analyst override requests and their reasons are displayed separately above
-when present." and a HUMAN-REVIEW GATE panel reading "Not evaluated. This gate
-applies only to submitted disposition reviews. Analyst override requests follow a
-separate manager-decision workflow." — in the exact positions the Human Review and
-Human-Review Gate panels occupy when a review IS on file. It fabricates no review,
+The Human Review + Human-Review Gate panels are now driven by the canonical lifecycle
+(app.show_case_dialog). For a NOT_REQUIRED alert like ALERT002 the Human Review panel
+reads "Human review was not required under deterministic routing policy
+POL-REVIEW-ROUTING-V1." and the gate reads "HUMAN-REVIEW GATE: NOT APPLICABLE" with
+"The routing policy authorized the recorded system disposition: monitor." — in the
+exact positions those panels occupy when a review IS on file. It fabricates no review,
 shows no PASS/FAIL/BLOCKED verdict, and writes no audit event.
 
 Manager Review → correct Case File routing is proven separately in
@@ -28,9 +27,10 @@ sys.path.insert(0, str(ROOT))
 
 APP = str(ROOT / "app.py")
 
-NO_REVIEW_ALERT = "ALERT002"   # has an AI claim, but no human_reviews row -> empty states
-REVIEW_MISSING_MSG = "No formal disposition review has been submitted for this alert. Analyst override requests and their reasons are displayed separately above when present."
-GATE_EMPTY_MSG = "Not evaluated. This gate applies only to submitted disposition reviews. Analyst override requests follow a separate manager-decision workflow."
+NO_REVIEW_ALERT = "ALERT002"   # PASS + NOT_REQUIRED routing, no human_reviews row
+# Lifecycle-derived neutral states for ALERT002 (NOT_REQUIRED, pending override).
+REVIEW_MISSING_MSG = "Human review was not required under deterministic routing policy POL-REVIEW-ROUTING-V1."
+GATE_EMPTY_MSG = "The routing policy authorized the recorded system disposition: monitor."
 
 
 def _open(alert_id: str) -> str:
@@ -89,11 +89,14 @@ def _summary_pair(label: str, value: str) -> str:
     return f'case-summary-label">{label}</div><div class="case-summary-value">{value}</div>'
 
 
-def test_case_outcome_summary_alert001_fail_complete_edited():
+def test_case_outcome_summary_alert001_fail_complete_monitor():
     md = _open("ALERT001")
     assert _summary_pair("AI VERIFICATION", "FAIL") in md
     assert _summary_pair("REVIEW REQUIREMENTS", "COMPLETE") in md
-    assert _summary_pair("RECORDED DISPOSITION", "EDITED") in md
+    # Recorded disposition is the lifecycle final_action (MONITOR), never the review
+    # decision word (EDITED).
+    assert _summary_pair("RECORDED DISPOSITION", "MONITOR") in md
+    assert _summary_pair("RECORDED DISPOSITION", "EDITED") not in md
 
 
 def test_case_outcome_summary_alert007_mixed_blocked_none():
@@ -103,11 +106,11 @@ def test_case_outcome_summary_alert007_mixed_blocked_none():
     assert _summary_pair("RECORDED DISPOSITION", "NONE") in md
 
 
-def test_case_outcome_summary_alert002_pass_notrecorded_none():
+def test_case_outcome_summary_alert002_pass_not_required_monitor():
     md = _open("ALERT002")
     assert _summary_pair("AI VERIFICATION", "PASS") in md
-    assert _summary_pair("REVIEW REQUIREMENTS", "NOT RECORDED") in md
-    assert _summary_pair("RECORDED DISPOSITION", "NONE") in md
+    assert _summary_pair("REVIEW REQUIREMENTS", "NOT REQUIRED") in md
+    assert _summary_pair("RECORDED DISPOSITION", "MONITOR") in md
 
 
 def test_gate_allowed_panel_is_blue_complete_not_green_passed():

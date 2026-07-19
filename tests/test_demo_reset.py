@@ -290,12 +290,31 @@ def test_reset_makes_no_network_call_and_no_generator(tmp_path, monkeypatch):
 
 # app-driven: the reset control restores the redirected lifecycle + ai_outputs too
 def test_app_reset_restores_lifecycle_and_ai_outputs(runtime):
-    # mutate the redirected runtime lifecycle + ai_outputs before reset
-    runtime["lifecycle"].write_text("garbage\n", encoding="utf-8")
-    runtime["ai_outputs"].write_text("garbage\n", encoding="utf-8")
-    at = _run(view_as="Manager")
+    from src import lifecycle_store
+
+    # Mutate the redirected runtime files to a VALID but non-baseline state. The app now
+    # loads the lifecycle at startup and fails closed on invalid data, so the corruption
+    # must remain a well-formed CaseLifecycle (never "garbage").
+    # ALERT002: pending override -> APPROVED non-disposition (severity) override. The
+    # store validates the full updated record before writing.
+    lifecycle_store.apply_override_decision(
+        alert_id="ALERT002", change_id="CHG-SEED-001", decision="approved",
+        field_changed="severity", new_value="med", path=runtime["lifecycle"],
+    )
+    # ai_outputs: change one fixture asserted_value, preserving the 10-row/11-col schema.
+    _ai = pd.read_csv(runtime["ai_outputs"], dtype=str, keep_default_na=False)
+    _ai.loc[_ai["output_id"] == "OUT001", "asserted_value"] = "mutated for reset test"
+    _ai.to_csv(runtime["ai_outputs"], index=False)
+    # sanity: both really diverged from their baselines before the reset
+    assert runtime["lifecycle"].read_bytes() != (BASELINE / "case_lifecycle.csv").read_bytes()
+    assert runtime["ai_outputs"].read_bytes() != (BASELINE / "ai_outputs.csv").read_bytes()
+
+    at = _run(view_as="Manager")                       # app loads the valid mutated lifecycle
     _btn(at, "demo_reset").click().run()
     _btn(at, "demo_reset_go").click().run()
     assert not at.exception, [str(e.value) for e in at.exception]
+    # all four runtime files are restored byte-identically to their committed baselines
+    assert runtime["pending"].read_bytes() == (BASELINE / "pending_overrides.csv").read_bytes()
+    assert runtime["audit"].read_bytes() == (BASELINE / "audit_log.csv").read_bytes()
     assert runtime["lifecycle"].read_bytes() == (BASELINE / "case_lifecycle.csv").read_bytes()
     assert runtime["ai_outputs"].read_bytes() == (BASELINE / "ai_outputs.csv").read_bytes()

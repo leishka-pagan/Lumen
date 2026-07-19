@@ -81,7 +81,8 @@ def test_alert002_shows_pending_override_and_no_human_review(runtime):
     assert "High → Medium" in md
     assert "Jordan Avery" in md and "EMP-204" in md
     assert "scholarship grant" in md
-    assert "No formal disposition review has been submitted for this alert. Analyst override requests and their reasons are displayed separately above when present." in md      # still honest
+    # Lifecycle NOT_REQUIRED: honest "no review required" state (never a fabricated review)
+    assert "Human review was not required under deterministic routing policy POL-REVIEW-ROUTING-V1." in md
     assert "Human Review" not in _ovreq(_run(open_case="ALERT002"))  # not mislabeled
 
 
@@ -94,7 +95,8 @@ def test_alert005_shows_pending_override_and_no_human_review(runtime):
     assert "Open → Escalate" in md
     assert "Priya Raman" in md and "EMP-217" in md
     assert "high-risk jurisdiction" in md
-    assert "No formal disposition review has been submitted for this alert. Analyst override requests and their reasons are displayed separately above when present." in md
+    # Lifecycle NOT_REQUIRED: honest "no review required" state
+    assert "Human review was not required under deterministic routing policy POL-REVIEW-ROUTING-V1." in md
 
 
 # 3 — ALERT001: a completed Human Review AND a separate pending override coexist
@@ -103,7 +105,8 @@ def test_alert001_shows_both_human_review_and_pending_override(runtime):
     assert "OVERRIDE REQUEST" in md and "PENDING MANAGER DECISION" in md
     assert "residual risk is medium" in md              # the override reason
     assert "reviewer:mchen" in md                       # the completed human review
-    assert "No formal disposition review has been submitted for this alert. Analyst override requests and their reasons are displayed separately above when present." not in md
+    # ALERT001 is COMPLETE (a real review on file) — never a "no review required" state
+    assert "Human review was not required under deterministic routing policy" not in md
 
 
 # 4 — an APPROVED request keeps its panel, now green, with reviewer + rationale

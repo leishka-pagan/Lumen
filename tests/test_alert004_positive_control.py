@@ -75,11 +75,14 @@ def test_alert004_has_no_missing_evidence():
 
 
 # 5
-def test_alert004_summary_stays_pass_complete_edited():
+def test_alert004_summary_stays_pass_complete_escalate():
     md = _open_md("ALERT004")
     assert _pair("AI VERIFICATION", "PASS") in md
     assert _pair("REVIEW REQUIREMENTS", "COMPLETE") in md
-    assert _pair("RECORDED DISPOSITION", "EDITED") in md
+    # Recorded disposition is the lifecycle final_action (ESCALATE), never the review
+    # decision word (EDITED).
+    assert _pair("RECORDED DISPOSITION", "ESCALATE") in md
+    assert _pair("RECORDED DISPOSITION", "EDITED") not in md
 
 
 # 6
