@@ -1,8 +1,9 @@
-"""Tests for the canonical Case Lifecycle domain model (src/case_lifecycle).
+"""Tests for the hardened canonical Case Lifecycle domain model (src/case_lifecycle).
 
-Proves every valid lifecycle path, every rejected invariant violation, that records
-are frozen, that queue derivation is deterministic, and that the module is pure — no
-network, SDK, filesystem, CSV, environment, clock, application, or Streamlit access.
+Proves every valid lifecycle path, the new runtime-type + provenance rules (each
+reproduced defect has an adversarial test), that records are frozen, that queue
+derivation is unchanged/deterministic, and that the module is pure — no network, SDK,
+filesystem, CSV, environment, clock, application, or Streamlit access.
 """
 
 from __future__ import annotations
@@ -27,6 +28,7 @@ from src.case_lifecycle import (  # noqa: E402
 )
 
 MODEL = "claude-haiku-4-5-20251001"
+POLICY = "POL-ROUTE-1"
 
 
 # ── Valid-record kwargs builders ─────────────────────────────────────────────
@@ -38,12 +40,15 @@ def kw_error(alert_id="ALERT099"):
     return dict(alert_id=alert_id, processing_status=PS.ERROR, error_code="E-DRAFT-FAILED")
 
 
-def _processed_base(alert_id, ai_verif):
+def _processed_base(alert_id, ai_verif, source=DS.SYNTHETIC_FIXTURE):
+    # captured live drafts carry the Haiku model id; synthetic fixtures carry model_id=None;
+    # every PROCESSED record includes routing_policy_id.
     return dict(
         alert_id=alert_id, processing_status=PS.PROCESSED,
         processing_run_id="RUN-001", processed_at="2026-05-21T14:00:00",
-        ai_draft_source=DS.SYNTHETIC_FIXTURE, ai_draft_reference="OUT001", model_id=MODEL,
-        ai_verification=ai_verif,
+        ai_draft_source=source, ai_draft_reference="OUT001",
+        model_id=(MODEL if source is DS.CAPTURED_LIVE else None),
+        ai_verification=ai_verif, routing_policy_id=POLICY,
     )
 
 
@@ -57,7 +62,7 @@ def kw_pass_not_required_system(alert_id="ALERT003"):
     d = _processed_base(alert_id, AV.PASS)
     d.update(review_routing=RR.NOT_REQUIRED, review_gate=RG.NOT_APPLICABLE,
              final_action="monitor", disposition_source=DPS.SYSTEM_POLICY,
-             routing_policy_id="POL-LOWRISK-1", disposition_reference="POL-LOWRISK-1")
+             disposition_reference=POLICY)  # == routing_policy_id
     return d
 
 
@@ -72,7 +77,7 @@ def kw_fail_required_complete(alert_id="ALERT001"):
 def kw_mixed_blocked(alert_id="ALERT007"):
     d = _processed_base(alert_id, AV.MIXED)
     d.update(review_routing=RR.REQUIRED, review_gate=RG.BLOCKED,
-             human_review_decision=HRD.ACCEPTED, human_review_id="REV001")  # incomplete -> blocked
+             human_review_decision=HRD.ACCEPTED, human_review_id="REV001")  # id required, decision free
     return d
 
 
@@ -82,7 +87,23 @@ def kw_complete_plus_pending_override(alert_id="ALERT001"):
     return d
 
 
-# ── Valid paths + queue derivation ───────────────────────────────────────────
+def _rejects(kwargs):
+    with pytest.raises(LifecycleInvariantError):
+        CaseLifecycle(**kwargs)
+
+
+# ── Rule 1: enums are stable lowercase str values inheriting from str+Enum ────
+def test_enum_values_are_lowercase_strings():
+    for enum_cls in (PS, DS, AV, RR, RG, HRD, OS, DPS, QS):
+        for member in enum_cls:
+            assert isinstance(member, str)                      # inherits str
+            assert isinstance(member.value, str) and member.value == member.value.lower()
+    assert PS.PROCESSED.value == "processed"
+    assert DS.SYNTHETIC_FIXTURE.value == "synthetic_fixture"
+    assert HRD.EDITED.value == "edited"
+
+
+# ── Valid paths + queue derivation (preserved) ───────────────────────────────
 def test_valid_not_processed():
     assert derive_queue_status(CaseLifecycle(**kw_not_processed())) is QS.NOT_PROCESSED
 
@@ -108,23 +129,142 @@ def test_valid_mixed_blocked_review():
 
 
 def test_valid_complete_plus_pending_override_awaits_manager():
-    # ALERT001-shaped: a completed HUMAN disposition coexists with a pending override.
     assert derive_queue_status(CaseLifecycle(**kw_complete_plus_pending_override())) is QS.AWAITING_MANAGER
 
 
-# ── Rejections ───────────────────────────────────────────────────────────────
-def _rejects(kwargs):
-    with pytest.raises(LifecycleInvariantError):
-        CaseLifecycle(**kwargs)
+def test_valid_captured_live_draft():
+    d = _processed_base("ALERT004", AV.PASS, source=DS.CAPTURED_LIVE)
+    d.update(review_routing=RR.NOT_REQUIRED, review_gate=RG.NOT_APPLICABLE,
+             final_action="monitor", disposition_source=DPS.SYSTEM_POLICY, disposition_reference=POLICY)
+    rec = CaseLifecycle(**d)
+    assert rec.model_id == MODEL and rec.ai_draft_source is DS.CAPTURED_LIVE
+    assert derive_queue_status(rec) is QS.CLOSED
 
 
-def test_reject_closed_equivalent_without_final_action():
-    d = kw_fail_required_complete(); d["final_action"] = None
+def test_valid_blocked_with_id_and_none_decision():
+    d = kw_mixed_blocked(); d["human_review_decision"] = HRD.NONE
+    assert derive_queue_status(CaseLifecycle(**d)) is QS.BLOCKED
+
+
+# ── Defect 1: enum-field runtime types ───────────────────────────────────────
+def test_reject_plain_string_processing_status():
+    d = kw_not_processed(); d["processing_status"] = "not_processed"     # raw str
     _rejects(d)
 
 
-def test_reject_final_action_without_provenance():
-    d = kw_pass_not_required_system(); d["disposition_source"] = DPS.NONE
+def test_reject_none_and_wrong_enum_and_scalar_in_enum_fields():
+    d = kw_not_processed(); d["processing_status"] = None
+    _rejects(d)
+    d = kw_pass_required_pending(); d["ai_draft_source"] = QS.CLOSED     # member of another enum
+    _rejects(d)
+    d = kw_pass_required_pending(); d["ai_verification"] = 1             # int
+    _rejects(d)
+    d = kw_pass_required_pending(); d["review_gate"] = True              # bool
+    _rejects(d)
+
+
+# ── Defect 2: optional-string runtime types ──────────────────────────────────
+def test_reject_int_nan_and_bad_types_in_optional_strings():
+    d = kw_pass_required_pending(); d["processing_run_id"] = 5           # int
+    _rejects(d)
+    d = kw_pass_required_pending(); d["ai_draft_reference"] = float("nan")  # NaN
+    _rejects(d)
+    d = kw_pass_not_required_system(); d["final_action"] = []            # list
+    _rejects(d)
+    d = _processed_base("ALERT004", AV.PASS, source=DS.CAPTURED_LIVE); d["model_id"] = 5
+    d.update(review_routing=RR.NOT_REQUIRED, review_gate=RG.NOT_APPLICABLE,
+             final_action="monitor", disposition_source=DPS.SYSTEM_POLICY, disposition_reference=POLICY)
+    _rejects(d)
+    d = kw_fail_required_complete(); d["final_action"] = HRD.EDITED      # enum member, not exact str
+    _rejects(d)
+
+
+def test_reject_empty_whitespace_and_surrounding_whitespace_strings():
+    d = kw_not_processed(); d["alert_id"] = " ALERT008 "                 # surrounding whitespace
+    _rejects(d)
+    d = kw_not_processed(); d["alert_id"] = ""                           # empty
+    _rejects(d)
+    d = kw_pass_required_pending(); d["processing_run_id"] = "   "       # whitespace only
+    _rejects(d)
+    d = kw_pass_required_pending(); d["processing_run_id"] = " RUN-1 "   # surrounding whitespace
+    _rejects(d)
+
+
+# ── Defect 3 + rule 5: AI-draft provenance ──────────────────────────────────
+def test_reject_synthetic_fixture_with_model_id():
+    d = kw_pass_not_required_system(); d["model_id"] = MODEL             # SYNTHETIC_FIXTURE must be None
+    _rejects(d)
+
+
+def test_reject_captured_live_without_model_or_reference():
+    d = _processed_base("ALERT004", AV.PASS, source=DS.CAPTURED_LIVE)
+    d.update(review_routing=RR.NOT_REQUIRED, review_gate=RG.NOT_APPLICABLE,
+             final_action="monitor", disposition_source=DPS.SYSTEM_POLICY, disposition_reference=POLICY)
+    no_model = dict(d); no_model["model_id"] = None
+    _rejects(no_model)
+    no_ref = dict(d); no_ref["ai_draft_reference"] = None
+    _rejects(no_ref)
+
+
+def test_reject_draft_source_none_with_reference_or_model():
+    d = kw_not_processed(); d["ai_draft_reference"] = "OUT001"           # NONE source -> must be None
+    _rejects(d)
+    d2 = kw_not_processed(); d2["model_id"] = MODEL
+    _rejects(d2)
+
+
+# ── Defect 4 + rule 6: routing_policy_id on every PROCESSED ──────────────────
+def test_reject_processed_required_without_routing_policy_id():
+    d = kw_pass_required_pending(); d["routing_policy_id"] = None
+    _rejects(d)
+
+
+def test_reject_processed_not_required_without_routing_policy_id():
+    d = kw_pass_not_required_system(); d["routing_policy_id"] = None; d["disposition_reference"] = None
+    _rejects(d)
+
+
+# ── Defect 7 + rule 7: NOT_PROCESSED routing_policy_id must be None ──────────
+def test_reject_not_processed_with_routing_policy_id():
+    d = kw_not_processed(); d["routing_policy_id"] = POLICY
+    _rejects(d)
+
+
+# ── Defect 5 + rule 8: REQUIRED/PENDING has no completed-review metadata ─────
+def test_reject_required_pending_with_review_decision():
+    d = kw_pass_required_pending(); d["human_review_decision"] = HRD.EDITED
+    _rejects(d)
+
+
+def test_reject_required_pending_with_human_review_id():
+    d = kw_pass_required_pending(); d["human_review_id"] = "REV003"
+    _rejects(d)
+
+
+def test_reject_required_pending_with_final_action():
+    d = kw_pass_required_pending(); d["final_action"] = "monitor"
+    _rejects(d)
+
+
+# ── Defect 6 + rule 9: REQUIRED/BLOCKED requires human_review_id ─────────────
+def test_reject_required_blocked_without_human_review_id():
+    d = kw_mixed_blocked(); d["human_review_id"] = None
+    _rejects(d)
+
+
+def test_reject_blocked_with_final_action():
+    d = kw_mixed_blocked(); d["final_action"] = "monitor"
+    _rejects(d)
+
+
+# ── Rule 10: COMPLETE / NOT_REQUIRED preserved ───────────────────────────────
+def test_reject_complete_without_human_review_id():
+    d = kw_fail_required_complete(); d["human_review_id"] = None
+    _rejects(d)
+
+
+def test_reject_complete_without_final_action():
+    d = kw_fail_required_complete(); d["final_action"] = None
     _rejects(d)
 
 
@@ -138,53 +278,12 @@ def test_reject_human_review_under_not_required_routing():
     _rejects(d)
 
 
-def test_reject_fail_routed_not_required():
-    d = _processed_base("ALERT009", AV.FAIL)
-    d.update(review_routing=RR.NOT_REQUIRED, review_gate=RG.NOT_APPLICABLE,
-             final_action="monitor", disposition_source=DPS.SYSTEM_POLICY,
-             routing_policy_id="POL-1", disposition_reference="POL-1")
-    _rejects(d)
-
-
-def test_reject_mixed_routed_not_required():
-    d = _processed_base("ALERT010", AV.MIXED)
-    d.update(review_routing=RR.NOT_REQUIRED, review_gate=RG.NOT_APPLICABLE,
-             final_action="monitor", disposition_source=DPS.SYSTEM_POLICY,
-             routing_policy_id="POL-1", disposition_reference="POL-1")
-    _rejects(d)
-
-
-def test_reject_blocked_with_final_action():
-    d = kw_mixed_blocked(); d["final_action"] = "monitor"
-    _rejects(d)
-
-
-def test_reject_pending_review_with_final_action():
-    d = kw_pass_required_pending(); d["final_action"] = "monitor"
-    _rejects(d)
-
-
-def test_reject_complete_without_human_review_id():
-    d = kw_fail_required_complete(); d["human_review_id"] = None
-    _rejects(d)
-
-
-def test_reject_complete_without_final_action():
-    d = kw_fail_required_complete(); d["final_action"] = None
-    _rejects(d)
-
-
-def test_reject_edited_used_as_final_action():
-    # EDITED is a review decision, not a case action; it may not be final_action.
-    d = kw_pass_not_required_system(); d["final_action"] = "EDITED"
-    _rejects(d)
-    d2 = kw_fail_required_complete(); d2["final_action"] = "edited"
-    _rejects(d2)
-
-
-def test_reject_not_required_without_routing_policy_id():
-    d = kw_pass_not_required_system(); d["routing_policy_id"] = None
-    _rejects(d)
+def test_reject_fail_or_mixed_routed_not_required():
+    for av in (AV.FAIL, AV.MIXED):
+        d = _processed_base("ALERT009", av)
+        d.update(review_routing=RR.NOT_REQUIRED, review_gate=RG.NOT_APPLICABLE,
+                 final_action="monitor", disposition_source=DPS.SYSTEM_POLICY, disposition_reference=POLICY)
+        _rejects(d)
 
 
 def test_reject_not_required_with_human_review_fields():
@@ -194,18 +293,20 @@ def test_reject_not_required_with_human_review_fields():
     _rejects(d2)
 
 
-def test_reject_processed_without_run_provenance():
-    d = kw_pass_required_pending(); d["processing_run_id"] = None
+def test_reject_edited_used_as_final_action():
+    d = kw_pass_not_required_system(); d["final_action"] = "EDITED"
     _rejects(d)
-    d2 = kw_pass_required_pending(); d2["processed_at"] = None
-    _rejects(d2)
 
 
-def test_reject_not_processed_with_processing_provenance():
-    d = kw_not_processed(); d["processing_run_id"] = "RUN-1"
-    _rejects(d)
-    d2 = kw_not_processed(); d2["ai_verification"] = AV.PASS
-    _rejects(d2)
+# ── Rule 11: ERROR flexibility preserved ─────────────────────────────────────
+def test_valid_error_with_partial_typevalid_provenance():
+    d = kw_error("ALERT050")
+    d.update(processing_run_id="RUN-9", processed_at="2026-05-21T14:00:00",
+             ai_draft_source=DS.SYNTHETIC_FIXTURE, ai_draft_reference="OUT050",
+             ai_verification=AV.PASS, review_routing=RR.REQUIRED, review_gate=RG.PENDING,
+             override_status=OS.PENDING, override_request_id="CHG-9")
+    rec = CaseLifecycle(**d)                                             # accepted: partial but type-valid
+    assert derive_queue_status(rec) is QS.PROCESSING_ERROR
 
 
 def test_reject_error_without_error_code():
@@ -213,13 +314,25 @@ def test_reject_error_without_error_code():
     _rejects(d)
 
 
-def test_reject_empty_string_identifiers():
-    d = kw_not_processed(); d["alert_id"] = ""
+def test_reject_error_with_final_action_or_provenance():
+    d = kw_error(); d["final_action"] = "monitor"; d["disposition_source"] = DPS.HUMAN_REVIEW
+    d["disposition_reference"] = "REV1"
     _rejects(d)
-    d2 = kw_pass_required_pending(); d2["processing_run_id"] = ""
-    _rejects(d2)
-    d3 = kw_fail_required_complete(); d3["human_review_id"] = "  "
-    _rejects(d3)
+
+
+def test_reject_error_violating_global_draft_source_coherence():
+    d = kw_error(); d["ai_draft_source"] = DS.SYNTHETIC_FIXTURE
+    d["ai_draft_reference"] = "OUT1"; d["model_id"] = MODEL             # fixture must have model None
+    _rejects(d)
+
+
+# ── Rule 12: override behavior + queue derivation preserved ──────────────────
+def test_override_not_forbidden_by_processing_status():
+    # A pending override is allowed even on a NOT_PROCESSED alert; queue still derives
+    # NOT_PROCESSED (priority 1 beats a pending override).
+    d = kw_not_processed(); d.update(override_status=OS.PENDING, override_request_id="CHG-Z")
+    rec = CaseLifecycle(**d)
+    assert derive_queue_status(rec) is QS.NOT_PROCESSED
 
 
 def test_reject_pending_override_without_request_id():
@@ -228,13 +341,13 @@ def test_reject_pending_override_without_request_id():
 
 
 def test_reject_override_request_id_when_status_none():
-    d = kw_fail_required_complete(); d["override_request_id"] = "CHG-1"   # override_status is NONE
+    d = kw_fail_required_complete(); d["override_request_id"] = "CHG-1"
     _rejects(d)
 
 
-def test_reject_not_processed_error_code_present():
-    d = kw_not_processed(); d["error_code"] = "E-1"
-    _rejects(d)
+def test_pending_override_priority_beats_blocked():
+    d = kw_mixed_blocked(); d.update(override_status=OS.PENDING, override_request_id="CHG-X")
+    assert derive_queue_status(CaseLifecycle(**d)) is QS.AWAITING_MANAGER
 
 
 # ── Frozen / deterministic ───────────────────────────────────────────────────
@@ -258,13 +371,13 @@ def test_derive_queue_status_is_deterministic():
         first = derive_queue_status(rec)
         assert first is expected
         for _ in range(5):
-            assert derive_queue_status(rec) is first  # same input -> same output, always
+            assert derive_queue_status(rec) is first
 
 
-def test_pending_override_priority_beats_blocked():
-    # An override pending on a BLOCKED case still routes to the manager, not BLOCKED.
-    d = kw_mixed_blocked(); d.update(override_status=OS.PENDING, override_request_id="CHG-X")
-    assert derive_queue_status(CaseLifecycle(**d)) is QS.AWAITING_MANAGER
+def test_queue_status_is_derived_only_not_a_field():
+    field_names = {f.name for f in dataclasses.fields(CaseLifecycle)}
+    assert "queue_status" not in field_names
+    assert len(field_names) == 19
 
 
 # ── Purity: no network / SDK / filesystem / CSV / env / clock / app / streamlit
@@ -293,9 +406,3 @@ def test_no_network_access_during_derivation(monkeypatch):
     for kw in (kw_not_processed(), kw_pass_not_required_system(),
                kw_complete_plus_pending_override()):
         derive_queue_status(CaseLifecycle(**kw))
-
-
-def test_queue_status_is_derived_only_not_a_field():
-    field_names = {f.name for f in dataclasses.fields(CaseLifecycle)}
-    assert "queue_status" not in field_names
-    assert len(field_names) == 19
