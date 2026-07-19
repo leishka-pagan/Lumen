@@ -2076,15 +2076,23 @@ div[class*="st-key-hro_"] .stButton>button:focus-visible{
         def _hro_render_card(rv, gate, kind):
             alert_id = rv.get("alert_id", "")
             valid = alert_id in _mr_valid
+            # Classification, missing-field detection, and enforcement stay driven by the
+            # real review gate (enforce=True) — see line above and the attention branch.
+            blocked = gate.blocked
             if valid:
                 _case = get_case_detail(alert_id, source)
                 cust = _case["customer"].get("name", alert_id)
-                ai = derive_ai_verification(_case["ai_claims"])
+                # All three oversight badges are DERIVED FROM THE CANONICAL LIFECYCLE —
+                # never from re-verification or the HumanReview draft_disposition. In
+                # particular RECORDED DISPOSITION is lifecycle.final_action.
+                _lc = lifecycle_index[alert_id]
+                ai = lifecycle_ai_verification_label(_lc)
+                review_req = lifecycle_review_requirements_label(_lc)
+                disp = lifecycle_recorded_disposition_label(_lc)
             else:
-                cust, ai = alert_id, "NOT EVALUATED"
-            blocked = gate.blocked
-            review_req = "BLOCKED" if blocked else "COMPLETE"
-            disp = "NONE" if (blocked or not gate.disposition) else str(gate.disposition).upper()
+                # Dangling review (alert_id not in alerts.csv): no lifecycle record.
+                cust, ai, review_req, disp = alert_id, "NOT EVALUATED", \
+                    ("BLOCKED" if blocked else "COMPLETE"), "NONE"
             badges = (
                 _hro_badge("AI VERIFICATION", ai, blocked)
                 + _hro_badge("REVIEW REQUIREMENTS", review_req, blocked)

@@ -12,15 +12,26 @@ real Streamlit render (AppTest) and the segmented control.
 
 from __future__ import annotations
 
+import hashlib
 import sys
 from pathlib import Path
 
 from streamlit.testing.v1 import AppTest
 
 ROOT = Path(__file__).resolve().parents[1]
+DATA = ROOT / "data"
 sys.path.insert(0, str(ROOT))
 
+import app  # noqa: E402  (module-level helpers: lifecycle_*_label)
+from src.lifecycle_store import load_lifecycle  # noqa: E402
+
 APP = str(ROOT / "app.py")
+
+
+def _committed_hashes() -> dict:
+    return {n: hashlib.sha256((DATA / n).read_bytes()).hexdigest()
+            for n in ("case_lifecycle.csv", "human_reviews.csv",
+                      "pending_overrides.csv", "audit_log.csv", "ai_outputs.csv")}
 
 
 def _manager(**state) -> AppTest:
@@ -95,10 +106,13 @@ def test_alert007_requires_attention_badges_and_missing_fields():
 def test_completed_review_badges_alert001_and_alert004():
     at = _manager()
     c1 = _card(at, "ALERT001 · Dana Whitfield")
-    assert "AI VERIFICATION: FAIL" in c1 and "REVIEW REQUIREMENTS: COMPLETE" in c1 and "RECORDED DISPOSITION: EDITED" in c1
+    # RECORDED DISPOSITION is lifecycle.final_action (MONITOR), never the review decision (EDITED)
+    assert "AI VERIFICATION: FAIL" in c1 and "REVIEW REQUIREMENTS: COMPLETE" in c1 and "RECORDED DISPOSITION: MONITOR" in c1
+    assert "RECORDED DISPOSITION: EDITED" not in c1
     assert "Review ID: REV003" in c1 and "Final Action" in c1
     c4 = _card(at, "ALERT004 · Tomas Herrera")
-    assert "AI VERIFICATION: PASS" in c4 and "REVIEW REQUIREMENTS: COMPLETE" in c4 and "RECORDED DISPOSITION: EDITED" in c4
+    assert "AI VERIFICATION: PASS" in c4 and "REVIEW REQUIREMENTS: COMPLETE" in c4 and "RECORDED DISPOSITION: ESCALATE" in c4
+    assert "RECORDED DISPOSITION: EDITED" not in c4
     assert "Review ID: REV002" in c4 and "Final Action" in c4
 
 
@@ -170,12 +184,48 @@ def test_switching_views_preserves_role_and_writes_no_audit(monkeypatch):
 
 
 # 11
-def test_alert004_remains_pass_complete_edited_and_100_readiness():
+def test_alert004_remains_pass_complete_escalate_and_100_readiness():
     at = _manager()
     c4 = _card(at, "ALERT004 · Tomas Herrera")
-    assert "AI VERIFICATION: PASS" in c4 and "REVIEW REQUIREMENTS: COMPLETE" in c4 and "RECORDED DISPOSITION: EDITED" in c4
+    assert "AI VERIFICATION: PASS" in c4 and "REVIEW REQUIREMENTS: COMPLETE" in c4 and "RECORDED DISPOSITION: ESCALATE" in c4
+    assert "RECORDED DISPOSITION: EDITED" not in c4
     _btn(at, "hro_ALERT004").click().run()
     assert not at.exception, [str(e.value) for e in at.exception]
     md = _md(at)
     assert "Tomas Herrera —" in md and "Case Readiness" in md and "100%" in md
     assert "Missing evidence:" not in md
+
+
+# 12 — every oversight badge is derived from the canonical lifecycle, not alerts.status
+def test_hro_badges_derive_from_lifecycle_not_alerts_status():
+    idx = {r.alert_id: r for r in load_lifecycle(DATA / "case_lifecycle.csv")}
+    at = _manager()
+    for alert, cust in (("ALERT001", "Dana Whitfield"), ("ALERT004", "Tomas Herrera"),
+                        ("ALERT007", "Roland Beck")):
+        card = _card(at, f"{alert} · {cust}")
+        lc = idx[alert]
+        assert f"AI VERIFICATION: {app.lifecycle_ai_verification_label(lc)}" in card
+        assert f"REVIEW REQUIREMENTS: {app.lifecycle_review_requirements_label(lc)}" in card
+        assert f"RECORDED DISPOSITION: {app.lifecycle_recorded_disposition_label(lc)}" in card
+    # ALERT007 alerts.status is 'closed' and ALERT001/004 are 'in_review' — none of those
+    # legacy statuses may surface as an oversight badge value.
+    md = _md(at)
+    for legacy in ("RECORDED DISPOSITION: OPEN", "RECORDED DISPOSITION: IN_REVIEW",
+                   "RECORDED DISPOSITION: CLOSED", "RECORDED DISPOSITION: EDITED",
+                   "RECORDED DISPOSITION: ACCEPTED"):
+        assert legacy not in md
+
+
+# 13 — opening each oversight Case File is read-only (no audit, no CSV mutation)
+def test_opening_each_oversight_case_file_is_read_only(monkeypatch):
+    import src.audit as audit_mod
+    calls: list = []
+    monkeypatch.setattr(audit_mod, "log_event", lambda **kw: calls.append(kw) or {})
+    before = _committed_hashes()
+    for alert in ("ALERT007", "ALERT001", "ALERT004"):
+        at = _manager()
+        _btn(at, f"hro_{alert}").click().run()
+        assert not at.exception, [str(e.value) for e in at.exception]
+        assert "case-summary-rail" in _md(at)
+    assert calls == [], f"opening an oversight Case File wrote audit events: {calls}"
+    assert _committed_hashes() == before
