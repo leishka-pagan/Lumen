@@ -1,0 +1,15 @@
+log_id,timestamp,actor,action,alert_id,details_json
+LOG-SEED-001,2026-05-21T14:00:05,llm_drafter,draft_started,ALERT001,{}
+LOG-SEED-002,2026-05-21T14:00:09,llm_drafter,draft_completed,ALERT001,"{""claim_count"": 2}"
+LOG-SEED-003,2026-05-21T14:05:00,pipeline,claim_verified,ALERT001,"{""claim_type"": ""prior_sar_history"", ""reason"": ""prior_sar_count=0 contradicts asserted prior SAR history"", ""status"": ""FAIL""}"
+LOG-SEED-004,2026-05-22T09:30:00,ui:EMP-204,field_override,ALERT001,"{""change_id"": ""CHG-SEED-003"", ""field"": ""risk_rating"", ""new"": ""medium"", ""old"": ""high""}"
+LOG-SEED-005,2026-05-23T09:15:00,ui:EMP-204,field_override,ALERT002,"{""change_id"": ""CHG-SEED-001"", ""field"": ""severity"", ""new"": ""med"", ""old"": ""high""}"
+LOG-SEED-006,2026-05-25T08:31:00,llm_drafter,draft_started,ALERT005,{}
+LOG-SEED-007,2026-05-25T08:31:04,llm_drafter,claim_dropped,ALERT005,"{""claim_type"": ""high_risk_country"", ""reason"": ""missing_evidence_refs""}"
+LOG-SEED-008,2026-05-25T08:31:05,llm_drafter,draft_completed,ALERT005,"{""claim_count"": 1}"
+LOG-SEED-009,2026-05-25T08:35:00,pipeline,claim_verified,ALERT005,"{""claim_type"": ""high_risk_country"", ""reason"": ""transaction to IR"", ""status"": ""PASS""}"
+LOG-SEED-010,2026-05-26T13:40:00,ui:EMP-217,field_override,ALERT005,"{""change_id"": ""CHG-SEED-002"", ""field"": ""disposition"", ""new"": ""escalate"", ""old"": ""open""}"
+LOG-SEED-011,2026-05-27T10:00:00,ui:EMP-300,risk_settings_saved,,"{""changes"": {""high_risk_threshold"": ""10000""}}"
+LOG-SEED-012,2026-05-27T10:02:00,ui:EMP-300,keyword_added,,"{""keyword"": ""smurfing"", ""typology"": ""structuring""}"
+LOG-SEED-013,2026-05-27T10:03:00,ui:EMP-300,keyword_removed,,"{""keyword"": ""obsolete_term"", ""typology"": ""structuring""}"
+LOG-SEED-014,2026-05-28T15:12:00,ui:EMP-108,override_review,ALERT007,"{""change_id"": ""CHG-HIST-009"", ""decision"": ""approved""}"

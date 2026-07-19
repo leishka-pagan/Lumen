@@ -25,6 +25,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from src import audit, verifier  # noqa: E402
 from src.review_gate import evaluate_review  # noqa: E402
+from src.demo_reset import reset_override_demo  # noqa: E402
 
 st.set_page_config(
     page_title="Lumen Verify | AML Workbench",
@@ -36,6 +37,10 @@ st.set_page_config(
 DATA_DIR        = PROJECT_ROOT / "data"
 # Tests point these at temp files (env vars) so they never touch the committed CSVs.
 OVERRIDES_CSV   = Path(os.environ.get("LUMEN_OVERRIDES_CSV") or (DATA_DIR / "pending_overrides.csv"))
+AUDIT_CSV       = Path(os.environ.get("LUMEN_AUDIT_LOG") or (DATA_DIR / "audit_log.csv"))
+# Committed baseline snapshots restored by the "Reset Demo" control (read-only here).
+BASELINE_PENDING_CSV = Path(os.environ.get("LUMEN_BASELINE_PENDING") or (DATA_DIR / "demo_baseline" / "pending_overrides.csv"))
+BASELINE_AUDIT_CSV   = Path(os.environ.get("LUMEN_BASELINE_AUDIT") or (DATA_DIR / "demo_baseline" / "audit_log.csv"))
 ALERTS_CSV      = DATA_DIR / "alerts.csv"
 CUSTOMERS_CSV   = DATA_DIR / "customers.csv"
 TRANSACTIONS_CSV = DATA_DIR / "transactions.csv"
@@ -1045,7 +1050,73 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-rs_col1, rs_col2 = st.columns([9, 1])
+# ── Demo-reset control (yellow banner button) + confirmation dialog CSS ──────────
+st.html("""<style>
+/* Reset Demo button lives in the yellow demo-banner row; override the neutral
+   role-button rule with a higher-specificity keyed selector (exact spec colors). */
+div[data-testid="stHorizontalBlock"]:has(.role-bar) div[class*="st-key-demo_reset"] .stButton>button{
+  background:#eab308 !important;border:1px solid #c78f00 !important;color:#5d4000 !important;
+  height:36px !important;min-height:36px !important;padding:0 16px !important;font-weight:700 !important;
+  border-radius:6px !important;box-shadow:0 2px 5px rgba(93,64,0,.18) !important;cursor:pointer !important;
+  filter:none !important;white-space:nowrap !important;
+  transition:background .12s ease,border-color .12s ease,box-shadow .12s ease,transform .12s ease,color .12s ease !important;}
+div[data-testid="stHorizontalBlock"]:has(.role-bar) div[class*="st-key-demo_reset"] .stButton>button:hover{
+  background:#d99a00 !important;border-color:#a66f00 !important;color:#ffffff !important;
+  transform:translateY(-1px) !important;box-shadow:0 4px 8px rgba(93,64,0,.22) !important;filter:none !important;}
+div[data-testid="stHorizontalBlock"]:has(.role-bar) div[class*="st-key-demo_reset"] .stButton>button:active{
+  background:#c78f00 !important;transform:translateY(0) !important;box-shadow:inset 0 2px 4px rgba(93,64,0,.20) !important;}
+div[data-testid="stHorizontalBlock"]:has(.role-bar) div[class*="st-key-demo_reset"] .stButton>button:focus-visible{
+  outline:3px solid #1a5276 !important;outline-offset:2px !important;}
+/* Reset confirmation dialog */
+.drd-warn{background:#fff8e1;border:1px solid #eab308;border-left:5px solid #eab308;color:#5d4000;
+  border-radius:6px;padding:14px 16px;margin-bottom:16px;font-size:14px;line-height:1.5;}
+.st-key-demo_reset_dialog [data-testid="stHorizontalBlock"]{gap:12px !important;}
+.st-key-demo_reset_cancel .stButton>button{
+  background:#ffffff !important;color:#173453 !important;border:1px solid #8aaabe !important;
+  height:40px !important;min-height:40px !important;border-radius:6px !important;}
+.st-key-demo_reset_go .stButton>button{
+  background:linear-gradient(180deg,#a01818,#7b0000) !important;color:#ffffff !important;
+  border:1px solid #650000 !important;height:40px !important;min-height:40px !important;
+  border-radius:6px !important;font-weight:700 !important;}
+</style>""")
+
+
+@st.dialog("Reset demo data?")
+def _demo_reset_dialog():
+    with st.container(key="demo_reset_dialog"):
+        st.markdown(
+            '<div class="drd-warn">This restores the three override requests to Pending and '
+            'removes manager decisions created during demo testing. Customer, alert, evidence, '
+            'claim, human-review, and readiness data will not change.</div>',
+            unsafe_allow_html=True,
+        )
+        _dc1, _dc2 = st.columns(2)
+        with _dc1:
+            if st.button("Cancel", key="demo_reset_cancel", width="stretch"):
+                st.session_state.demo_reset_confirm = False
+                st.rerun()
+        with _dc2:
+            if st.button("Reset Demo", key="demo_reset_go", type="primary", width="stretch"):
+                # Restore ONLY the two runtime CSVs from the committed baseline snapshots.
+                reset_override_demo(OVERRIDES_CSV, AUDIT_CSV, BASELINE_PENDING_CSV, BASELINE_AUDIT_CSV)
+                # Clear the override rationale dialog/form + stale case-routing state.
+                st.session_state.pending_override = None
+                st.session_state.selected_alert = None
+                st.session_state.open_case = None
+                for _k in [k for k in list(st.session_state.keys()) if str(k).startswith("override_rationale_")]:
+                    st.session_state.pop(_k, None)
+                # Land back in Override Requests (the manager's role is left unchanged).
+                st.session_state.manager_review_view = "override_requests"
+                st.session_state.demo_reset_confirm = False
+                st.session_state.demo_reset_toast = True
+                st.rerun()
+
+
+# One success toast after a completed reset.
+if st.session_state.pop("demo_reset_toast", False):
+    st.toast("Demo reset complete: 3 override requests restored.")
+
+rs_col1, rs_reset, rs_col2 = st.columns([7.6, 1.5, 1])
 with rs_col1:
     st.markdown(
         f'<div class="role-bar">Demo mode — viewing as '
@@ -1053,6 +1124,11 @@ with rs_col1:
         f'functions.</div>',
         unsafe_allow_html=True,
     )
+with rs_reset:
+    if st.button("↻ Reset Demo", key="demo_reset", use_container_width=True):
+        # Open the confirmation dialog; reset happens only on confirm.
+        st.session_state.demo_reset_confirm = True
+        st.rerun()
 with rs_col2:
     if st.button(
         "→ Analyst" if st.session_state.view_as == "Manager" else "→ Manager",
@@ -1062,6 +1138,10 @@ with rs_col2:
             "Analyst" if st.session_state.view_as == "Manager" else "Manager"
         )
         st.rerun()
+
+# Reset confirmation dialog (opening it changes no data).
+if st.session_state.get("demo_reset_confirm"):
+    _demo_reset_dialog()
 
 # ─────────────────────────────────────────────────────────────────────────────
 # TABS
