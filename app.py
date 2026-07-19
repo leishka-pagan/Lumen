@@ -1586,31 +1586,32 @@ def show_case_dialog(alert_id: str, source: dict) -> None:
     </div>
     """, unsafe_allow_html=True)
 
-    # CORRECTION 3 — make the verification → human-outcome relationship explicit.
-    # Computed from existing case values only; nothing saved is read or altered.
+    # CORRECTION 3 — make the verification → human-outcome relationship explicit. The
+    # review DECISION (accepted/edited/rejected) is kept distinct from the final case
+    # action; a failed draft claim never becomes the recorded disposition. Display only.
     _fails = [cl for cl in case["ai_claims"] if cl["result"] == "FAIL"]
     if _fails:
         _n = len(_fails)
         _rv = case["review"]
-        _disp = str(_rv.get("draft_disposition", "")).lower() if _rv else ""
-        if _rv and _disp in ("edited", "rejected"):
+        if lc.review_gate is ReviewGateStatus.COMPLETE and _rv:
             _cls, _msg = "ok", (
-                f"<b>{_n} AI claim(s) failed verification.</b> The human reviewer "
-                f"({_rv.get('reviewer', '—')}) did not accept the AI draft as-is "
-                f"(disposition: <b>{_rv.get('draft_disposition')}</b>). The unsupported "
-                f"claim did not silently become the final decision."
+                f"<b>{_n} draft claim(s) failed verification.</b> The human reviewer "
+                f"({_rv.get('reviewer', '—')}) recorded review decision "
+                f"'{lc.human_review_decision.value}' and final case action "
+                f"'{lc.final_action}'. The failed draft claim did not become the final "
+                f"disposition."
             )
-        elif _rv and _disp == "accepted":
+        elif lc.review_gate is ReviewGateStatus.BLOCKED and _rv:
             _cls, _msg = "warn", (
-                f"<b>{_n} AI claim(s) failed verification, yet the recorded disposition "
-                f"is 'accepted'.</b> Confirm the human sign-off is complete before this "
-                f"stands as the final decision."
+                f"<b>{_n} draft claim(s) failed verification.</b> The stored "
+                f"human-review decision is '{lc.human_review_decision.value}', but the "
+                f"review is incomplete and no final disposition is recorded."
             )
         else:
             _cls, _msg = "warn", (
-                f"<b>{_n} AI claim(s) failed verification.</b> No completed human review "
-                f"is on file — the unsupported claim must not be accepted without human "
-                f"sign-off."
+                f"<b>{_n} draft claim(s) failed verification.</b> No completed human "
+                f"review is on file — the unsupported claim must not be accepted without "
+                f"human sign-off."
             )
         st.markdown(f'<div class="outcome-link {_cls}">{_msg}</div>', unsafe_allow_html=True)
 
@@ -1666,7 +1667,7 @@ def show_case_dialog(alert_id: str, source: dict) -> None:
           <div style="padding:14px 16px;">
             <div class="review-meta">
               <div><span class="review-lbl">Reviewer</span><span class="review-val">{rv.get('reviewer','—')}</span></div>
-              <div><span class="review-lbl">Disposition</span><span class="review-val">{rv.get('draft_disposition','—')}</span></div>
+              <div><span class="review-lbl">Review Decision</span><span class="review-val">{rv.get('draft_disposition','—')}</span></div>
               <div><span class="review-lbl">Evidence Reviewed</span><span class="review-val">{rv.get('evidence_reviewed','—')}</span></div>
             </div>
             <div class="review-field"><span class="review-lbl">Decision Rationale</span>
@@ -1710,7 +1711,8 @@ def show_case_dialog(alert_id: str, source: dict) -> None:
                 '<div class="gate-panel gate-complete">'
                 '<div class="gate-title">REVIEW REQUIREMENTS: COMPLETE</div>'
                 '<div class="gate-body">All required review fields are present. '
-                f'Final disposition accepted: <b>{_gate.disposition}</b>.</div>'
+                f'Review decision recorded: <b>{lc.human_review_decision.value}</b>. '
+                f'Final case action: <b>{lc.final_action}</b>.</div>'
                 '<div class="gate-foot">Enforcement: enabled</div></div>'
             )
         st.markdown(_gate_html, unsafe_allow_html=True)

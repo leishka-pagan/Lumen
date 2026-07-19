@@ -289,3 +289,71 @@ def test_reset_demo_reflected_in_queue_after_rerun(runtime):
     restored = _queue_table(_run())
     assert _badge_count(restored, "Awaiting Manager") == 3   # back to the baseline
     assert _badge_count(restored, "Closed") == 2
+
+
+# ── Review DECISION vs final case DISPOSITION wording ────────────────────────
+def _visible(md: str) -> str:
+    """Strip HTML tags to get the visible dialog text (matches browser innerText)."""
+    import re
+    return re.sub(r"<[^>]+>", "", md)
+
+
+def test_alert004_review_decision_edited_final_action_escalate(runtime):
+    md = _md(_run(open_case="ALERT004"))
+    vis = _visible(md)
+    assert _pair("RECORDED DISPOSITION", "ESCALATE") in md
+    # populated Human Review card: the field is a REVIEW DECISION (value edited)
+    assert 'review-lbl">Review Decision</span><span class="review-val">edited</span>' in md
+    assert 'review-lbl">Disposition</span>' not in md            # old label gone
+    # COMPLETE gate body separates the review decision from the final case action
+    assert ("All required review fields are present. Review decision recorded: "
+            "edited. Final case action: escalate.") in vis
+    assert "Final disposition accepted:" not in vis              # old conflation gone
+
+
+def test_alert001_warning_distinguishes_edited_decision_from_monitor_action(runtime):
+    md = _md(_run(open_case="ALERT001"))
+    vis = _visible(md)
+    assert _pair("RECORDED DISPOSITION", "MONITOR") in md
+    assert ("recorded review decision 'edited' and final case action 'monitor'. "
+            "The failed draft claim did not become the final disposition.") in vis
+    assert ("All required review fields are present. Review decision recorded: "
+            "edited. Final case action: monitor.") in vis
+    assert "did not accept the AI draft as-is" not in vis        # old wording gone
+
+
+def test_alert007_accepted_is_a_review_decision_never_a_disposition(runtime):
+    md = _md(_run(open_case="ALERT007"))
+    vis = _visible(md)
+    assert _pair("RECORDED DISPOSITION", "NONE") in md
+    # populated card labels 'accepted' as a review decision
+    assert 'review-lbl">Review Decision</span><span class="review-val">accepted</span>' in md
+    # blocked-with-failed-claim wording: decision is 'accepted', but no final disposition
+    assert ("The stored human-review decision is 'accepted', but the review is "
+            "incomplete and no final disposition is recorded.") in vis
+    # BLOCKED gate body preserved verbatim
+    assert ("Incomplete review detected. This stored review fails the same enforcement "
+            "rule used by the decision pipeline. No final disposition is accepted.") in vis
+    # 'accepted' is ONLY ever a review decision — never called a recorded/final disposition
+    assert "human-review decision is 'accepted'" in vis         # positive: labeled a decision
+    assert "disposition is 'accepted'" not in vis               # old quoted conflation gone
+    assert "disposition: accepted" not in vis.lower()
+    assert "Final disposition accepted:" not in vis
+    # the review word must not appear as the RECORDED DISPOSITION rail value
+    for word in ("ACCEPTED", "EDITED", "REJECTED"):
+        assert _pair("RECORDED DISPOSITION", word) not in md
+
+
+def test_case_file_wording_change_is_read_only(runtime, monkeypatch):
+    committed = _committed_hashes()
+    before = {k: runtime[k].read_bytes() for k in runtime}
+    import src.audit as audit_mod
+    calls: list = []
+    monkeypatch.setattr(audit_mod, "log_event", lambda **kw: calls.append(kw) or {})
+    for alert_id in ("ALERT001", "ALERT004", "ALERT007"):
+        at = _run(open_case=alert_id)
+        assert not at.exception, [str(e.value) for e in at.exception]
+    assert calls == []
+    for k in runtime:
+        assert runtime[k].read_bytes() == before[k]
+    assert _committed_hashes() == committed

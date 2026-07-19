@@ -69,7 +69,8 @@ def test_alert001_review_present_path_intact_ai_fail_and_human_outcome():
     assert REVIEW_MISSING_MSG not in md                       # not the empty-state branch
     assert ">FAIL<" in md                                     # AI prior_sar_history claim FAILs (Hero A)
     assert "reviewer:mchen" in md                             # human review rendered
-    assert "did not accept the AI draft as-is" in md          # recorded human outcome
+    # the review DECISION (edited) is distinct from the final case action (monitor)
+    assert "recorded review decision 'edited' and final case action 'monitor'" in md
 
 
 def test_alert007_review_present_path_intact_prior_sar_pass_and_gate_blocked():
