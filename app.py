@@ -1297,6 +1297,54 @@ def override_context_html(alert_id: str) -> str:
     return "".join(_override_panel_html(r) for r in chosen[:2])
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Case File scrollbar — keep the modal inside the viewport with an obvious,
+# draggable vertical scrollbar. SCOPED to the Case File dialog only: it uniquely
+# contains the keyed Close button (.st-key-close_case_dialog), so :has() targets it
+# without touching the Approve/Reject or Reset Demo dialogs and without changing the
+# global scrollbar styling. The dialog box becomes a flex column capped at
+# calc(100vh - 32px); only the body region (the block that holds the stVerticalBlock)
+# scrolls, so the title bar and the built-in close "X" stay pinned and visible.
+# Scoped !important is required to beat Streamlit's global thin/transparent scrollbar.
+# ─────────────────────────────────────────────────────────────────────────────
+st.html("""<style>
+/* Neutralize baseweb's 32px top padding on the modal centering wrapper so the
+   capped dialog keeps a symmetric 16px gap (its own margin) above and below,
+   instead of being pushed past the bottom edge. Scoped to the Case File only. */
+div[data-testid="stDialog"]:has(.st-key-close_case_dialog) > div:has(> div[role="dialog"]){
+  padding-top:0 !important;}
+div[data-testid="stDialog"]:has(.st-key-close_case_dialog) div[role="dialog"]{
+  max-height:calc(100vh - 32px) !important;
+  display:flex !important;flex-direction:column !important;overflow:hidden !important;}
+div[data-testid="stDialog"]:has(.st-key-close_case_dialog) div[role="dialog"] > div:has(> [data-testid="stVerticalBlock"]){
+  flex:1 1 auto !important;min-height:0 !important;
+  overflow-y:auto !important;overflow-x:hidden !important;
+  scrollbar-gutter:stable !important;
+  /* Revert Streamlit's global scrollbar-width:thin / scrollbar-color:transparent back to
+     the initial values so Chromium renders the ::-webkit-scrollbar design below instead of
+     the thin standard scrollbar. Firefox colors are restored in the @supports block. */
+  scrollbar-width:auto !important;scrollbar-color:auto !important;}
+/* WebKit/Blink — always-visible, draggable 12px scrollbar for the Case File body only.
+   Deliberately NO standard scrollbar-width/-color here: setting either makes Chromium
+   switch to the standard scrollbar renderer and ignore ::-webkit-scrollbar, dropping the
+   12px width, 10px thumb radius, and 3px thumb border. */
+div[data-testid="stDialog"]:has(.st-key-close_case_dialog) div[role="dialog"] > div:has(> [data-testid="stVerticalBlock"])::-webkit-scrollbar{
+  width:12px !important;}
+div[data-testid="stDialog"]:has(.st-key-close_case_dialog) div[role="dialog"] > div:has(> [data-testid="stVerticalBlock"])::-webkit-scrollbar-track{
+  background:#eef3f5 !important;}
+div[data-testid="stDialog"]:has(.st-key-close_case_dialog) div[role="dialog"] > div:has(> [data-testid="stVerticalBlock"])::-webkit-scrollbar-thumb{
+  background:#8aaabe !important;border-radius:10px !important;border:3px solid #eef3f5 !important;}
+div[data-testid="stDialog"]:has(.st-key-close_case_dialog) div[role="dialog"] > div:has(> [data-testid="stVerticalBlock"])::-webkit-scrollbar-thumb:hover{
+  background:#4a8ba5 !important;}
+/* Firefox has no ::-webkit-scrollbar — give it the standard properties instead. Chromium
+   supports selector(::-webkit-scrollbar), so it skips this block and keeps the design above. */
+@supports not selector(::-webkit-scrollbar){
+  div[data-testid="stDialog"]:has(.st-key-close_case_dialog) div[role="dialog"] > div:has(> [data-testid="stVerticalBlock"]){
+    scrollbar-width:auto !important;scrollbar-color:#8aaabe #eef3f5 !important;}
+}
+</style>""")
+
+
 @st.dialog("Case File", width="large")
 def show_case_dialog(alert_id: str, source: dict) -> None:
     case = get_case_detail(alert_id, source)
