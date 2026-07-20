@@ -11,6 +11,7 @@ vars (the `runtime` fixture); committed CSVs are never mutated.
 
 from __future__ import annotations
 
+import re
 import shutil
 import sys
 from pathlib import Path
@@ -169,3 +170,45 @@ def test_opening_case_file_writes_no_audit_event(runtime):
     md = _md(_run(open_case="ALERT002"))
     assert "OVERRIDE REQUEST" in md                     # the case actually opened
     assert not runtime["audit"].exists()                # opening wrote nothing to the audit log
+
+
+# ── Display-only override request identifiers ────────────────────────────────
+# The Case File OVERRIDE REQUEST panel renders no identifier at all, so the actual
+# requirement there is simply that no internal CHG-SEED-* id is ever visible.
+@pytest.mark.parametrize("alert_id,internal", [
+    ("ALERT002", "CHG-SEED-001"),
+    ("ALERT005", "CHG-SEED-002"),
+    ("ALERT001", "CHG-SEED-003"),
+])
+def test_case_file_override_panel_exposes_no_internal_id(alert_id, internal, runtime):
+    ov = _ovreq(_run(open_case=alert_id))
+    assert "OVERRIDE REQUEST" in ov              # the panel really rendered
+    assert internal not in ov, f"{internal} leaked into the Case File override panel"
+
+
+def test_case_file_never_shows_any_internal_change_id(runtime):
+    """No CHG-SEED-* identifier is visible anywhere on the Case File page.
+
+    The audit-trail table is excluded on purpose: it renders the raw details_json and
+    MUST keep showing the internal change_id — that is the audit contract, and it is
+    the proof the display map never reached persistence.
+    """
+    for alert_id in ("ALERT001", "ALERT002", "ALERT005"):
+        at = _run(open_case=alert_id)
+        visible = " ".join(m.value for m in at.markdown if "lt-change" not in m.value)
+        assert "OVERRIDE REQUEST" in visible          # the case really opened
+        for internal in ("CHG-SEED-001", "CHG-SEED-002", "CHG-SEED-003"):
+            assert internal not in visible, f"{internal} leaked into the {alert_id} Case File"
+
+
+def test_case_file_override_panel_labels_are_unchanged(runtime):
+    """No wording, row, or label was added to the panel by the display mapping."""
+    import app as _app
+    import pandas as _pd
+    row = _pd.read_csv(DATA / "pending_overrides.csv", dtype=str, keep_default_na=False)
+    r = row[row["change_id"] == "CHG-SEED-001"].iloc[0].to_dict()
+    html = _app._override_panel_html(r)
+    labels = re.findall(r'ovreq-lbl">([^<]+)<', html)
+    assert labels == ["FIELD", "REQUESTED CHANGE", "SUBMITTED BY",
+                      "ANALYST REQUEST REASON", "SUBMITTED AT"]
+    assert "Request ID" not in html and "OVR-001" not in html

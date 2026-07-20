@@ -106,6 +106,27 @@ def write_log(action: str, details: dict, alert_id: str | None = None) -> dict:
     )
 
 
+# DISPLAY-ONLY override request identifiers. The seeded demo requests carry internal
+# change_ids that read as scaffolding; these are the intentional identifiers shown to a
+# user. This map is presentation only — it is NEVER written to a CSV, an audit event, a
+# widget key, session state, or a lookup. Every callback and every persisted record keeps
+# the internal change_id. Any id not listed here (a live request, or historical data)
+# displays unchanged.
+OVERRIDE_DISPLAY_IDS = {
+    "CHG-SEED-001": "OVR-001",
+    "CHG-SEED-002": "OVR-002",
+    "CHG-SEED-003": "OVR-003",
+}
+
+
+def override_display_id(change_id) -> str:
+    """The identifier to SHOW for an override request. Display only — never persisted,
+    never used for lookup, callbacks, or keys. Unmapped ids pass through untouched."""
+    if change_id is None:
+        return ""
+    return OVERRIDE_DISPLAY_IDS.get(str(change_id), str(change_id))
+
+
 def load_overrides() -> pd.DataFrame:
     cols = [
         "change_id", "alert_id", "field_changed", "old_value", "new_value",
@@ -257,7 +278,7 @@ def _render_override_decision(decision: str):
     with st.container(key="override_decision_dialog"):
         st.markdown(
             '<div class="ovd-summary">'
-            f'<div class="ovd-row"><span class="ovd-lbl">Request ID</span><span class="ovd-val">{row.get("change_id","—")}</span></div>'
+            f'<div class="ovd-row"><span class="ovd-lbl">Request ID</span><span class="ovd-val">{override_display_id(row.get("change_id")) or "—"}</span></div>'
             f'<div class="ovd-row"><span class="ovd-lbl">Alert ID</span><span class="ovd-val">{row.get("alert_id","—")}</span></div>'
             f'<div class="ovd-row"><span class="ovd-lbl">Requested change</span>'
             f'<span class="ovd-val">{sev_label(row["field_changed"], row["old_value"])} → {sev_label(row["field_changed"], row["new_value"])}</span></div>'
@@ -2268,7 +2289,7 @@ div[class*="st-key-override_submit_confirm_"][class*="_rejected"] button{
                     st.markdown(f"""
                     <div class="ov-card">
                       <div class="ov-card-top">
-                        <span class="ov-card-id">{row['change_id']}</span>
+                        <span class="ov-card-id">{override_display_id(row['change_id'])}</span>
                         <span class="ov-card-ts">{row['changed_at']}</span>
                       </div>
                       <div class="ov-card-body">
@@ -2327,7 +2348,7 @@ div[class*="st-key-override_submit_confirm_"][class*="_rejected"] button{
 
                 hist_rows = "".join(
                     f'<tr>'
-                    f'<td style="white-space:nowrap;font-weight:700;color:#1a5276;">{_hesc(r["change_id"])}</td>'
+                    f'<td style="white-space:nowrap;font-weight:700;color:#1a5276;">{_hesc(override_display_id(r["change_id"]))}</td>'
                     f'<td style="white-space:nowrap;">{_hesc(r["alert_id"])}</td>'
                     f'<td>{_hesc(r["field_changed"])}</td>'
                     f'<td><span class="ov-old">{_hesc(sev_label(r["field_changed"], r["old_value"]))}</span>'

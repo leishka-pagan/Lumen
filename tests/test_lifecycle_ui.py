@@ -538,3 +538,54 @@ def test_evidence_completeness_render_is_read_only(runtime, monkeypatch):
     for k in runtime:
         assert runtime[k].read_bytes() == before[k]
     assert _committed_hashes() == committed
+
+
+# ── Display-only override request identifiers ────────────────────────────────
+# OVR-001/002/003 are shown; the lifecycle record and every widget key keep the
+# internal CHG-SEED-* id. Reset Demo continues to key off the internal id.
+def _override_requests(**state):
+    return _run(view_as="Manager", manager_review_view="override_requests", **state)
+
+
+def test_lifecycle_records_still_carry_internal_override_ids(runtime):
+    index = {r.alert_id: r for r in load_lifecycle(runtime["lifecycle"])}
+    for alert_id, internal in (("ALERT001", "CHG-SEED-003"),
+                               ("ALERT002", "CHG-SEED-001"),
+                               ("ALERT005", "CHG-SEED-002")):
+        assert index[alert_id].override_request_id == internal
+        assert app.override_display_id(internal) != internal      # it IS remapped for display
+
+
+def test_override_request_surfaces_show_display_ids(runtime):
+    at = _override_requests()
+    cards = " ".join(m.value for m in at.markdown if "ov-card-id" in m.value)
+    history = " ".join(m.value for m in at.markdown if "<th>Request ID</th>" in m.value)
+    for internal, shown in (("CHG-SEED-001", "OVR-001"),
+                            ("CHG-SEED-002", "OVR-002"),
+                            ("CHG-SEED-003", "OVR-003")):
+        assert shown in cards and internal not in cards
+        assert shown in history and internal not in history
+
+
+def test_display_mapping_does_not_touch_widget_keys_or_lifecycle(runtime):
+    at = _override_requests()
+    keys = {b.key for b in at.button if b.key}
+    assert {"apr_CHG-SEED-001", "rej_CHG-SEED-001", "oc_CHG-SEED-001"} <= keys
+    assert not any("OVR-" in k for k in keys)
+    # the runtime lifecycle CSV is untouched by rendering
+    assert "OVR-" not in runtime["lifecycle"].read_text(encoding="utf-8")
+
+
+def test_open_case_file_button_still_routes_by_internal_id(runtime):
+    at = _override_requests()
+    _btn = next(b for b in at.button if b.key == "oc_CHG-SEED-003")
+    _btn.click().run()
+    assert not at.exception, [str(e.value) for e in at.exception]
+    assert "Dana Whitfield —" in _md(at)        # CHG-SEED-003 -> ALERT001, unchanged routing
+
+
+def test_display_mapping_mutates_no_committed_file(runtime):
+    committed = _committed_hashes()
+    _override_requests()
+    _run(open_case="ALERT002")
+    assert _committed_hashes() == committed

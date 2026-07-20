@@ -305,3 +305,137 @@ def test_human_review_oversight_unchanged():
     assert "ALERT001 · Dana Whitfield" in md
     assert "ALERT004 · Tomas Herrera" in md
     assert "Pending Override Requests" not in md
+
+
+# ── Display-only override request identifiers ────────────────────────────────
+# OVR-001/002/003 are what a user SEES. The internal change_id stays CHG-SEED-*
+# everywhere it matters: widget keys, callbacks, session state, CSV, and audit.
+DISPLAY_IDS = {"CHG-SEED-001": "OVR-001",
+               "CHG-SEED-002": "OVR-002",
+               "CHG-SEED-003": "OVR-003"}
+
+
+def test_display_map_is_exactly_the_three_seeded_requests():
+    assert app.OVERRIDE_DISPLAY_IDS == DISPLAY_IDS
+
+
+@pytest.mark.parametrize("internal,shown", sorted(DISPLAY_IDS.items()))
+def test_override_display_id_maps_seeded_ids(internal, shown):
+    assert app.override_display_id(internal) == shown
+
+
+@pytest.mark.parametrize("other", ["CHG-20260601120000-ALERT012", "CHG-SEED-004", "", "OVR-001"])
+def test_override_display_id_passes_unmapped_ids_through(other):
+    assert app.override_display_id(other) == other      # no additional mappings invented
+
+
+def test_override_display_id_never_mutates_the_dataframe(temp_data):
+    """The map is presentation only: reading it changes no loaded record."""
+    before = pd.read_csv(temp_data["overrides"], dtype=str, keep_default_na=False)
+    for cid in before["change_id"]:
+        app.override_display_id(cid)
+    after = pd.read_csv(temp_data["overrides"], dtype=str, keep_default_na=False)
+    assert before.equals(after)
+
+
+def _surface(at, needle):
+    """Just the markdown block(s) making up one visible surface.
+
+    Scoped deliberately: the audit-trail table legitimately renders the INTERNAL
+    change_id inside details_json, and that is required behaviour — the display map
+    must never reach persistence or audit.
+    """
+    return " ".join(m.value for m in at.markdown if needle in m.value)
+
+
+def test_pending_cards_show_display_ids_and_never_internal_ids(temp_data):
+    cards = _surface(_override_view(), "ov-card-id")
+    assert cards, "pending override cards did not render"
+    for internal, shown in DISPLAY_IDS.items():
+        assert shown in cards, f"{shown} missing from the pending override cards"
+        assert internal not in cards, f"{internal} leaked into the pending override cards"
+
+
+def test_override_history_shows_display_ids_and_never_internal_ids(temp_data):
+    history = _surface(_override_view(), "<th>Request ID</th>")
+    assert history, "Override History table did not render"
+    for internal, shown in DISPLAY_IDS.items():
+        assert shown in history, f"{shown} missing from Override History"
+        assert internal not in history, f"{internal} leaked into Override History"
+    # column set and order are untouched
+    assert "<thead><tr><th>Request ID</th><th>Alert</th><th>Field</th>" in history
+
+
+def test_audit_trail_still_shows_the_internal_id(temp_data):
+    """Proof the map is display-only: the audit surface is unchanged and still
+    records/reveals CHG-SEED-*, exactly as the audit contract requires."""
+    at = _override_view()
+    audit_tbl = _surface(at, "lt-change")
+    assert "CHG-SEED-002" in audit_tbl
+    assert "OVR-002" not in audit_tbl
+
+
+@pytest.mark.parametrize("decision", ["approved", "rejected"])
+def test_decision_dialog_shows_display_id_not_internal_id(decision, temp_data):
+    at = _override_view()
+    _open(at, "CHG-SEED-001", decision)
+    dialog = _surface(at, "ovd-summary")
+    assert dialog, "decision dialog did not render"
+    assert "Request ID" in dialog                # wording unchanged
+    assert "OVR-001" in dialog
+    assert "CHG-SEED-001" not in dialog
+    # the dialog still resolves and acts on the INTERNAL id
+    assert at.session_state["pending_override"]["change_id"] == "CHG-SEED-001"
+    assert _btn(at, "override_submit_confirm_CHG-SEED-001_" + decision) is not None
+
+
+def test_widget_keys_and_callbacks_still_use_internal_ids(temp_data):
+    at = _override_view()
+    keys = {b.key for b in at.button if b.key}
+    for internal in DISPLAY_IDS:
+        assert f"apr_{internal}" in keys
+        assert f"rej_{internal}" in keys
+        assert f"oc_{internal}" in keys
+    for shown in DISPLAY_IDS.values():
+        assert not any(shown in k for k in keys), f"{shown} leaked into a widget key"
+
+
+def test_approval_persists_internal_id_to_csv_and_audit(temp_data):
+    """Approve through the UI; CSV + audit must record CHG-SEED-001, never OVR-001."""
+    at = _override_view()
+    _open(at, "CHG-SEED-001", "approved")
+    _submit(at, "CHG-SEED-001", "approved", "Downgrade justified after evidence review.")
+
+    ov = pd.read_csv(temp_data["overrides"], dtype=str, keep_default_na=False)
+    row = ov[ov["change_id"] == "CHG-SEED-001"].iloc[0]
+    assert row["status"] == "approved"                     # internal id still addresses the row
+    assert "OVR-001" not in ov.to_csv(index=False)         # display id never persisted
+
+    audit_text = temp_data["audit"].read_text(encoding="utf-8")
+    assert "CHG-SEED-001" in audit_text
+    assert "OVR-001" not in audit_text                     # display id never audited
+    entries = [json.loads(d) for d in
+               pd.read_csv(temp_data["audit"], dtype=str, keep_default_na=False)["details_json"]
+               if d]
+    assert any(e.get("change_id") == "CHG-SEED-001" for e in entries)
+
+
+def test_rejection_persists_internal_id_to_csv_and_audit(temp_data):
+    at = _override_view()
+    _open(at, "CHG-SEED-002", "rejected")
+    _submit(at, "CHG-SEED-002", "rejected", "Escalation is not warranted at this time.")
+
+    ov = pd.read_csv(temp_data["overrides"], dtype=str, keep_default_na=False)
+    assert ov[ov["change_id"] == "CHG-SEED-002"].iloc[0]["status"] == "rejected"
+    assert "OVR-002" not in ov.to_csv(index=False)
+    audit_text = temp_data["audit"].read_text(encoding="utf-8")
+    assert "CHG-SEED-002" in audit_text and "OVR-002" not in audit_text
+
+
+def test_committed_csvs_still_hold_internal_ids_only():
+    """The mapping is display-only: no committed data was rewritten."""
+    committed = _committed()
+    assert list(committed[committed["status"] == "pending"]["change_id"]) == list(DISPLAY_IDS)
+    raw = (DATA / "pending_overrides.csv").read_text(encoding="utf-8")
+    for shown in DISPLAY_IDS.values():
+        assert shown not in raw
