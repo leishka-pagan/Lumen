@@ -25,9 +25,11 @@ DATA = ROOT / "data"
 BASELINE = DATA / "demo_baseline"
 sys.path.insert(0, str(ROOT))
 
+import dataclasses  # noqa: E402
+
 import app  # noqa: E402
-from src.case_lifecycle import derive_queue_status  # noqa: E402
-from src.lifecycle_store import load_lifecycle  # noqa: E402
+from src.case_lifecycle import AIDraftSource, derive_queue_status  # noqa: E402
+from src.lifecycle_store import load_lifecycle, write_lifecycle  # noqa: E402
 
 APP = str(ROOT / "app.py")
 
@@ -353,6 +355,104 @@ def test_case_file_wording_change_is_read_only(runtime, monkeypatch):
     for alert_id in ("ALERT001", "ALERT004", "ALERT007"):
         at = _run(open_case=alert_id)
         assert not at.exception, [str(e.value) for e in at.exception]
+    assert calls == []
+    for k in runtime:
+        assert runtime[k].read_bytes() == before[k]
+    assert _committed_hashes() == committed
+
+
+# ── Alert Inventory DRAFT column (only from lifecycle.ai_draft_source) ────────
+FIXTURE_MARK = ">&#9679; FIXTURE</span>"
+LIVEAI_MARK = ">&#9679; LIVE AI</span>"
+EMDASH_MARK = 'color:#ccc;font-size:12px;">&#8212;</span>'   # the no-draft em dash span
+
+
+def test_draft_column_header_renamed_from_ai(runtime):
+    table = _queue_table(_run())
+    assert ">DRAFT</th>" in table
+    assert ">AI</th>" not in table
+
+
+def test_baseline_draft_counts_7_fixture_32_dash_0_liveai(runtime):
+    table = _queue_table(_run())
+    assert table.count(FIXTURE_MARK) == 7        # ALERT001–007 synthetic fixtures
+    assert table.count(EMDASH_MARK) == 32        # ALERT008–039 none
+    assert table.count(LIVEAI_MARK) == 0         # no live capture has occurred
+
+
+def test_fixture_never_renders_standalone_ai_label(runtime):
+    table = _queue_table(_run())
+    assert "&#9679; AI</span>" not in table      # the old "● AI" marker is gone entirely
+    assert table.count(FIXTURE_MARK) == 7
+
+
+def test_draft_column_matches_lifecycle_source_for_all_39():
+    source = app.load_source_tables(app.mtimes_key())
+    index = {r.alert_id: r for r in load_lifecycle(DATA / "case_lifecycle.csv")}
+    for _, arow in source["alerts"].iterrows():
+        row = app.build_queue_row(arow, source, index)
+        assert row["draft"] == app.lifecycle_draft_source_label(index[arow["alert_id"]])
+
+
+def test_ai_outputs_presence_cannot_change_draft():
+    # ALERT008 has lifecycle ai_draft_source=none. Even if ai_outputs rows exist for it,
+    # the DRAFT value stays the em dash — the label reads only the lifecycle record.
+    source = app.load_source_tables(app.mtimes_key())
+    index = {r.alert_id: r for r in load_lifecycle(DATA / "case_lifecycle.csv")}
+    faked = source["ai_outputs"][source["ai_outputs"]["alert_id"] == "ALERT001"].copy()
+    faked["alert_id"] = "ALERT008"
+    fake_source = dict(source)
+    fake_source["ai_outputs"] = pd.concat([source["ai_outputs"], faked], ignore_index=True)
+    arow = source["alerts"][source["alerts"]["alert_id"] == "ALERT008"].iloc[0]
+    assert app.build_queue_row(arow, fake_source, index)["draft"] == ""   # none, not FIXTURE
+
+
+def test_alerts_status_cannot_change_draft():
+    source = app.load_source_tables(app.mtimes_key())
+    index = {r.alert_id: r for r in load_lifecycle(DATA / "case_lifecycle.csv")}
+    base = source["alerts"][source["alerts"]["alert_id"] == "ALERT001"].iloc[0]
+    labels = set()
+    for legacy in ("open", "in_review", "closed", "totally-made-up"):
+        arow = base.copy()
+        arow["status"] = legacy
+        labels.add(app.build_queue_row(arow, source, index)["draft"])
+    assert labels == {"FIXTURE"}          # lifecycle synthetic_fixture wins regardless
+
+
+def test_captured_live_with_model_id_displays_live_ai(tmp_path, monkeypatch):
+    # Build a temp lifecycle where ALERT001 is a VALID captured_live record with a model id.
+    lc = tmp_path / "case_lifecycle.csv"
+    recs = load_lifecycle(DATA / "case_lifecycle.csv")
+    committed_before = (DATA / "case_lifecycle.csv").read_bytes()
+    for i, r in enumerate(recs):
+        if r.alert_id == "ALERT001":
+            recs[i] = dataclasses.replace(
+                r, ai_draft_source=AIDraftSource.CAPTURED_LIVE,
+                ai_draft_reference="OUT-LIVE-1", model_id="claude-haiku-4-5-20251001")
+    write_lifecycle(recs, lc)
+    monkeypatch.setenv("LUMEN_CASE_LIFECYCLE_CSV", str(lc))
+    table = _queue_table(_run())
+    assert table.count(LIVEAI_MARK) == 1          # ALERT001 -> LIVE AI (ai_outputs unchanged)
+    assert table.count(FIXTURE_MARK) == 6         # the remaining six fixtures
+    assert table.count(EMDASH_MARK) == 32
+    assert (DATA / "case_lifecycle.csv").read_bytes() == committed_before   # committed untouched
+
+
+def test_invalid_lifecycle_hides_draft_column_fails_closed(tmp_path, monkeypatch):
+    monkeypatch.setenv("LUMEN_CASE_LIFECYCLE_CSV", str(tmp_path / "missing.csv"))
+    at = _run()
+    assert any("lifecycle" in e.value.lower() for e in at.error)
+    assert ">DRAFT</th>" not in _md(at)            # queue (and DRAFT column) never renders
+
+
+def test_draft_column_render_is_read_only(runtime, monkeypatch):
+    committed = _committed_hashes()
+    before = {k: runtime[k].read_bytes() for k in runtime}
+    import src.audit as audit_mod
+    calls: list = []
+    monkeypatch.setattr(audit_mod, "log_event", lambda **kw: calls.append(kw) or {})
+    table = _queue_table(_run())
+    assert table.count(FIXTURE_MARK) == 7
     assert calls == []
     for k in runtime:
         assert runtime[k].read_bytes() == before[k]

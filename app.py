@@ -436,6 +436,19 @@ def lifecycle_recorded_disposition_label(lc) -> str:
     return lc.final_action.upper() if lc.final_action else "NONE"
 
 
+def lifecycle_draft_source_label(lc) -> str:
+    """Alert Inventory DRAFT column — derived ONLY from lifecycle.ai_draft_source (never
+    ai_outputs presence, verification, processing status, or alerts.status).
+    synthetic_fixture -> FIXTURE; captured_live (with a model id) -> LIVE AI; none -> ''
+    (rendered as an em dash). A fixture never shows LIVE AI; LIVE AI requires a real
+    captured-live draft with a model id on a valid record."""
+    if lc.ai_draft_source is AIDraftSource.SYNTHETIC_FIXTURE:
+        return "FIXTURE"
+    if lc.ai_draft_source is AIDraftSource.CAPTURED_LIVE and lc.model_id:
+        return "LIVE AI"
+    return ""
+
+
 def load_lifecycle_index(alert_ids) -> dict:
     """Load + validate the canonical lifecycle and index by alert_id. Fail closed:
     any missing/invalid/duplicate record, or an alert with no lifecycle record, is an
@@ -468,12 +481,10 @@ def build_queue_row(alert_row: pd.Series, source: dict, lifecycle_index: dict) -
     crow = customers[customers["customer_id"] == alert_row["customer_id"]]
     customer_name = crow.iloc[0]["name"] if len(crow) else alert_row["customer_id"]
 
-    ai_rows = source["ai_outputs"][source["ai_outputs"]["alert_id"] == alert_id]
-    has_ai = len(ai_rows) > 0
-
     review_rows = source["human_reviews"][source["human_reviews"]["alert_id"] == alert_id]
     analyst = review_rows.iloc[0]["reviewer"] if len(review_rows) else "Unassigned"
 
+    lc = lifecycle_index[alert_id]
     return {
         "alert_id": alert_id,
         "customer_id": alert_row["customer_id"],
@@ -481,9 +492,10 @@ def build_queue_row(alert_row: pd.Series, source: dict, lifecycle_index: dict) -
         "rule": alert_row["rule_triggered"],
         "severity": SEVERITY_LABELS.get(alert_row["severity"], alert_row["severity"]),
         "readiness": case_readiness_pct(alert_id, source),
-        "ai": has_ai,
+        # DRAFT source — canonical lifecycle only (never ai_outputs presence).
+        "draft": lifecycle_draft_source_label(lc),
         # Canonical workflow status — derived from case_lifecycle.csv, never alerts.status.
-        "status": lifecycle_queue_label(lifecycle_index[alert_id]),
+        "status": lifecycle_queue_label(lc),
         "analyst": analyst,
     }
 
@@ -1849,11 +1861,16 @@ with tab1:
             f'min-width:30px;">{v}%</span></div>'
         )
 
-        ai_html = (
-            '<span style="color:#1a5c1a;font-size:12px;font-weight:700;">&#9679; AI</span>'
-            if r["ai"]
-            else '<span style="color:#ccc;font-size:12px;">&#8212;</span>'
-        )
+        # DRAFT source indicator — reuses the EXACT existing colors: amber (#8a5600, the
+        # PENDING indicator) for a synthetic fixture, green (#1a5c1a, the old "AI" marker)
+        # for captured live AI, muted (#ccc) em dash for none. Text only — no badge/bg.
+        _draft = r["draft"]
+        if _draft == "FIXTURE":
+            ai_html = '<span style="color:#8a5600;font-size:12px;font-weight:700;">&#9679; FIXTURE</span>'
+        elif _draft == "LIVE AI":
+            ai_html = '<span style="color:#1a5c1a;font-size:12px;font-weight:700;">&#9679; LIVE AI</span>'
+        else:
+            ai_html = '<span style="color:#ccc;font-size:12px;">&#8212;</span>'
 
         sev_html = badge_html(r["severity"], SEV_STYLE.get(r["severity"], ""))
         sta_html = badge_html(r["status"], STA_STYLE.get(r["status"], ""))
@@ -1914,7 +1931,7 @@ with tab1:
   <caption style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);">Alert queue — click a row to open its case file</caption>
   <thead><tr>
     <th scope="col">Alert ID</th><th scope="col">Customer</th><th scope="col">Rule Triggered</th>
-    <th scope="col">Severity</th><th scope="col">Case Readiness</th><th scope="col">AI</th>
+    <th scope="col">Severity</th><th scope="col">Case Readiness</th><th scope="col">DRAFT</th>
     <th scope="col">Status</th><th scope="col">Analyst</th><th scope="col">Action</th>
   </tr></thead>
   <tbody>{rows_html}</tbody>
