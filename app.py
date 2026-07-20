@@ -686,30 +686,41 @@ header[data-testid="stHeader"]{display:none !important;}
 div[data-testid="stToolbar"]{display:none !important;}
 #MainMenu{display:none !important;}
 
-/* FIX 1: id-bar gets a bottom border to cleanly separate from light page body */
-.id-bar{background:#2e728f;padding:13px 26px;display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #1a5276;}
-.id-bar-logo{font-size:24px;font-weight:700;color:#fff;letter-spacing:.02em;margin:0;}
-.id-bar-logo span{color:#cfeaf5;}
-.id-bar-right{font-size:14px;color:#eaf4f8;display:flex;gap:20px;align-items:center;}
-.id-bar-right a{color:#eaf4f8;text-decoration:none;}
+/* MIDNIGHT LUMEN header — brand row (.id-bar), context row (.sub-nav), pending pill.
+   Header-only; no :root var, no navigation/table/dialog selector is touched. */
+.id-bar{background:#0B1F33;color:#FFFFFF;min-height:74px;padding:0 24px;margin:0;gap:24px;
+  display:flex;align-items:center;justify-content:space-between;
+  border-bottom:1px solid #294763;border-radius:0;box-shadow:0 8px 24px rgba(11,31,51,0.18);}
+.id-bar-logo{color:#FFFFFF;background:transparent;font-size:30px;font-weight:800;line-height:1;
+  letter-spacing:-0.6px;padding:0;margin:0;border:none;border-radius:0;box-shadow:none;white-space:nowrap;}
+.id-bar-logo span{color:#F5B942;font-size:inherit;font-weight:inherit;}
+.id-bar-right{display:flex;align-items:center;gap:12px;}
+.id-bar-right a{color:#F4F7FB;text-decoration:none;}
 .id-bar-right a:hover{text-decoration:underline;}
-.id-bar-sep{color:#6ba3ba;}
-.id-bar-user{background:#255d75;border:1px solid #4a8ba5;padding:6px 14px;border-radius:4px;color:#fff !important;font-size:14px;font-weight:600;}
+.id-bar-user{background:#132B45;border:1px solid #35516D;color:#F4F7FB;padding:8px 12px;margin:0;
+  border-radius:9px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.05);
+  font-size:12px;font-weight:700;line-height:1.2;letter-spacing:0.1px;white-space:nowrap;}
 
-.sub-nav{background:#245d74;padding:0 26px;display:flex;align-items:center;justify-content:space-between;height:40px;border-bottom:3px solid #1a4f66;box-shadow:0 2px 4px rgba(0,0,0,.12);}
-.sub-nav-left{font-size:14px;font-weight:600;color:#f3fafc;}
-/* FIX 2: sub-nav-right font bumped to 13px — readable without being loud */
-.sub-nav-right{font-size:13px;color:#e8f4f8;font-weight:500;font-variant-numeric:tabular-nums;display:flex;align-items:center;gap:14px;}
-.hdr-pending{display:inline-flex;align-items:center;gap:5px;background:#c0392b;color:#fff;font-size:12px;font-weight:700;padding:3px 10px;border-radius:11px;letter-spacing:.02em;}
-.hdr-pending .dot{width:6px;height:6px;border-radius:50%;background:#fff;display:inline-block;}
+.sub-nav{background:#132B45;color:#C3D0DE;min-height:38px;height:auto;padding:0 24px;margin:0;gap:16px;
+  display:flex;align-items:center;justify-content:space-between;
+  border-bottom:1px solid #294763;border-radius:0;box-shadow:none;overflow:visible;}
+.sub-nav-left{color:#F4F7FB;font-size:12px;font-weight:700;line-height:1.3;letter-spacing:0.2px;white-space:nowrap;}
+.sub-nav-right{color:#C3D0DE;font-size:11px;font-weight:600;line-height:1.3;gap:12px;
+  display:flex;align-items:center;justify-content:flex-end;white-space:nowrap;font-variant-numeric:tabular-nums;}
+.hdr-pending{display:inline-flex;align-items:center;gap:6px;background:#FFF3D0;border:1px solid #E3A72F;
+  color:#7A4A00;font-size:11px;font-weight:800;line-height:1.1;letter-spacing:0.1px;
+  padding:4px 9px;margin:0;border-radius:999px;box-shadow:none;}
+.hdr-pending .dot{width:6px;height:6px;border-radius:50%;background:#A15C00;border:none;box-shadow:none;display:inline-block;}
 
 .page-body{padding:12px 26px 20px 26px;}
 .section-h{font-size:18px !important;font-weight:700 !important;color:#173453 !important;margin:0 0 12px 0 !important;padding:0 !important;}
 .section-h .section-count{color:#5a6570;font-weight:600;font-size:14px;}
 
-/* FIX 3: role-bar (warning banner) — bigger padding, bigger font, visible */
-.role-bar{background:#fff4d6;border:1px solid #eab308;border-left:6px solid #eab308;border-radius:6px;padding:14px 20px;display:flex;align-items:center;gap:12px;font-size:15px;line-height:1.5;color:#5d4000;min-height:52px;}
-.role-bar b{color:#3d2b00;}
+/* MIDNIGHT LUMEN — demo-role banner (informational; wording unchanged) */
+.role-bar{background:#FFFFFF;border:1px solid #D7E0EA;border-left:4px solid #F5B942;color:#3A4657;
+  min-height:44px;padding:10px 14px;margin:0;gap:8px;border-radius:10px;box-shadow:0 4px 12px rgba(20,32,51,0.08);
+  font-size:13px;font-weight:500;line-height:1.35;display:flex;align-items:center;}
+.role-bar b,.role-bar strong{color:#142033;font-weight:800;}
 .pending-badge{display:inline-flex;align-items:center;gap:6px;background:#fde8e8;border:1px solid #d99;border-radius:5px;padding:10px 14px;font-size:14px;font-weight:700;color:#a01818;justify-content:center;}
 
 .metric-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px;}
@@ -1019,17 +1030,25 @@ div[data-baseweb="tab-border"]{background-color:transparent !important;}
    styling is consolidated in the "BaseWeb dropdown MENU" block below. (The severity
    filter is a segmented_control — chips, protected, no dropdown.) */
 
-/* TASK 8 — demo-mode banner / role-switch button: neutral secondary variant of
-   the Task 2 button system (NOT approve/reject colors), scoped to the row with
-   the .role-bar banner. The session ID is display text, not a button. */
-div[data-testid="stHorizontalBlock"]:has(.role-bar) .stButton>button{
-  background:linear-gradient(to bottom,var(--neutral-a),var(--neutral-b)) !important;
-  color:var(--neutral-text) !important;border-color:var(--neutral-border) !important;
-  transition:filter .12s ease,box-shadow .12s ease,transform .05s ease;}
-div[data-testid="stHorizontalBlock"]:has(.role-bar) .stButton>button:hover{
-  filter:brightness(.97) !important;box-shadow:0 2px 6px rgba(0,0,0,.12) !important;}
-div[data-testid="stHorizontalBlock"]:has(.role-bar) .stButton>button:active{
-  filter:brightness(.93) !important;transform:translateY(1px);box-shadow:none !important;}
+/* MIDNIGHT LUMEN — role-switch button (→ Manager / → Analyst): the 3rd stColumn of
+   the header control row ONLY. Widget key/callback unchanged (positional selector). */
+div[data-testid="stHorizontalBlock"]:has(.role-bar) div[data-testid="stColumn"]:nth-child(3) .stButton>button{
+  background:#2457C5 !important;border:1px solid #2457C5 !important;color:#FFFFFF !important;
+  min-height:42px !important;width:100% !important;padding:0 14px !important;margin:0 !important;
+  border-radius:9px !important;box-shadow:0 4px 10px rgba(36,87,197,0.22) !important;
+  font-size:12px !important;font-weight:800 !important;
+  transition:background .12s ease,border-color .12s ease,box-shadow .12s ease,transform .12s ease !important;}
+div[data-testid="stHorizontalBlock"]:has(.role-bar) div[data-testid="stColumn"]:nth-child(3) .stButton>button:hover{
+  background:#1E46A0 !important;border-color:#1E46A0 !important;color:#FFFFFF !important;
+  box-shadow:0 6px 14px rgba(36,87,197,0.25) !important;transform:translateY(-1px) !important;}
+div[data-testid="stHorizontalBlock"]:has(.role-bar) div[data-testid="stColumn"]:nth-child(3) .stButton>button:active{
+  background:#173A86 !important;border-color:#173A86 !important;color:#FFFFFF !important;
+  box-shadow:inset 0 1px 2px rgba(11,31,51,0.25) !important;transform:translateY(0) !important;}
+div[data-testid="stHorizontalBlock"]:has(.role-bar) div[data-testid="stColumn"]:nth-child(3) .stButton>button:focus-visible{
+  outline:none !important;border-color:#2457C5 !important;box-shadow:0 0 0 3px #AEC7FF !important;}
+div[data-testid="stHorizontalBlock"]:has(.role-bar) div[data-testid="stColumn"]:nth-child(3) .stButton>button:disabled{
+  background:#E8EDF3 !important;border-color:#D7E0EA !important;color:#8B98A8 !important;
+  box-shadow:none !important;transform:none !important;opacity:1 !important;}
 </style>
 """)
 
@@ -1251,7 +1270,7 @@ pending_pill  = (
 
 st.markdown(f"""
 <div class="id-bar">
-  <h1 class="id-bar-logo">Lumen <span>Verify</span></h1>
+  <div class="id-bar-logo" role="heading" aria-level="1">Lumen <span>Verify</span></div>
   <div class="id-bar-right">
     <span class="id-bar-user">{emp['name']} · {emp['rank']} · {emp['id']}</span>
   </div>
@@ -1268,21 +1287,57 @@ st.markdown(f"""
 
 # ── Demo-reset control (yellow banner button) + confirmation dialog CSS ──────────
 st.html("""<style>
-/* Reset Demo button lives in the yellow demo-banner row; override the neutral
-   role-button rule with a higher-specificity keyed selector (exact spec colors). */
-div[data-testid="stHorizontalBlock"]:has(.role-bar) div[class*="st-key-demo_reset"] .stButton>button{
-  background:#eab308 !important;border:1px solid #c78f00 !important;color:#5d4000 !important;
-  height:36px !important;min-height:36px !important;padding:0 16px !important;font-weight:700 !important;
-  border-radius:6px !important;box-shadow:0 2px 5px rgba(93,64,0,.18) !important;cursor:pointer !important;
-  filter:none !important;white-space:nowrap !important;
+/* MIDNIGHT LUMEN — header control row (banner + two buttons). Scoped to the ONE
+   stHorizontalBlock that contains .role-bar; no other horizontal block is touched. */
+div[data-testid="stHorizontalBlock"]:has(.role-bar){
+  background:#F3F6FA !important;padding:12px 24px 14px !important;margin:0 0 12px 0 !important;
+  gap:12px !important;border:none !important;border-radius:0 !important;box-shadow:none !important;
+  align-items:center !important;}
+
+/* Reset Demo button (2nd stColumn), keyed selector — widget key/callback unchanged. */
+div.st-key-demo_reset .stButton>button{
+  background:#FFFFFF !important;border:1px solid #D7E0EA !important;color:#27364A !important;
+  min-height:42px !important;width:100% !important;padding:0 14px !important;margin:0 !important;
+  border-radius:9px !important;box-shadow:0 2px 6px rgba(20,32,51,0.10) !important;
+  font-size:12px !important;font-weight:700 !important;cursor:pointer !important;white-space:nowrap !important;
   transition:background .12s ease,border-color .12s ease,box-shadow .12s ease,transform .12s ease,color .12s ease !important;}
-div[data-testid="stHorizontalBlock"]:has(.role-bar) div[class*="st-key-demo_reset"] .stButton>button:hover{
-  background:#d99a00 !important;border-color:#a66f00 !important;color:#ffffff !important;
-  transform:translateY(-1px) !important;box-shadow:0 4px 8px rgba(93,64,0,.22) !important;filter:none !important;}
-div[data-testid="stHorizontalBlock"]:has(.role-bar) div[class*="st-key-demo_reset"] .stButton>button:active{
-  background:#c78f00 !important;transform:translateY(0) !important;box-shadow:inset 0 2px 4px rgba(93,64,0,.20) !important;}
-div[data-testid="stHorizontalBlock"]:has(.role-bar) div[class*="st-key-demo_reset"] .stButton>button:focus-visible{
-  outline:3px solid #1a5276 !important;outline-offset:2px !important;}
+div.st-key-demo_reset .stButton>button:hover{
+  background:#FFF7DF !important;border-color:#E3A72F !important;color:#7A4A00 !important;
+  box-shadow:0 4px 10px rgba(161,92,0,0.14) !important;transform:translateY(-1px) !important;}
+div.st-key-demo_reset .stButton>button:active{
+  background:#FCE9B2 !important;border-color:#A15C00 !important;color:#7A4A00 !important;
+  box-shadow:inset 0 1px 2px rgba(20,32,51,0.12) !important;transform:translateY(0) !important;}
+div.st-key-demo_reset .stButton>button:focus-visible{
+  outline:none !important;border-color:#2457C5 !important;box-shadow:0 0 0 3px #C7D7F7 !important;}
+div.st-key-demo_reset .stButton>button:disabled{
+  background:#E8EDF3 !important;border-color:#D7E0EA !important;color:#8B98A8 !important;
+  box-shadow:none !important;transform:none !important;opacity:1 !important;}
+
+/* MIDNIGHT LUMEN — header-only responsive layout (≤700px). Nothing below the header
+   control row is affected; no header metadata is hidden. */
+@media (max-width:700px){
+  .id-bar{flex-direction:column !important;align-items:flex-start !important;justify-content:flex-start !important;
+    min-height:0 !important;padding:14px 16px 12px !important;gap:10px !important;box-shadow:0 5px 16px rgba(11,31,51,0.18) !important;}
+  .id-bar-logo{font-size:26px !important;font-weight:800 !important;line-height:1 !important;padding:0 !important;margin:0 !important;}
+  .id-bar-user{font-size:11px !important;font-weight:700 !important;padding:6px 9px !important;border-radius:8px !important;white-space:nowrap !important;max-width:100% !important;}
+  .sub-nav{flex-direction:column !important;align-items:flex-start !important;justify-content:flex-start !important;
+    min-height:0 !important;height:auto !important;padding:10px 16px 12px !important;gap:8px !important;overflow:visible !important;}
+  .sub-nav-left{font-size:12px !important;white-space:normal !important;width:100% !important;}
+  .sub-nav-right{display:grid !important;grid-template-columns:1fr !important;align-items:start !important;
+    justify-items:start !important;width:100% !important;gap:6px !important;font-size:11px !important;white-space:normal !important;}
+  div[data-testid="stHorizontalBlock"]:has(.role-bar){
+    display:grid !important;grid-template-columns:minmax(0,1fr) minmax(0,1fr) !important;
+    padding:10px 16px 12px !important;gap:8px !important;margin-bottom:10px !important;align-items:stretch !important;}
+  div[data-testid="stHorizontalBlock"]:has(.role-bar) > div[data-testid="stColumn"]:nth-child(1){
+    grid-column:1 / -1 !important;width:100% !important;}
+  div[data-testid="stHorizontalBlock"]:has(.role-bar) > div[data-testid="stColumn"]:nth-child(2),
+  div[data-testid="stHorizontalBlock"]:has(.role-bar) > div[data-testid="stColumn"]:nth-child(3){
+    width:100% !important;min-width:0 !important;flex:none !important;}
+  .role-bar{min-height:0 !important;padding:10px 12px !important;font-size:12px !important;line-height:1.35 !important;border-radius:9px !important;}
+  div.st-key-demo_reset .stButton>button,
+  div[data-testid="stHorizontalBlock"]:has(.role-bar) div[data-testid="stColumn"]:nth-child(3) .stButton>button{
+    width:100% !important;min-height:40px !important;padding:0 8px !important;font-size:11px !important;border-radius:8px !important;}
+}
 /* Reset confirmation dialog */
 .drd-warn{background:#fff8e1;border:1px solid #eab308;border-left:5px solid #eab308;color:#5d4000;
   border-radius:6px;padding:14px 16px;margin-bottom:16px;font-size:14px;line-height:1.5;}
