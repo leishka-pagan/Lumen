@@ -12,6 +12,7 @@ import hashlib
 import json
 import socket
 import sys
+from datetime import datetime
 from pathlib import Path
 
 import pytest
@@ -20,8 +21,9 @@ ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / "data"
 sys.path.insert(0, str(ROOT))
 
-from src import live_capture  # noqa: E402
+from src import live_capture, llm_drafter, pipeline  # noqa: E402
 from src.live_capture import CaptureError  # noqa: E402
+from src.llm_drafter import CaptureResponseError  # noqa: E402
 from src.capture_guardrails import (  # noqa: E402
     CAPTURE_MODEL, CapturePolicyError, MAX_OUTPUT_TOKENS_PER_REQUEST,
     REQUIRED_CONFIRMATION_PHRASE, authorize_capture_session,
@@ -515,6 +517,11 @@ def test_normal_app_import_performs_no_capture_or_api_call(monkeypatch):
     importlib.reload(importlib.import_module("src.live_capture"))   # re-import: no network at import
     # app does not construct an Anthropic client or reference live_capture at startup
     assert not hasattr(app, "live_capture")
+    # The reload above rebinds src.live_capture's classes to fresh objects. Re-sync the
+    # from-imported name so later tests' ``pytest.raises(CaptureError)`` still matches the
+    # class the (now reloaded) run_capture raises; otherwise the stale class silently fails
+    # to catch and the real exception escapes.
+    globals()["CaptureError"] = live_capture.CaptureError
 
 
 def test_committed_csvs_untouched_by_capture(tmp_path):
@@ -524,3 +531,185 @@ def test_committed_csvs_untouched_by_capture(tmp_path):
     before = {n: h(n) for n in names}
     _run(_live_env(), tmp_path, [_ok_response() for _ in CAPTURE_ALERTS])
     assert {n: h(n) for n in names} == before
+
+
+# ── Hardening: result-persistence boundary (this task) ───────────────────────
+def _claims_list(n):
+    return [dict(_VALID_CLAIM) for _ in range(n)]
+
+
+def _response_with(n, input_tokens=900, output_tokens=400):
+    return _FakeResponse(_claims_list(n), input_tokens, output_tokens)
+
+
+def _probes(output_dir) -> list:
+    d = Path(output_dir)
+    return [f.name for f in d.iterdir() if f.name.startswith(".capture_probe_")] if d.is_dir() else []
+
+
+# (a) A live run with NO now_fn stamps a timezone-aware CURRENT UTC — never 1970.
+def test_live_run_without_now_fn_uses_real_utc_not_1970(tmp_path):
+    p = _paths(tmp_path)
+    live_capture.run_capture(
+        env=_live_env(), confirmation_phrase=REQUIRED_CONFIRMATION_PHRASE,
+        manifest_path=p["manifest"], output_dir=p["output_dir"],
+        client_factory=_factory([_ok_response() for _ in CAPTURE_ALERTS]),
+    )  # deliberately no now_fn → exercises the real _utc_now default
+    out = json.loads((Path(p["output_dir"]) / "ALERT001.capture.json").read_text())
+    manifest = json.loads(Path(p["manifest"]).read_text())
+    for ts in (out["captured_at"], manifest["started_at"], manifest["completed_at"]):
+        assert not ts.startswith("1970"), f"stale epoch default leaked: {ts}"
+        parsed = datetime.fromisoformat(ts)
+        assert parsed.tzinfo is not None, f"timestamp not timezone-aware: {ts}"
+        assert parsed.year >= 2025, f"implausible capture timestamp: {ts}"
+
+
+# (b) Empty tool claims array → one request, recorded FAILED, no output, six planned, no retry.
+def test_empty_claims_array_fails_after_one_call_no_retry(tmp_path):
+    p = _paths(tmp_path)
+    f = _factory([_FakeResponse([], 900, 400)] + [_ok_response() for _ in range(6)])
+    with pytest.raises(CaptureError):
+        live_capture.run_capture(
+            env=_live_env(), confirmation_phrase=REQUIRED_CONFIRMATION_PHRASE,
+            manifest_path=p["manifest"], output_dir=p["output_dir"],
+            client_factory=f, now_fn=_now,
+        )
+    assert len(f.holder["client"].calls) == 1                       # exactly one request, no retry
+    m = json.loads(Path(p["manifest"]).read_text())
+    assert m["alerts"]["ALERT001"]["status"] == "failed"
+    assert not (Path(p["output_dir"]) / "ALERT001.capture.json").exists()
+    assert sum(1 for e in m["alerts"].values() if e["status"] == "planned") == 6
+
+
+# (b) All claims fail per-claim validation (unknown type) → identical fail-closed outcome.
+def test_all_invalid_claims_fail_like_empty(tmp_path):
+    p = _paths(tmp_path)
+    bad = _FakeResponse(
+        [{"claim_type": "NOT_A_KNOWN_TYPE", "asserted_value": "true", "evidence_refs": ["x"]}],
+        900, 400,
+    )
+    f = _factory([bad] + [_ok_response() for _ in range(6)])
+    with pytest.raises(CaptureError):
+        live_capture.run_capture(
+            env=_live_env(), confirmation_phrase=REQUIRED_CONFIRMATION_PHRASE,
+            manifest_path=p["manifest"], output_dir=p["output_dir"],
+            client_factory=f, now_fn=_now,
+        )
+    assert len(f.holder["client"].calls) == 1
+    m = json.loads(Path(p["manifest"]).read_text())
+    assert m["alerts"]["ALERT001"]["status"] == "failed"
+    assert not (Path(p["output_dir"]) / "ALERT001.capture.json").exists()
+    assert sum(1 for e in m["alerts"].values() if e["status"] == "planned") == 6
+
+
+# (b) More than three valid claims → fail closed (never truncated + recorded as succeeded).
+def test_more_than_three_valid_claims_fails_closed(tmp_path):
+    p = _paths(tmp_path)
+    f = _factory([_response_with(4)] + [_ok_response() for _ in range(6)])
+    with pytest.raises(CaptureError):
+        live_capture.run_capture(
+            env=_live_env(), confirmation_phrase=REQUIRED_CONFIRMATION_PHRASE,
+            manifest_path=p["manifest"], output_dir=p["output_dir"],
+            client_factory=f, now_fn=_now,
+        )
+    assert len(f.holder["client"].calls) == 1
+    m = json.loads(Path(p["manifest"]).read_text())
+    assert m["alerts"]["ALERT001"]["status"] == "failed"
+    assert not (Path(p["output_dir"]) / "ALERT001.capture.json").exists()
+
+
+# (b) A malformed evidence_refs element rejects the whole claim → 0 valid → fail closed.
+def test_malformed_evidence_refs_reject_whole_response(tmp_path):
+    p = _paths(tmp_path)
+    bad = _FakeResponse(
+        [{"claim_type": "prior_sar_history", "asserted_value": "true",
+          "evidence_refs": ["ok", ""]}],   # empty-string element ⇒ claim rejected
+        900, 400,
+    )
+    f = _factory([bad] + [_ok_response() for _ in range(6)])
+    with pytest.raises(CaptureError):
+        live_capture.run_capture(
+            env=_live_env(), confirmation_phrase=REQUIRED_CONFIRMATION_PHRASE,
+            manifest_path=p["manifest"], output_dir=p["output_dir"],
+            client_factory=f, now_fn=_now,
+        )
+    m = json.loads(Path(p["manifest"]).read_text())
+    assert m["alerts"]["ALERT001"]["status"] == "failed"
+
+
+# (b) Adapter-level: a malformed ref drops ONLY that claim, others survive; raises on 0 / >3.
+def test_adapter_drops_malformed_claim_and_bounds_count():
+    alert, source_tables = pipeline._build_live_inputs("ALERT001")
+    good = {"claim_type": "prior_sar_history", "asserted_value": "true",
+            "evidence_refs": ["prior_cases.customer_id=CUST0001"]}
+    malformed = {"claim_type": "prior_sar_history", "asserted_value": "true",
+                 "evidence_refs": [123]}          # non-string element ⇒ this claim only is dropped
+    client = _FakeClient([_FakeResponse([good, malformed], 900, 400)])
+    claims, in_tok, out_tok = llm_drafter.draft_claims_for_capture(alert, source_tables, client)
+    assert len(claims) == 1 and (in_tok, out_tok) == (900, 400)
+    # Zero valid and more-than-three both raise the non-sensitive count-only error.
+    with pytest.raises(CaptureResponseError):
+        llm_drafter.draft_claims_for_capture(
+            alert, source_tables, _FakeClient([_FakeResponse([], 900, 400)]))
+    with pytest.raises(CaptureResponseError):
+        llm_drafter.draft_claims_for_capture(
+            alert, source_tables, _FakeClient([_FakeResponse(_claims_list(4), 900, 400)]))
+
+
+# (b) Boundary sizes 1 and 3 both succeed and persist exactly that many claims.
+def test_one_and_three_valid_claims_succeed(tmp_path):
+    p = _paths(tmp_path)
+    script = [_response_with(1), _response_with(3)] + [_response_with(1) for _ in range(5)]
+    summary = live_capture.run_capture(
+        env=_live_env(), confirmation_phrase=REQUIRED_CONFIRMATION_PHRASE,
+        manifest_path=p["manifest"], output_dir=p["output_dir"],
+        client_factory=_factory(script), now_fn=_now,
+    )
+    assert summary["succeeded"] == 7
+    o1 = json.loads((Path(p["output_dir"]) / "ALERT001.capture.json").read_text())
+    o2 = json.loads((Path(p["output_dir"]) / "ALERT002.capture.json").read_text())
+    assert len(o1["claims"]) == 1 and len(o2["claims"]) == 3
+
+
+# (c) output_dir is an existing regular FILE → refused BEFORE any client / any pending entry.
+def test_output_dir_regular_file_refused_before_client_and_pending(tmp_path):
+    badfile = tmp_path / "not_a_dir"
+    badfile.write_text("i am a file")
+    manifest = tmp_path / "m.json"
+    with pytest.raises(CaptureError):
+        live_capture.run_capture(
+            env=_live_env(), confirmation_phrase=REQUIRED_CONFIRMATION_PHRASE,
+            manifest_path=str(manifest), output_dir=str(badfile),
+            client_factory=_poison_factory(),   # AssertionError (not CaptureError) if ever constructed
+            now_fn=_now,
+        )
+    assert not manifest.exists()                 # preflight precedes manifest init ⇒ no pending entry
+
+
+# (c) A simulated write/probe failure → refused before any client; no probe file survives.
+def test_output_preflight_write_failure_refused_before_client_no_probe(tmp_path, monkeypatch):
+    p = _paths(tmp_path)
+    def _boom(*a, **k):
+        raise OSError("simulated: directory not writable")
+    monkeypatch.setattr(live_capture.tempfile, "mkstemp", _boom)
+    with pytest.raises(CaptureError):
+        live_capture.run_capture(
+            env=_live_env(), confirmation_phrase=REQUIRED_CONFIRMATION_PHRASE,
+            manifest_path=p["manifest"], output_dir=p["output_dir"],
+            client_factory=_poison_factory(), now_fn=_now,
+        )
+    assert Path(p["output_dir"]).is_dir()        # mkdir preceded the probe attempt
+    assert _probes(p["output_dir"]) == []        # nothing left behind
+    assert not Path(p["manifest"]).exists()      # never reached manifest init
+
+
+# (c) A successful preflight leaves no probe residue and still writes the real outputs.
+def test_successful_preflight_leaves_no_probe(tmp_path):
+    p = _paths(tmp_path)
+    live_capture.run_capture(
+        env=_live_env(), confirmation_phrase=REQUIRED_CONFIRMATION_PHRASE,
+        manifest_path=p["manifest"], output_dir=p["output_dir"],
+        client_factory=_factory([_ok_response() for _ in CAPTURE_ALERTS]), now_fn=_now,
+    )
+    assert _probes(p["output_dir"]) == []
+    assert (Path(p["output_dir"]) / "ALERT001.capture.json").exists()

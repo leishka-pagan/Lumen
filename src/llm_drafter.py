@@ -235,6 +235,13 @@ def _build_output(alert: dict, claim_type: str, asserted_value: str, evidence_re
     }
 
 
+class CaptureResponseError(Exception):
+    """Raised by the CAPTURE adapter when a provider response is not acceptable (zero
+    valid claims, or more than three). Intentionally non-sensitive: its message carries
+    only a count — never a prompt, a raw response, or customer data. Normal
+    ``draft_claims`` never raises this (it swallows and returns an empty list)."""
+
+
 def build_capture_request(alert: dict, source_tables: dict[str, pd.DataFrame]) -> dict[str, Any]:
     """The EXACT ``messages.create`` kwargs for a one-time CAPTURE request.
 
@@ -276,11 +283,23 @@ def draft_claims_for_capture(alert: dict, source_tables: dict[str, pd.DataFrame]
             continue
         if not isinstance(asserted_value, str) or not asserted_value.strip():
             continue
+        # Capture is stricter than normal drafting: evidence_refs must be a list and
+        # EVERY supplied item must be a nonempty string (a malformed element rejects the
+        # whole claim, rather than being silently coerced away).
         if not isinstance(evidence_refs, list):
-            evidence_refs = []
+            continue
+        if any(not isinstance(ref, str) or not ref.strip() for ref in evidence_refs):
+            continue
         if claim_type in REQUIRES_EVIDENCE_REFS and len(evidence_refs) == 0:
             continue
         valid.append(_build_output(alert, claim_type, asserted_value, list(evidence_refs)))
+    # A capture response is successful ONLY with 1..3 valid normalized claims. Zero
+    # (nothing usable) or more than three (fail closed) is a rejected response; the
+    # message carries only a count, never response content or customer data.
+    if not (1 <= len(valid) <= 3):
+        raise CaptureResponseError(
+            f"capture response yielded {len(valid)} valid claims; expected 1..3"
+        )
     usage = getattr(response, "usage", None)
     return valid, getattr(usage, "input_tokens", None), getattr(usage, "output_tokens", None)
 

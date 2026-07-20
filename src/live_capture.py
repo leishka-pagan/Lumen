@@ -13,9 +13,11 @@ safety is provided by an atomic JSON manifest kept OUTSIDE the repo: a succeeded
 is never called again, and a pending/failed/malformed/over-budget/wrong-model/
 wrong-source manifest halts the whole run. The API is never called twice for one alert.
 
-This module writes no runtime/baseline CSV and no audit event, and never persists,
-prints, hashes, or otherwise leaks the API key, a prompt, a raw request/response, or
-any customer datum.
+This module writes no runtime/baseline CSV and no audit event. The MANIFEST and the
+returned SUMMARY contain no prompt, key, raw response, headers, or customer data. The
+EXTERNAL capture output (written outside the repository) INTENTIONALLY contains
+normalized alert IDs, claims, and evidence references, and must therefore be treated as
+capture data.
 """
 
 from __future__ import annotations
@@ -26,6 +28,7 @@ import math
 import os
 import tempfile
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Mapping
 
@@ -338,6 +341,43 @@ def _valid_usage(value: Any) -> bool:
     return isinstance(value, int) and not isinstance(value, bool) and value > 0
 
 
+def _utc_now() -> str:
+    """Timezone-aware current UTC timestamp (ISO-8601). Used only in a live run — never
+    in dry-run, and overridable via ``now_fn`` for deterministic tests."""
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _preflight_output_dir(output_p: Path) -> None:
+    """Prove ``output_dir`` exists, is a directory, and is writable BEFORE any client is
+    constructed, any alert is marked pending, or any paid request is issued.
+
+    Creates the directory if needed, confirms it is a directory, then proves writability
+    with a UNIQUE probe created inside it (written, flushed, fsynced, removed). Raises
+    CaptureError on any failure and always leaves NO probe file behind.
+    """
+    try:
+        output_p.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        raise CaptureError("output-dir could not be created") from None
+    if not output_p.is_dir():
+        raise CaptureError("output-dir is not a directory")
+    probe: str | None = None
+    try:
+        fd, probe = tempfile.mkstemp(dir=str(output_p), prefix=".capture_probe_", suffix=".tmp")
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            fh.write("probe")
+            fh.flush()
+            os.fsync(fh.fileno())
+    except OSError:
+        raise CaptureError("output-dir is not writable") from None
+    finally:
+        if probe is not None:
+            try:
+                os.unlink(probe)
+            except OSError:
+                pass
+
+
 def _default_client_factory():
     """Construct the Anthropic client with the guardrail timeout and ZERO retries.
 
@@ -362,7 +402,7 @@ def run_capture(
     summary. See the module docstring for the full contract.
     """
     root = repo_root() if project_root is None else Path(project_root)
-    now = now_fn if now_fn is not None else (lambda: "1970-01-01T00:00:00+00:00")
+    now = now_fn if now_fn is not None else _utc_now   # real UTC unless a test injects one
 
     # ── Gates that never touch the API key ───────────────────────────────────
     manifest_p = _require_external_absolute_path(manifest_path, "manifest", root)
@@ -378,6 +418,10 @@ def run_capture(
     api_key_present = bool(env.get(_API_KEY_ENV))     # truthiness only; value never stored
     # Authoritative gate: the ONLY way to a spendable budget.
     budget = authorize_capture_session(env, confirmation_phrase, api_key_present)
+
+    # Output-directory preflight — AFTER every gate, but BEFORE constructing a client,
+    # marking any alert pending, initializing the manifest, or issuing any paid request.
+    _preflight_output_dir(output_p)
 
     # Plan + provenance (still no client, no network).
     plans = plan_requests(root)
