@@ -1570,7 +1570,7 @@ def show_case_dialog(alert_id: str, source: dict) -> None:
 
     if case["missing"]:
         st.markdown(
-            f'<div class="warn-box">Missing evidence: {", ".join(case["missing"])}</div>',
+            f'<div class="warn-box">Missing source evidence: {", ".join(case["missing"])}</div>',
             unsafe_allow_html=True,
         )
 
@@ -1584,7 +1584,7 @@ def show_case_dialog(alert_id: str, source: dict) -> None:
           <div class="field-row"><span class="field-lbl">KYC Status</span><span class="field-val">{c.get('kyc_status','—')}</span></div>
           <div class="field-row"><span class="field-lbl">KYC Current (12mo)</span><span class="field-val">{case['kyc_current_within_12mo']}</span></div>
           <div class="field-row"><span class="field-lbl">Prior SAR Count</span><span class="field-val" style="color:{'#8b0000' if case['prior_sar'] > 0 else '#1a5c1a'};font-weight:700;">{case['prior_sar']}</span></div>
-          <div class="field-row"><span class="field-lbl">Case Readiness</span><span class="field-val">{case['readiness']}%</span></div>
+          <div class="field-row"><span class="field-lbl">Evidence Completeness</span><span class="field-val">{case['readiness']}%</span></div>
         </div>
         <div class="case-section">
           <div class="case-section-title">Transactions</div>
@@ -1931,7 +1931,7 @@ with tab1:
   <caption style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);">Alert queue — click a row to open its case file</caption>
   <thead><tr>
     <th scope="col">Alert ID</th><th scope="col">Customer</th><th scope="col">Rule Triggered</th>
-    <th scope="col">Severity</th><th scope="col">Case Readiness</th><th scope="col">DRAFT</th>
+    <th scope="col">Severity</th><th scope="col">EVIDENCE COMPLETENESS</th><th scope="col">DRAFT</th>
     <th scope="col">Status</th><th scope="col">Analyst</th><th scope="col">Action</th>
   </tr></thead>
   <tbody>{rows_html}</tbody>
@@ -2396,7 +2396,7 @@ with tab3:
         st.markdown('<div style="height:14px"></div>', unsafe_allow_html=True)
 
         with st.container(border=True):
-            st.markdown('<div class="settings-section-title">Case Readiness Gates</div>', unsafe_allow_html=True)
+            st.markdown('<div class="settings-section-title">Evidence Completeness Gates</div>', unsafe_allow_html=True)
             st.markdown('<p class="field-desc-txt"><b>KYC staleness limit</b> — profiles older than this (months) fail the readiness check. Default: 12.</p>', unsafe_allow_html=True)
             new_kyc    = st.number_input("KYC staleness limit (months)",         3,  36,  rs["kyc_staleness_months"],  3,  key="ni_kyc")
             st.markdown('<p class="field-desc-txt"><b>Transaction history</b> — minimum days required before AI can draft. Default: 90.</p>', unsafe_allow_html=True)

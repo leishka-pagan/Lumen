@@ -192,8 +192,9 @@ def test_alert004_remains_pass_complete_escalate_and_100_readiness():
     _btn(at, "hro_ALERT004").click().run()
     assert not at.exception, [str(e.value) for e in at.exception]
     md = _md(at)
-    assert "Tomas Herrera —" in md and "Case Readiness" in md and "100%" in md
-    assert "Missing evidence:" not in md
+    # "Case Readiness" was renamed to "Evidence Completeness" (percentage unchanged).
+    assert "Tomas Herrera —" in md and "Evidence Completeness" in md and "100%" in md
+    assert "Missing source evidence:" not in md
 
 
 # 12 — every oversight badge is derived from the canonical lifecycle, not alerts.status

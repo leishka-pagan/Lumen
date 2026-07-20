@@ -457,3 +457,83 @@ def test_draft_column_render_is_read_only(runtime, monkeypatch):
     for k in runtime:
         assert runtime[k].read_bytes() == before[k]
     assert _committed_hashes() == committed
+
+
+# ── "Case Readiness" -> "Evidence Completeness" relabel (percentage unchanged) ─
+# Representative percentages (calculation is byte-for-byte unchanged).
+EVIDENCE_PCT = {"ALERT004": 100, "ALERT002": 60, "ALERT006": 50, "ALERT007": 93, "ALERT022": 94}
+
+
+def _evidence_pair(pct: int) -> str:
+    return f'field-lbl">Evidence Completeness</span><span class="field-val">{pct}%</span>'
+
+
+def test_alert_inventory_heading_is_evidence_completeness(runtime):
+    table = _queue_table(_run())
+    assert ">EVIDENCE COMPLETENESS</th>" in table
+    assert "Case Readiness" not in table
+    assert ">Case Readiness</th>" not in table
+
+
+def test_case_file_uses_evidence_completeness_label_and_same_percent(runtime):
+    for alert_id, pct in EVIDENCE_PCT.items():
+        md = _md(_run(open_case=alert_id))
+        assert _evidence_pair(pct) in md, f"{alert_id} expected Evidence Completeness {pct}%"
+        assert "Case Readiness" not in md
+
+
+def test_warning_uses_missing_source_evidence(runtime):
+    # ALERT006 has 50% evidence completeness -> a missing-evidence warning is shown.
+    md = _md(_run(open_case="ALERT006"))
+    assert "Missing source evidence:" in md
+    assert "Missing evidence:" not in md            # old prefix retired
+
+
+def test_all_retired_case_readiness_strings_absent(runtime):
+    # Full default render (all tab panels render in AppTest, incl. the Risk Settings
+    # section retitled "Evidence Completeness Gates") plus a Case File.
+    md_full = _md(_run())
+    assert "Case Readiness" not in md_full
+    assert "Evidence Completeness Gates" in md_full  # Risk Settings section retitled
+    md_case = _md(_run(open_case="ALERT004"))
+    assert "Case Readiness" not in md_case
+    assert "CASE READINESS" not in md_full and "CASE READINESS" not in md_case
+
+
+def test_alert022_94pct_while_not_processed(runtime):
+    md = _md(_run(open_case="ALERT022"))
+    assert _evidence_pair(94) in md                              # Evidence Completeness 94%
+    assert _pair("AI VERIFICATION", "NOT EVALUATED") in md
+    assert _pair("REVIEW REQUIREMENTS", "NOT PROCESSED") in md
+    assert _pair("RECORDED DISPOSITION", "NONE") in md           # evidence != processing
+
+
+def test_evidence_completeness_cannot_change_queue_status():
+    # The queue status is lifecycle-derived; changing evidence availability (hence the
+    # completeness %) leaves the status untouched.
+    source = app.load_source_tables(app.mtimes_key())
+    index = {r.alert_id: r for r in load_lifecycle(DATA / "case_lifecycle.csv")}
+    arow = source["alerts"][source["alerts"]["alert_id"] == "ALERT003"].iloc[0]
+    base = app.build_queue_row(arow, source, index)
+    ev = source["evidence_items"].copy()
+    ev.loc[ev["alert_id"] == "ALERT003", "available"] = "false"   # force 0% completeness
+    faked = dict(source); faked["evidence_items"] = ev
+    changed = app.build_queue_row(arow, faked, index)
+    assert changed["readiness"] != base["readiness"]             # completeness really changed
+    assert changed["status"] == base["status"]                   # queue status unchanged
+
+
+def test_evidence_completeness_render_is_read_only(runtime, monkeypatch):
+    committed = _committed_hashes()
+    before = {k: runtime[k].read_bytes() for k in runtime}
+    import src.audit as audit_mod
+    calls: list = []
+    monkeypatch.setattr(audit_mod, "log_event", lambda **kw: calls.append(kw) or {})
+    _queue_table(_run())
+    for alert_id in ("ALERT004", "ALERT006", "ALERT022"):
+        at = _run(open_case=alert_id)
+        assert not at.exception, [str(e.value) for e in at.exception]
+    assert calls == []
+    for k in runtime:
+        assert runtime[k].read_bytes() == before[k]
+    assert _committed_hashes() == committed
