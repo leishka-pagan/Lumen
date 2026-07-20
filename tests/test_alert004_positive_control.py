@@ -110,8 +110,12 @@ def test_alert006_is_the_sole_readiness_blocked_case():
 def test_structuring_claim_and_four_transactions_unchanged():
     src = _source()
     claims = app.get_case_detail("ALERT004", src)["ai_claims"]
-    # the real verifier still returns the single supported structuring PASS
-    assert [(c["type"], c["result"]) for c in claims] == [("structuring", "PASS")]
+    # The captured draft asserts structuring plus an expected-activity mismatch; the real
+    # verifier supports BOTH against the same four sub-threshold deposits.
+    assert [(c["type"], c["result"]) for c in claims] == [
+        ("structuring", "PASS"),
+        ("expected_activity_mismatch", "PASS"),
+    ]
     t = src["transactions"]
     sub = t[t["customer_id"] == "CUST0004"].copy()
     sub["amt"] = sub["amount"].astype(float)

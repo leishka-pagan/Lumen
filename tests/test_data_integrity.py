@@ -25,9 +25,9 @@ ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / "data"
 sys.path.insert(0, str(ROOT))  # make `src` importable regardless of how pytest is launched
 
-from src import schema  # noqa: E402
+from src import pipeline, schema  # noqa: E402
 from src.audit import log_event  # noqa: E402
-from src.verifier import KNOWN_CLAIM_TYPES, verify_claim  # noqa: E402
+from src.verifier import HIGH_RISK_COUNTRIES, KNOWN_CLAIM_TYPES, verify_claim  # noqa: E402
 
 REF_DATE = date(2026, 5, 29)
 
@@ -50,7 +50,7 @@ def test_volumes_in_target_ranges():
     assert len(load("customers")) == 30
     assert 150 <= len(load("transactions")) <= 300
     assert 30 <= len(load("alerts")) <= 50
-    assert len(load("ai_outputs")) == 10
+    assert len(load("ai_outputs")) == 93        # 39 captured alerts, 1..3 claims each
 
 
 def test_sample_rows_validate_against_pydantic_models():
@@ -74,33 +74,57 @@ def test_closed_vocabulary_has_exactly_nine_types():
 
 
 # --------------------------------------------------------------------------
-# HERO CASE A: the catch. AI asserts prior SAR history, records say zero.
+# HERO CASE A: the catch. The captured AI asserts exposure the records do not
+# support, and the deterministic verifier contradicts it.
+#
+# In the live-capture dataset the catch lands on ALERT002: the model asserted
+# high_risk_country for CUST0002, who has no high-risk counterparty at all.
 # --------------------------------------------------------------------------
 
 def test_hero_case_a_contradiction_is_real():
     ai = load("ai_outputs")
     alerts = load("alerts")
-    prior = load("prior_cases")
+    txns = load("transactions")
 
-    claim = ai[(ai.claim_type == "prior_sar_history") & (ai.alert_id == "ALERT001")]
-    assert len(claim) == 1, "HERO CASE A claim (prior_sar_history on ALERT001) not found"
+    claim = ai[(ai.claim_type == "high_risk_country") & (ai.alert_id == "ALERT002")]
+    assert len(claim) == 1, "HERO CASE A claim (high_risk_country on ALERT002) not found"
     assert claim.iloc[0].asserted_value == "true"
 
-    customer_id = alerts[alerts.alert_id == "ALERT001"].iloc[0].customer_id
-    assert customer_id == "CUST0001"
-    sar_count = int(prior[prior.customer_id == customer_id].iloc[0].prior_sar_count)
+    customer_id = alerts[alerts.alert_id == "ALERT002"].iloc[0].customer_id
+    assert customer_id == "CUST0002"
 
-    assert sar_count == 0, "HERO CASE A is not a contradiction: prior_sar_count should be 0"
+    # The records contradict the assertion: no transaction leaves for a high-risk country.
+    countries = set(txns[txns.customer_id == customer_id].counterparty_country)
+    assert not (countries & set(HIGH_RISK_COUNTRIES)), (
+        "HERO CASE A is not a contradiction: CUST0002 has a high-risk counterparty"
+    )
+
+
+def test_hero_case_a_contradiction_is_caught_by_the_verifier():
+    """The catch must be DERIVED by the verifier, not merely present in the data."""
+    ai = load("ai_outputs")
+    source = pipeline._load_source_tables()
+    row = ai[(ai.claim_type == "high_risk_country") & (ai.alert_id == "ALERT002")].iloc[0].to_dict()
+    row["evidence_refs"] = json.loads(row["evidence_refs"])
+    result = verify_claim(row, source)
+    assert result.status == "FAIL", f"verifier did not catch the contradiction: {result.reason}"
 
 
 def test_hero_case_a_has_a_true_positive_contrast():
+    """The contrast: a prior-SAR assertion the records DO support (CUST0007, count 2)."""
     prior = load("prior_cases")
     ai = load("ai_outputs")
+    source = pipeline._load_source_tables()
+
     sar_count = int(prior[prior.customer_id == "CUST0007"].iloc[0].prior_sar_count)
     assert sar_count == 2, "contrast case CUST0007 should have prior_sar_count = 2"
-    contrast = ai[ai.claim_id == "CLM010"].iloc[0]
-    assert contrast.claim_type == "prior_sar_history"
-    assert contrast.asserted_value == "true"
+
+    contrast = ai[(ai.alert_id == "ALERT007") & (ai.claim_type == "prior_sar_history")]
+    assert len(contrast) == 1, "contrast claim (prior_sar_history on ALERT007) not found"
+    row = contrast.iloc[0].to_dict()
+    assert row["asserted_value"] == "true"
+    row["evidence_refs"] = json.loads(row["evidence_refs"])
+    assert verify_claim(row, source).status == "PASS"
 
 
 # --------------------------------------------------------------------------

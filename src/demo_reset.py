@@ -17,6 +17,7 @@ environment-redirectable so tests point them at temp files:
 from __future__ import annotations
 
 import csv
+import json
 import os
 import shutil
 import tempfile
@@ -33,6 +34,19 @@ class DemoResetError(Exception):
 # The columns the reset validation depends on (the baseline may carry more).
 _REQUIRED_COLUMNS = {"change_id", "status", "reviewed_by", "reviewed_at", "review_note"}
 _BLANK_FIELDS = ("reviewed_by", "reviewed_at", "review_note")
+
+# The canonical captured-live AI-draft baseline: 93 normalized claims across
+# ALERT001..ALERT039, 1..3 per alert, every row declaring the fixed capture model.
+_BASELINE_AI_OUTPUT_ROWS = 93
+_BASELINE_ALERT_IDS = frozenset(f"ALERT{i:03d}" for i in range(1, 40))
+_MIN_CLAIMS_PER_ALERT, _MAX_CLAIMS_PER_ALERT = 1, 3
+_BASELINE_DRAFT_SOURCE = "captured_live"
+_BASELINE_MODEL_ID = "claude-haiku-4-5-20251001"
+_AI_OUTPUT_REQUIRED_COLUMNS = {
+    "output_id", "alert_id", "claim_id", "claim_type", "asserted_value",
+    "evidence_refs", "generated_at", "draft_source", "draft_reference",
+    "model_id", "processing_run_id",
+}
 
 
 def _resolve(explicit, env_var: str, default_rel: str) -> Path:
@@ -81,24 +95,75 @@ def validate_baseline_lifecycle(baseline_lifecycle_path) -> None:
 
 
 def validate_baseline_ai_outputs(baseline_ai_outputs_path) -> None:
-    """Fail closed unless the baseline AI outputs are the canonical 10 hand-authored
-    synthetic-fixture rows carrying the provenance columns."""
+    """Fail closed unless the baseline AI outputs are the canonical captured-live set.
+
+    The canonical dataset is the 93 normalized claims captured for ALERT001..ALERT039
+    (1..3 per alert), every row declaring captured_live provenance and the fixed capture
+    model. Validation reads ONLY the committed baseline snapshot — never an external
+    capture directory — so a reset can never depend on anything outside the repository.
+    """
     path = Path(baseline_ai_outputs_path)
     if not path.exists():
         raise DemoResetError(f"baseline ai_outputs snapshot not found: {path}")
     with path.open("r", newline="", encoding="utf-8") as fh:
         rows = list(csv.DictReader(fh))
-    if len(rows) != 10:
-        raise DemoResetError(f"baseline ai_outputs must contain 10 rows, found {len(rows)}")
-    required = {"output_id", "alert_id", "claim_type", "draft_source",
-                "draft_reference", "model_id", "processing_run_id"}
-    missing = required - set(rows[0].keys())
+
+    if len(rows) != _BASELINE_AI_OUTPUT_ROWS:
+        raise DemoResetError(
+            f"baseline ai_outputs must contain {_BASELINE_AI_OUTPUT_ROWS} rows, found {len(rows)}")
+    missing = _AI_OUTPUT_REQUIRED_COLUMNS - set(rows[0].keys())
     if missing:
         raise DemoResetError(f"baseline ai_outputs missing columns: {sorted(missing)}")
+
+    per_alert: dict[str, int] = {}
+    output_ids: set[str] = set()
+    claim_ids: set[str] = set()
     for r in rows:
-        if (r.get("draft_source") or "") != "synthetic_fixture":
+        output_id = (r.get("output_id") or "").strip()
+        claim_id = (r.get("claim_id") or "").strip()
+        alert_id = (r.get("alert_id") or "").strip()
+
+        for field in ("output_id", "alert_id", "claim_id", "claim_type",
+                      "asserted_value", "generated_at", "draft_reference"):
+            if not (r.get(field) or "").strip():
+                raise DemoResetError(
+                    f"baseline ai_outputs row {output_id or '<unknown>'!r} has an empty {field}")
+        if (r.get("draft_source") or "") != _BASELINE_DRAFT_SOURCE:
             raise DemoResetError(
-                f"baseline ai_outputs row {r.get('output_id')!r} is not a synthetic_fixture")
+                f"baseline ai_outputs row {output_id!r} is not {_BASELINE_DRAFT_SOURCE}")
+        if (r.get("model_id") or "") != _BASELINE_MODEL_ID:
+            raise DemoResetError(
+                f"baseline ai_outputs row {output_id!r} does not declare model {_BASELINE_MODEL_ID}")
+        if output_id in output_ids:
+            raise DemoResetError(f"baseline ai_outputs has a duplicate output_id {output_id!r}")
+        if claim_id in claim_ids:
+            raise DemoResetError(f"baseline ai_outputs has a duplicate claim_id {claim_id!r}")
+        output_ids.add(output_id)
+        claim_ids.add(claim_id)
+
+        # Evidence references must still parse as a JSON list of nonempty strings.
+        try:
+            refs = json.loads(r.get("evidence_refs") or "[]")
+        except ValueError:
+            raise DemoResetError(
+                f"baseline ai_outputs row {output_id!r} has unparseable evidence_refs") from None
+        if not isinstance(refs, list) or any(not isinstance(x, str) or not x.strip() for x in refs):
+            raise DemoResetError(
+                f"baseline ai_outputs row {output_id!r} has malformed evidence_refs")
+
+        per_alert[alert_id] = per_alert.get(alert_id, 0) + 1
+
+    if set(per_alert) != _BASELINE_ALERT_IDS:
+        missing_alerts = sorted(_BASELINE_ALERT_IDS - set(per_alert))
+        unexpected = sorted(set(per_alert) - _BASELINE_ALERT_IDS)
+        raise DemoResetError(
+            f"baseline ai_outputs alert coverage is wrong "
+            f"(missing={missing_alerts[:5]}, unexpected={unexpected[:5]})")
+    for alert_id, count in sorted(per_alert.items()):
+        if not (_MIN_CLAIMS_PER_ALERT <= count <= _MAX_CLAIMS_PER_ALERT):
+            raise DemoResetError(
+                f"baseline ai_outputs has {count} claims for {alert_id}; "
+                f"expected {_MIN_CLAIMS_PER_ALERT}..{_MAX_CLAIMS_PER_ALERT}")
 
 
 def _atomic_replace(src, dst) -> None:

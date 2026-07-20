@@ -2,7 +2,7 @@
 no human review, plus regression that the review-present path is undisturbed.
 
 The Human Review + Human-Review Gate panels are now driven by the canonical lifecycle
-(app.show_case_dialog). For a NOT_REQUIRED alert like ALERT002 the Human Review panel
+(app.show_case_dialog). For a NOT_REQUIRED alert like ALERT003 the Human Review panel
 reads "Human review was not required under deterministic routing policy
 POL-REVIEW-ROUTING-V1." and the gate reads "HUMAN-REVIEW GATE: NOT APPLICABLE" with
 "The routing policy authorized the recorded system disposition: monitor." — in the
@@ -27,8 +27,9 @@ sys.path.insert(0, str(ROOT))
 
 APP = str(ROOT / "app.py")
 
-NO_REVIEW_ALERT = "ALERT002"   # PASS + NOT_REQUIRED routing, no human_reviews row
-# Lifecycle-derived neutral states for ALERT002 (NOT_REQUIRED, pending override).
+NO_REVIEW_ALERT = "ALERT003"   # PASS + NOT_REQUIRED routing, no human_reviews row
+REVIEW_REQUIRED_NO_REVIEW_ALERT = "ALERT002"   # MIXED + REQUIRED routing, no review on file
+# Lifecycle-derived neutral states for ALERT003 (NOT_REQUIRED, no override).
 REVIEW_MISSING_MSG = "Human review was not required under deterministic routing policy POL-REVIEW-ROUTING-V1."
 GATE_EMPTY_MSG = "The routing policy authorized the recorded system disposition: monitor."
 
@@ -61,16 +62,19 @@ def test_empty_state_render_writes_no_audit(monkeypatch):
     assert calls == [], f"empty-state render wrote audit events: {calls}"
 
 
-def test_alert001_review_present_path_intact_ai_fail_and_human_outcome():
+def test_alert001_review_present_path_intact_ai_verdict_and_human_outcome():
     # ALERT001 HAS a review (REV003, reviewer:mchen, edited). It must take the
-    # review-present branch, not the new empty-state else: AI claim FAIL is shown
+    # review-present branch, not the empty-state else: the AI claim verdicts are shown
     # together with the recorded human outcome.
     md = _open("ALERT001")
     assert REVIEW_MISSING_MSG not in md                       # not the empty-state branch
-    assert ">FAIL<" in md                                     # AI prior_sar_history claim FAILs (Hero A)
+    assert ">PASS<" in md                                     # both captured claims verify
     assert "reviewer:mchen" in md                             # human review rendered
-    # the review DECISION (edited) is distinct from the final case action (monitor)
-    assert "recorded review decision 'edited' and final case action 'monitor'" in md
+    # The review DECISION (edited) stays distinct from the final case action (monitor):
+    # the review panel shows the decision, the summary rail shows the disposition.
+    assert '<span class="review-lbl">Review Decision</span><span class="review-val">edited</span>' in md
+    assert _summary_pair("RECORDED DISPOSITION", "MONITOR") in md
+    assert _summary_pair("RECORDED DISPOSITION", "EDITED") not in md
 
 
 def test_alert007_review_present_path_intact_prior_sar_pass_and_gate_blocked():
@@ -90,9 +94,9 @@ def _summary_pair(label: str, value: str) -> str:
     return f'case-summary-label">{label}</div><div class="case-summary-value">{value}</div>'
 
 
-def test_case_outcome_summary_alert001_fail_complete_monitor():
+def test_case_outcome_summary_alert001_pass_complete_monitor():
     md = _open("ALERT001")
-    assert _summary_pair("AI VERIFICATION", "FAIL") in md
+    assert _summary_pair("AI VERIFICATION", "PASS") in md
     assert _summary_pair("REVIEW REQUIREMENTS", "COMPLETE") in md
     # Recorded disposition is the lifecycle final_action (MONITOR), never the review
     # decision word (EDITED).
@@ -100,18 +104,29 @@ def test_case_outcome_summary_alert001_fail_complete_monitor():
     assert _summary_pair("RECORDED DISPOSITION", "EDITED") not in md
 
 
-def test_case_outcome_summary_alert007_mixed_blocked_none():
+def test_case_outcome_summary_alert007_pass_blocked_none():
     md = _open("ALERT007")
-    assert _summary_pair("AI VERIFICATION", "MIXED") in md
+    assert _summary_pair("AI VERIFICATION", "PASS") in md
     assert _summary_pair("REVIEW REQUIREMENTS", "BLOCKED") in md
     assert _summary_pair("RECORDED DISPOSITION", "NONE") in md
 
 
-def test_case_outcome_summary_alert002_pass_not_required_monitor():
-    md = _open("ALERT002")
+def test_case_outcome_summary_alert003_pass_not_required_monitor():
+    md = _open("ALERT003")
     assert _summary_pair("AI VERIFICATION", "PASS") in md
     assert _summary_pair("REVIEW REQUIREMENTS", "NOT REQUIRED") in md
     assert _summary_pair("RECORDED DISPOSITION", "MONITOR") in md
+
+
+def test_case_outcome_summary_alert002_mixed_pending_none():
+    """An alert REQUIRING review with none on file withholds the disposition and
+    fabricates neither a review nor a verdict."""
+    md = _open(REVIEW_REQUIRED_NO_REVIEW_ALERT)
+    assert _summary_pair("AI VERIFICATION", "MIXED") in md
+    assert _summary_pair("RECORDED DISPOSITION", "NONE") in md
+    assert REVIEW_MISSING_MSG not in md                       # review IS required here
+    assert "HUMAN-REVIEW GATE: PASSED" not in md
+    assert "HUMAN-REVIEW GATE: BLOCKED" not in md
 
 
 def test_gate_allowed_panel_is_blue_complete_not_green_passed():

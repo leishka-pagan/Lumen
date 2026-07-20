@@ -876,12 +876,14 @@ LIFECYCLE_SOURCE_TABLES = [
     "kyc_profile_status", "evidence_items", "alerts",
 ]
 
-# The seven truthfully-processed demo alerts. Everything else is NOT_PROCESSED.
-PROCESSED_FIXTURE_ALERTS = tuple(f"ALERT{i:03d}" for i in range(1, 8))
-
-FIXTURE_PROCESSING_RUN_ID = "FIXTURE-SEED-V1"
-FIXTURE_ROUTING_POLICY_ID = "POL-REVIEW-ROUTING-V1"
-FIXTURE_DRAFT_SOURCE = "synthetic_fixture"
+# Every alert in the demo is now backed by a real captured AI draft, imported once from
+# the guarded capture runs into data/live_capture_seed.json. The seed is the deterministic
+# source for BOTH ai_outputs.csv and case_lifecycle.csv: there are no synthetic-fixture
+# claims and no NOT_PROCESSED rows left.
+LIVE_CAPTURE_SEED_FILENAME = "live_capture_seed.json"
+LIVE_CAPTURE_MODEL_ID = "claude-haiku-4-5-20251001"
+LIVE_ROUTING_POLICY_ID = "POL-REVIEW-ROUTING-V1"
+LIVE_DRAFT_SOURCE = "captured_live"
 
 # ai_outputs.csv: the seven existing columns (unchanged) then the four provenance
 # columns appended, in this order.
@@ -893,18 +895,24 @@ AI_OUTPUT_PROVENANCE_COLUMNS = [
     "draft_source", "draft_reference", "model_id", "processing_run_id",
 ]
 
-# Curated fixture ROUTING INPUTS, keyed by the seven demo alert IDs. These are
-# deterministic policy inputs handed to the GENERIC route_review; route_review
-# itself contains no alert-ID logic. FAIL/MIXED alerts pass no inputs because
-# route_review forces REQUIRED for them and forbids an auto-disposition there.
-CURATED_FIXTURE_ROUTING_INPUTS: dict[str, dict] = {
-    "ALERT001": {},                                                        # FAIL  -> REQUIRED
-    "ALERT002": {"auto_disposition_action": "monitor"},                    # PASS  -> NOT_REQUIRED
-    "ALERT003": {"auto_disposition_action": "monitor"},                    # PASS  -> NOT_REQUIRED
-    "ALERT004": {"mandatory_review_reasons": ("RULE_REQUIRES_HUMAN_REVIEW",)},   # PASS -> REQUIRED
-    "ALERT005": {"auto_disposition_action": "monitor"},                    # PASS  -> NOT_REQUIRED
-    "ALERT006": {"mandatory_review_reasons": ("CRITICAL_EVIDENCE_MISSING",)},    # PASS -> REQUIRED
-    "ALERT007": {},                                                        # MIXED -> REQUIRED
+# Curated ROUTING INPUTS, keyed by alert id. These are deterministic policy INPUTS handed
+# to the GENERIC route_review; route_review itself contains no alert-ID logic. They are
+# carried forward unchanged from the curated demo policy — they express what the operating
+# policy authorizes, NOT what any given alert's verification happened to be.
+#
+# An auto_disposition_action is only ever legal on a PASS: route_review forbids it for
+# FAIL/MIXED. _routing_inputs_for() therefore drops it automatically when the real
+# verification is not PASS, so an authority listed here can never force a stale outcome
+# onto an alert whose live captured draft now verifies differently.
+#
+# Any alert not listed passes no inputs at all and so routes fail-closed: FAIL/MIXED are
+# forced to REQUIRED, and a PASS with no authorized auto-disposition is also REQUIRED.
+CURATED_LIVE_ROUTING_INPUTS: dict[str, dict] = {
+    "ALERT002": {"auto_disposition_action": "monitor"},                         # authority retained
+    "ALERT003": {"auto_disposition_action": "monitor"},
+    "ALERT004": {"mandatory_review_reasons": ("RULE_REQUIRES_HUMAN_REVIEW",)},
+    "ALERT005": {"auto_disposition_action": "monitor"},
+    "ALERT006": {"mandatory_review_reasons": ("CRITICAL_EVIDENCE_MISSING",)},
 }
 
 
@@ -914,26 +922,50 @@ def _read_str_frame(path: Path) -> pd.DataFrame:
     return pd.read_csv(path, keep_default_na=False, dtype=str)
 
 
-def _fixture_claims(ai_df: pd.DataFrame, alert_id: str) -> list[dict]:
-    """Claims for one alert parsed from ai_outputs, evidence_refs JSON-decoded — the
-    shape src.verifier.verify_claim expects (mirrors src.pipeline._load_seeded_claims,
-    without any audit side effect)."""
-    rows = ai_df[ai_df["alert_id"] == alert_id]
-    claims: list[dict] = []
-    for _, r in rows.iterrows():
-        try:
-            refs = json.loads(r["evidence_refs"]) if r["evidence_refs"] else []
-        except (ValueError, TypeError):
-            refs = []
-        claims.append(
-            {
-                "output_id": r["output_id"], "alert_id": r["alert_id"],
-                "claim_id": r["claim_id"], "claim_type": r["claim_type"],
-                "asserted_value": r["asserted_value"], "evidence_refs": refs,
-                "generated_at": r["generated_at"],
-            }
-        )
-    return claims
+def load_live_capture_seed(source_dir: Path) -> dict[str, dict]:
+    """Load the committed live-capture seed as {alert_id: capture_record}.
+
+    The seed holds only normalized capture records and claims (no key, prompt, raw
+    response, token usage, manifest, or external path). It is the deterministic source
+    for both ai_outputs.csv and case_lifecycle.csv.
+    """
+    path = Path(source_dir) / LIVE_CAPTURE_SEED_FILENAME
+    seed = json.loads(path.read_text(encoding="utf-8"))
+    if seed.get("model") != LIVE_CAPTURE_MODEL_ID:
+        raise ValueError(f"live capture seed model is not {LIVE_CAPTURE_MODEL_ID}")
+    records: dict[str, dict] = {}
+    for record in seed["captures"]:
+        alert_id = record["alert_id"]
+        if alert_id in records:
+            raise ValueError(f"live capture seed duplicates {alert_id}")
+        records[alert_id] = record
+    if not records:
+        raise ValueError("live capture seed contains no captures")
+    return records
+
+
+def _seed_claims(record: dict) -> list[dict]:
+    """Claims for one alert in the shape src.verifier.verify_claim expects (evidence_refs
+    already a list). Mirrors src.pipeline._load_seeded_claims without any audit effect."""
+    return [
+        {
+            "output_id": c["output_id"], "alert_id": c["alert_id"],
+            "claim_id": c["claim_id"], "claim_type": c["claim_type"],
+            "asserted_value": c["asserted_value"],
+            "evidence_refs": list(c["evidence_refs"]),
+            "generated_at": c["generated_at"],
+        }
+        for c in record["claims"]
+    ]
+
+
+def _routing_inputs_for(alert_id: str, ai_verification) -> dict:
+    """Curated routing inputs for one alert, with an auto-disposition dropped unless the
+    REAL verification is PASS (route_review forbids one on FAIL/MIXED)."""
+    inputs = dict(CURATED_LIVE_ROUTING_INPUTS.get(alert_id, {}))
+    if ai_verification.value != "pass":
+        inputs.pop("auto_disposition_action", None)
+    return inputs
 
 
 def _review_row(hr_df: pd.DataFrame, alert_id: str):
@@ -963,7 +995,7 @@ def build_lifecycle_frames(source_dir: Path):
 
     from src import verifier
     from src.case_lifecycle import (
-        AIDraftSource, CaseLifecycle, OverrideStatus, ProcessingStatus,
+        AIDraftSource, CaseLifecycle, OverrideStatus,
     )
     from src.lifecycle_projector import (
         project_processed_lifecycle, summarize_ai_verification,
@@ -971,49 +1003,56 @@ def build_lifecycle_frames(source_dir: Path):
     from src.review_routing import route_review
 
     source_dir = Path(source_dir)
-    ai_df = _read_str_frame(source_dir / "ai_outputs.csv")
     hr_df = _read_str_frame(source_dir / "human_reviews.csv")
     ov_df = _read_str_frame(source_dir / "pending_overrides.csv")
     alerts_df = _read_str_frame(source_dir / "alerts.csv")
     source = {name: _read_str_frame(source_dir / f"{name}.csv") for name in LIFECYCLE_SOURCE_TABLES}
+    seed = load_live_capture_seed(source_dir)
 
     all_alert_ids = sorted(alerts_df["alert_id"].tolist())
+    missing = [aid for aid in all_alert_ids if aid not in seed]
+    if missing:
+        raise ValueError(f"live capture seed is missing {len(missing)} alert(s): {missing[:5]}")
 
     records = []
+    ai_rows: list[dict] = []
     for aid in all_alert_ids:
-        if aid in PROCESSED_FIXTURE_ALERTS:
-            claims = _fixture_claims(ai_df, aid)
-            # Real, deterministic verification — status is DERIVED, never hardcoded.
-            results = [verifier.verify_claim(c, source) for c in claims]
-            ai_verification = summarize_ai_verification(results)
-            routing = route_review(
-                ai_verification=ai_verification,
-                policy_id=FIXTURE_ROUTING_POLICY_ID,
-                **CURATED_FIXTURE_ROUTING_INPUTS[aid],
-            )
-            out_rows = ai_df[ai_df["alert_id"] == aid]
-            # processed_at derived from the fixtures: the latest claim generated_at
-            # (ISO-8601, equal width, so lexicographic max == chronological max).
-            processed_at = max(out_rows["generated_at"].tolist())
-            override_id = _pending_override_id(ov_df, aid)
-            record = project_processed_lifecycle(
-                alert_id=aid,
-                processing_run_id=FIXTURE_PROCESSING_RUN_ID,
-                processed_at=processed_at,
-                ai_draft_source=AIDraftSource.SYNTHETIC_FIXTURE,
-                ai_draft_reference=f"FIXTURE-BUNDLE-{aid}",
-                model_id=None,
-                verification_results=results,
-                routing_decision=routing,
-                human_review=_review_row(hr_df, aid),
-                override_status=(OverrideStatus.PENDING if override_id else OverrideStatus.NONE),
-                override_request_id=override_id,
-            )
-        else:
-            # Truthfully NOT_PROCESSED (the dataclass defaults ARE the NOT_PROCESSED
-            # shape; __post_init__ still validates the record).
-            record = CaseLifecycle(alert_id=aid, processing_status=ProcessingStatus.NOT_PROCESSED)
-        records.append(record)
+        record_seed = seed[aid]
+        claims = _seed_claims(record_seed)
+        # Real, deterministic verification — status is DERIVED, never hardcoded.
+        results = [verifier.verify_claim(c, source) for c in claims]
+        ai_verification = summarize_ai_verification(results)
+        routing = route_review(
+            ai_verification=ai_verification,
+            policy_id=LIVE_ROUTING_POLICY_ID,
+            **_routing_inputs_for(aid, ai_verification),
+        )
+        run_id = record_seed["processing_run_id"]
+        draft_reference = f"{run_id}:{aid}"
+        override_id = _pending_override_id(ov_df, aid)
+        records.append(project_processed_lifecycle(
+            alert_id=aid,
+            processing_run_id=run_id,
+            processed_at=record_seed["captured_at"],
+            ai_draft_source=AIDraftSource.CAPTURED_LIVE,
+            ai_draft_reference=draft_reference,
+            model_id=LIVE_CAPTURE_MODEL_ID,
+            verification_results=results,
+            routing_decision=routing,
+            human_review=_review_row(hr_df, aid),
+            override_status=(OverrideStatus.PENDING if override_id else OverrideStatus.NONE),
+            override_request_id=override_id,
+        ))
+        for claim in claims:
+            ai_rows.append({
+                "output_id": claim["output_id"], "alert_id": claim["alert_id"],
+                "claim_id": claim["claim_id"], "claim_type": claim["claim_type"],
+                "asserted_value": claim["asserted_value"],
+                "evidence_refs": json.dumps(claim["evidence_refs"]),
+                "generated_at": claim["generated_at"],
+                "draft_source": LIVE_DRAFT_SOURCE, "draft_reference": draft_reference,
+                "model_id": LIVE_CAPTURE_MODEL_ID, "processing_run_id": run_id,
+            })
 
     lifecycle_columns = [f.name for f in dataclasses.fields(CaseLifecycle)]
 
@@ -1031,14 +1070,9 @@ def build_lifecycle_frames(source_dir: Path):
 
     lifecycle_df = pd.DataFrame([_serialize(r) for r in records], columns=lifecycle_columns)
 
-    # ai_outputs with truthful provenance columns appended; existing columns, order,
-    # and row order are preserved exactly (idempotent if provenance already present).
-    ai_out = ai_df.copy()
-    ai_out["draft_source"] = FIXTURE_DRAFT_SOURCE
-    ai_out["draft_reference"] = ai_out["alert_id"].map(lambda a: f"FIXTURE-BUNDLE-{a}")
-    ai_out["model_id"] = ""                             # hand-authored fixtures: no model id
-    ai_out["processing_run_id"] = FIXTURE_PROCESSING_RUN_ID
-    ai_out = ai_out[AI_OUTPUT_BASE_COLUMNS + AI_OUTPUT_PROVENANCE_COLUMNS]
+    # ai_outputs is derived wholly from the committed live-capture seed, in alert order
+    # then seed claim order, with truthful captured-live provenance on every row.
+    ai_out = pd.DataFrame(ai_rows, columns=AI_OUTPUT_BASE_COLUMNS + AI_OUTPUT_PROVENANCE_COLUMNS)
 
     return ai_out, lifecycle_df
 

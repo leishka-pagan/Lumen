@@ -72,7 +72,7 @@ def runtime(tmp_path, monkeypatch):
     return {"pending": ov, "audit": lg}
 
 
-# 1 — ALERT002: pending override context AND honest "no formal disposition review"
+# 1 — ALERT002: pending override context AND honest "review still outstanding"
 def test_alert002_shows_pending_override_and_no_human_review(runtime):
     md = _md(_run(open_case="ALERT002"))
     assert "OVERRIDE REQUEST" in md
@@ -81,8 +81,10 @@ def test_alert002_shows_pending_override_and_no_human_review(runtime):
     assert "High → Medium" in md
     assert "Jordan Avery" in md and "EMP-204" in md
     assert "scholarship grant" in md
-    # Lifecycle NOT_REQUIRED: honest "no review required" state (never a fabricated review)
-    assert "Human review was not required under deterministic routing policy POL-REVIEW-ROUTING-V1." in md
+    # ALERT002 is MIXED -> routing REQUIRED with the gate still PENDING: the Case File must
+    # say the disposition is withheld, and must never fabricate a review that is not on file.
+    assert "No final disposition is accepted until a complete human review is submitted." in md
+    assert "Human review was not required under deterministic routing policy" not in md
     assert "Human Review" not in _ovreq(_run(open_case="ALERT002"))  # not mislabeled
 
 
@@ -103,7 +105,7 @@ def test_alert005_shows_pending_override_and_no_human_review(runtime):
 def test_alert001_shows_both_human_review_and_pending_override(runtime):
     md = _md(_run(open_case="ALERT001"))
     assert "OVERRIDE REQUEST" in md and "PENDING MANAGER DECISION" in md
-    assert "residual risk is medium" in md              # the override reason
+    assert "Residual risk assessed as medium" in md     # the override reason
     assert "reviewer:mchen" in md                       # the completed human review
     # ALERT001 is COMPLETE (a real review on file) — never a "no review required" state
     assert "Human review was not required under deterministic routing policy" not in md

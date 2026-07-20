@@ -227,12 +227,14 @@ def test_reset_restores_all_four_files_byte_equal_to_baselines(tmp_path):
         assert files[key].read_bytes() == (BASELINE / name).read_bytes(), name
 
 
-def test_reset_restores_canonical_39_row_lifecycle_and_10_ai_rows(tmp_path):
+def test_reset_restores_canonical_39_row_lifecycle_and_93_ai_rows(tmp_path):
     files = _reset_all(tmp_path)
     lc = pd.read_csv(files["lifecycle"], dtype=str, keep_default_na=False)
     assert len(lc) == 39 and lc["alert_id"].nunique() == 39
     ai = pd.read_csv(files["ai_outputs"], dtype=str, keep_default_na=False)
-    assert len(ai) == 10 and (ai["draft_source"] == "synthetic_fixture").all()
+    assert len(ai) == 93 and (ai["draft_source"] == "captured_live").all()
+    assert ai["alert_id"].nunique() == 39
+    assert (ai["model_id"] == "claude-haiku-4-5-20251001").all()
     po = _pending(files["pending"])
     assert len(po) == 3 and (po["status"] == "pending").sum() == 3
     assert files["audit"].read_bytes() == (BASELINE / "audit_log.csv").read_bytes()
@@ -301,9 +303,9 @@ def test_app_reset_restores_lifecycle_and_ai_outputs(runtime):
         alert_id="ALERT002", change_id="CHG-SEED-001", decision="approved",
         field_changed="severity", new_value="med", path=runtime["lifecycle"],
     )
-    # ai_outputs: change one fixture asserted_value, preserving the 10-row/11-col schema.
+    # ai_outputs: change one captured asserted_value, preserving the 93-row/11-col schema.
     _ai = pd.read_csv(runtime["ai_outputs"], dtype=str, keep_default_na=False)
-    _ai.loc[_ai["output_id"] == "OUT001", "asserted_value"] = "mutated for reset test"
+    _ai.loc[0, "asserted_value"] = "mutated for reset test"
     _ai.to_csv(runtime["ai_outputs"], index=False)
     # sanity: both really diverged from their baselines before the reset
     assert runtime["lifecycle"].read_bytes() != (BASELINE / "case_lifecycle.csv").read_bytes()

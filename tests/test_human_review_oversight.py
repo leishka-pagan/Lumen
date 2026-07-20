@@ -95,7 +95,7 @@ def test_default_view_shows_all_three_reviews():
 
 def test_alert007_requires_attention_badges_and_missing_fields():
     card = _card(_manager(), "ALERT007 · Roland Beck")
-    assert "AI VERIFICATION: MIXED" in card
+    assert "AI VERIFICATION: PASS" in card
     assert "REVIEW REQUIREMENTS: BLOCKED" in card
     assert "RECORDED DISPOSITION: NONE" in card
     assert "reviewer:jdoe" in card
@@ -107,7 +107,7 @@ def test_completed_review_badges_alert001_and_alert004():
     at = _manager()
     c1 = _card(at, "ALERT001 · Dana Whitfield")
     # RECORDED DISPOSITION is lifecycle.final_action (MONITOR), never the review decision (EDITED)
-    assert "AI VERIFICATION: FAIL" in c1 and "REVIEW REQUIREMENTS: COMPLETE" in c1 and "RECORDED DISPOSITION: MONITOR" in c1
+    assert "AI VERIFICATION: PASS" in c1 and "REVIEW REQUIREMENTS: COMPLETE" in c1 and "RECORDED DISPOSITION: MONITOR" in c1
     assert "RECORDED DISPOSITION: EDITED" not in c1
     assert "Review ID: REV003" in c1 and "Final Action" in c1
     c4 = _card(at, "ALERT004 · Tomas Herrera")

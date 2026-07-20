@@ -97,8 +97,11 @@ def _apply(lc, **kw):
     return store.apply_override_decision(path=lc, **kw)
 
 
+# ALERT005 is the system-policy-disposed case in the live-capture dataset (PASS with an
+# authorized auto-disposition). A NON-disposition field exercises the branch that must
+# preserve the existing final action and provenance.
 def test_approve_severity_preserves_system_disposition_closed(lc):
-    rec = _apply(lc, alert_id="ALERT002", change_id="CHG-SEED-001",
+    rec = _apply(lc, alert_id="ALERT005", change_id="CHG-SEED-002",
                  decision="approved", field_changed="severity", new_value="med")
     assert rec.override_status is OverrideStatus.APPROVED
     assert rec.final_action == "monitor"                          # system action preserved
@@ -107,12 +110,23 @@ def test_approve_severity_preserves_system_disposition_closed(lc):
 
 
 def test_reject_severity_preserves_system_disposition_closed(lc):
-    rec = _apply(lc, alert_id="ALERT002", change_id="CHG-SEED-001",
+    rec = _apply(lc, alert_id="ALERT005", change_id="CHG-SEED-002",
                  decision="rejected", field_changed="severity", new_value="med")
     assert rec.override_status is OverrideStatus.REJECTED
     assert rec.final_action == "monitor"
     assert rec.disposition_source is DispositionSource.SYSTEM_POLICY
     assert derive_queue_status(rec) is QueueStatus.CLOSED
+
+
+def test_override_on_an_alert_still_under_review_fabricates_no_disposition(lc):
+    """ALERT002 is MIXED -> REQUIRED with the gate still PENDING. Deciding a severity
+    override must NOT invent a final action or a disposition provenance for it."""
+    rec = _apply(lc, alert_id="ALERT002", change_id="CHG-SEED-001",
+                 decision="approved", field_changed="severity", new_value="med")
+    assert rec.override_status is OverrideStatus.APPROVED
+    assert rec.final_action is None
+    assert rec.disposition_source is DispositionSource.NONE
+    assert derive_queue_status(rec) is QueueStatus.AWAITING_REVIEW
 
 
 def test_approve_disposition_sets_manager_override_provenance_closed(lc):

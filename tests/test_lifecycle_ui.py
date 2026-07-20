@@ -34,17 +34,20 @@ from src.lifecycle_store import load_lifecycle, write_lifecycle  # noqa: E402
 APP = str(ROOT / "app.py")
 
 ALL_ALERTS = [f"ALERT{i:03d}" for i in range(1, 40)]
-PROCESSED = [f"ALERT{i:03d}" for i in range(1, 8)]
+# Every alert is processed from a real captured live draft.
+PROCESSED = list(ALL_ALERTS)
+HERO = [f"ALERT{i:03d}" for i in range(1, 8)]
+REMAINING = [f"ALERT{i:03d}" for i in range(8, 40)]
 
 # alert_id -> (AI VERIFICATION, REVIEW REQUIREMENTS, RECORDED DISPOSITION, Queue label)
 SEVEN = {
-    "ALERT001": ("FAIL",  "COMPLETE",     "MONITOR",  "Awaiting Manager"),
-    "ALERT002": ("PASS",  "NOT REQUIRED", "MONITOR",  "Awaiting Manager"),
+    "ALERT001": ("PASS",  "COMPLETE",     "MONITOR",  "Awaiting Manager"),
+    "ALERT002": ("MIXED", "PENDING",      "NONE",     "Awaiting Manager"),
     "ALERT003": ("PASS",  "NOT REQUIRED", "MONITOR",  "Closed"),
     "ALERT004": ("PASS",  "COMPLETE",     "ESCALATE", "Closed"),
     "ALERT005": ("PASS",  "NOT REQUIRED", "MONITOR",  "Awaiting Manager"),
     "ALERT006": ("PASS",  "PENDING",      "NONE",     "Awaiting Review"),
-    "ALERT007": ("MIXED", "BLOCKED",      "NONE",     "Blocked"),
+    "ALERT007": ("PASS",  "BLOCKED",      "NONE",     "Blocked"),
 }
 
 
@@ -130,8 +133,9 @@ def test_queue_renamed_and_status_counts_from_lifecycle(runtime):
     for r in index.values():
         lbl = app.QUEUE_STATUS_LABELS[derive_queue_status(r)]
         expected[lbl] = expected.get(lbl, 0) + 1
-    assert expected == {"Not Processed": 32, "Awaiting Manager": 3,
-                        "Awaiting Review": 1, "Blocked": 1, "Closed": 2}
+    assert expected == {"Awaiting Manager": 3, "Awaiting Review": 33,
+                        "Blocked": 1, "Closed": 2}
+    assert "Not Processed" not in expected          # nothing decorative remains
     for lbl, n in expected.items():
         assert _badge_count(table, lbl) == n, f"{lbl}: rendered != lifecycle count"
     # legacy status labels never appear as badges
@@ -172,27 +176,29 @@ def test_alert001_004_recorded_disposition_is_action_not_review_word(runtime):
 
 
 # ── Ordinary NOT_PROCESSED alert (ALERT022) ──────────────────────────────────
-def test_alert022_not_processed_case_file(runtime):
+def test_alert022_is_processed_from_a_live_capture(runtime):
+    """Formerly decorative: ALERT022 now carries a real captured draft and a real verdict."""
     md = _md(_run(open_case="ALERT022"))
-    assert _pair("AI VERIFICATION", "NOT EVALUATED") in md
-    assert _pair("REVIEW REQUIREMENTS", "NOT PROCESSED") in md
+    assert _pair("AI VERIFICATION", "MIXED") in md
+    assert _pair("REVIEW REQUIREMENTS", "PENDING") in md
     assert _pair("RECORDED DISPOSITION", "NONE") in md
-    assert ("This synthetic inventory alert has not been run through the LUMEN "
-            "processing workflow. No AI draft or verification result exists.") in md
-    assert ("Not evaluated. This alert has not been processed or routed for human "
-            "review.") in md
-    assert "HUMAN-REVIEW GATE: NOT EVALUATED" in md
-    assert ("No review gate was evaluated because this alert has not been "
-            "processed.") in md
+    # the retired NOT_PROCESSED empty states must be gone
+    assert _pair("AI VERIFICATION", "NOT EVALUATED") not in md
+    assert "has not been run through the LUMEN processing workflow" not in md
+    assert "HUMAN-REVIEW GATE: NOT EVALUATED" not in md
 
 
-def test_not_processed_shows_no_fixture_provenance(runtime):
+def test_formerly_decorative_alert_shows_captured_live_provenance(runtime):
     md = _md(_run(open_case="ALERT022"))
-    assert "DRAFT PROVENANCE" not in md
+    assert ("DRAFT PROVENANCE: CAPTURED LIVE · RUN DEMO-CAPTURE-REMAINING-V1 · "
+            "MODEL: claude-haiku-4-5-20251001") in md
+    assert "SYNTHETIC FIXTURE" not in md
 
 
 # ── ALERT002/005 NOT REQUIRED + override panel ───────────────────────────────
-@pytest.mark.parametrize("alert_id", ["ALERT002", "ALERT005"])
+# ALERT005 is the NOT_REQUIRED case that still carries a pending override (ALERT002 is
+# now MIXED, so routing requires review and it can hold no system disposition).
+@pytest.mark.parametrize("alert_id", ["ALERT005"])
 def test_not_required_with_pending_override_panel(alert_id, runtime):
     md = _md(_run(open_case=alert_id))
     assert ("Human review was not required under deterministic routing policy "
@@ -204,10 +210,11 @@ def test_not_required_with_pending_override_panel(alert_id, runtime):
 
 
 # ── Draft provenance is truthful ─────────────────────────────────────────────
-def test_fixture_provenance_is_truthful(runtime):
+def test_captured_live_provenance_is_truthful(runtime):
     md = _md(_run(open_case="ALERT001"))
-    assert ("DRAFT PROVENANCE: SYNTHETIC FIXTURE · RUN FIXTURE-SEED-V1 · "
-            "MODEL: NONE") in md
+    assert ("DRAFT PROVENANCE: CAPTURED LIVE · RUN LIVE-CAPTURE-V1 · "
+            "MODEL: claude-haiku-4-5-20251001") in md
+    assert "SYNTHETIC FIXTURE" not in md
     assert "AI Draft Verification" in md and "AI Claim Verification" not in md
     assert "Draft Claim" in md              # claim label renamed (CSS uppercases to DRAFT CLAIM)
 
@@ -263,9 +270,9 @@ def test_approval_reflected_in_queue_after_rerun(runtime):
     before = _queue_table(_run())
     assert _badge_count(before, "Awaiting Manager") == 3
     assert _badge_count(before, "Closed") == 2
-    # approve ALERT002's severity override -> lifecycle ALERT002 -> CLOSED
+    # approve ALERT005's disposition override -> lifecycle ALERT005 -> CLOSED
     app.record_override_decision(
-        "CHG-SEED-001", "approved", reviewer="M. Chen", rationale="ok",
+        "CHG-SEED-002", "approved", reviewer="M. Chen", rationale="ok",
         actor="ui:EMP-006", overrides_path=runtime["overrides"],
         log_path=runtime["audit"], lifecycle_path=runtime["lifecycle"])
     after = _queue_table(_run())
@@ -317,8 +324,6 @@ def test_alert001_warning_distinguishes_edited_decision_from_monitor_action(runt
     md = _md(_run(open_case="ALERT001"))
     vis = _visible(md)
     assert _pair("RECORDED DISPOSITION", "MONITOR") in md
-    assert ("recorded review decision 'edited' and final case action 'monitor'. "
-            "The failed draft claim did not become the final disposition.") in vis
     assert ("All required review fields are present. Review decision recorded: "
             "edited. Final case action: monitor.") in vis
     assert "did not accept the AI draft as-is" not in vis        # old wording gone
@@ -330,15 +335,12 @@ def test_alert007_accepted_is_a_review_decision_never_a_disposition(runtime):
     assert _pair("RECORDED DISPOSITION", "NONE") in md
     # populated card labels 'accepted' as a review decision
     assert 'review-lbl">Review Decision</span><span class="review-val">accepted</span>' in md
-    # blocked-with-failed-claim wording: decision is 'accepted', but no final disposition
-    assert ("The stored human-review decision is 'accepted', but the review is "
-            "incomplete and no final disposition is recorded.") in vis
     # BLOCKED gate body preserved verbatim
     assert ("Incomplete review detected. This stored review fails the same enforcement "
             "rule used by the decision pipeline. No final disposition is accepted.") in vis
     # 'accepted' is ONLY ever a review decision — never called a recorded/final disposition
-    assert "human-review decision is 'accepted'" in vis         # positive: labeled a decision
-    assert "disposition is 'accepted'" not in vis               # old quoted conflation gone
+    assert "disposition is 'accepted'" not in vis               # never conflated
+    assert _pair("RECORDED DISPOSITION", "ACCEPTED") not in md
     assert "disposition: accepted" not in vis.lower()
     assert "Final disposition accepted:" not in vis
     # the review word must not appear as the RECORDED DISPOSITION rail value
@@ -373,17 +375,17 @@ def test_draft_column_header_renamed_from_ai(runtime):
     assert ">AI</th>" not in table
 
 
-def test_baseline_draft_counts_7_fixture_32_dash_0_liveai(runtime):
+def test_baseline_draft_counts_39_liveai_0_fixture_0_dash(runtime):
     table = _queue_table(_run())
-    assert table.count(FIXTURE_MARK) == 7        # ALERT001–007 synthetic fixtures
-    assert table.count(EMDASH_MARK) == 32        # ALERT008–039 none
-    assert table.count(LIVEAI_MARK) == 0         # no live capture has occurred
+    assert table.count(LIVEAI_MARK) == 39        # every alert has a real captured draft
+    assert table.count(FIXTURE_MARK) == 0        # no synthetic fixture remains
+    assert table.count(EMDASH_MARK) == 0         # no alert is draft-less
 
 
-def test_fixture_never_renders_standalone_ai_label(runtime):
+def test_draft_never_renders_standalone_ai_label(runtime):
     table = _queue_table(_run())
     assert "&#9679; AI</span>" not in table      # the old "● AI" marker is gone entirely
-    assert table.count(FIXTURE_MARK) == 7
+    assert table.count(LIVEAI_MARK) == 39
 
 
 def test_draft_column_matches_lifecycle_source_for_all_39():
@@ -395,16 +397,14 @@ def test_draft_column_matches_lifecycle_source_for_all_39():
 
 
 def test_ai_outputs_presence_cannot_change_draft():
-    # ALERT008 has lifecycle ai_draft_source=none. Even if ai_outputs rows exist for it,
-    # the DRAFT value stays the em dash — the label reads only the lifecycle record.
+    # The DRAFT label reads ONLY the lifecycle record. Removing every ai_outputs row for
+    # ALERT008 must not change its label away from LIVE AI.
     source = app.load_source_tables(app.mtimes_key())
     index = {r.alert_id: r for r in load_lifecycle(DATA / "case_lifecycle.csv")}
-    faked = source["ai_outputs"][source["ai_outputs"]["alert_id"] == "ALERT001"].copy()
-    faked["alert_id"] = "ALERT008"
-    fake_source = dict(source)
-    fake_source["ai_outputs"] = pd.concat([source["ai_outputs"], faked], ignore_index=True)
+    stripped = dict(source)
+    stripped["ai_outputs"] = source["ai_outputs"][source["ai_outputs"]["alert_id"] != "ALERT008"]
     arow = source["alerts"][source["alerts"]["alert_id"] == "ALERT008"].iloc[0]
-    assert app.build_queue_row(arow, fake_source, index)["draft"] == ""   # none, not FIXTURE
+    assert app.build_queue_row(arow, stripped, index)["draft"] == "LIVE AI"
 
 
 def test_alerts_status_cannot_change_draft():
@@ -416,25 +416,26 @@ def test_alerts_status_cannot_change_draft():
         arow = base.copy()
         arow["status"] = legacy
         labels.add(app.build_queue_row(arow, source, index)["draft"])
-    assert labels == {"FIXTURE"}          # lifecycle synthetic_fixture wins regardless
+    assert labels == {"LIVE AI"}          # lifecycle captured_live wins regardless
 
 
-def test_captured_live_with_model_id_displays_live_ai(tmp_path, monkeypatch):
-    # Build a temp lifecycle where ALERT001 is a VALID captured_live record with a model id.
+def test_synthetic_fixture_without_model_id_displays_fixture(tmp_path, monkeypatch):
+    # The inverse mapping still holds: a VALID synthetic_fixture record (no model id)
+    # renders FIXTURE while every captured_live record renders LIVE AI.
     lc = tmp_path / "case_lifecycle.csv"
     recs = load_lifecycle(DATA / "case_lifecycle.csv")
     committed_before = (DATA / "case_lifecycle.csv").read_bytes()
     for i, r in enumerate(recs):
         if r.alert_id == "ALERT001":
             recs[i] = dataclasses.replace(
-                r, ai_draft_source=AIDraftSource.CAPTURED_LIVE,
-                ai_draft_reference="OUT-LIVE-1", model_id="claude-haiku-4-5-20251001")
+                r, ai_draft_source=AIDraftSource.SYNTHETIC_FIXTURE,
+                ai_draft_reference="FIXTURE-BUNDLE-ALERT001", model_id=None)
     write_lifecycle(recs, lc)
     monkeypatch.setenv("LUMEN_CASE_LIFECYCLE_CSV", str(lc))
     table = _queue_table(_run())
-    assert table.count(LIVEAI_MARK) == 1          # ALERT001 -> LIVE AI (ai_outputs unchanged)
-    assert table.count(FIXTURE_MARK) == 6         # the remaining six fixtures
-    assert table.count(EMDASH_MARK) == 32
+    assert table.count(FIXTURE_MARK) == 1         # ALERT001 -> FIXTURE (ai_outputs unchanged)
+    assert table.count(LIVEAI_MARK) == 38         # the remaining captured-live drafts
+    assert table.count(EMDASH_MARK) == 0
     assert (DATA / "case_lifecycle.csv").read_bytes() == committed_before   # committed untouched
 
 
@@ -452,7 +453,7 @@ def test_draft_column_render_is_read_only(runtime, monkeypatch):
     calls: list = []
     monkeypatch.setattr(audit_mod, "log_event", lambda **kw: calls.append(kw) or {})
     table = _queue_table(_run())
-    assert table.count(FIXTURE_MARK) == 7
+    assert table.count(LIVEAI_MARK) == 39
     assert calls == []
     for k in runtime:
         assert runtime[k].read_bytes() == before[k]
@@ -500,12 +501,12 @@ def test_all_retired_case_readiness_strings_absent(runtime):
     assert "CASE READINESS" not in md_full and "CASE READINESS" not in md_case
 
 
-def test_alert022_94pct_while_not_processed(runtime):
+def test_alert022_94pct_evidence_is_independent_of_disposition(runtime):
     md = _md(_run(open_case="ALERT022"))
     assert _evidence_pair(94) in md                              # Evidence Completeness 94%
-    assert _pair("AI VERIFICATION", "NOT EVALUATED") in md
-    assert _pair("REVIEW REQUIREMENTS", "NOT PROCESSED") in md
-    assert _pair("RECORDED DISPOSITION", "NONE") in md           # evidence != processing
+    assert _pair("AI VERIFICATION", "MIXED") in md
+    assert _pair("REVIEW REQUIREMENTS", "PENDING") in md
+    assert _pair("RECORDED DISPOSITION", "NONE") in md           # evidence != disposition
 
 
 def test_evidence_completeness_cannot_change_queue_status():

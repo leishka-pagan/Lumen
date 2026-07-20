@@ -1,0 +1,1621 @@
+{
+  "captures": [
+    {
+      "alert_id": "ALERT001",
+      "captured_at": "2026-07-20T03:40:14.079756+00:00",
+      "claims": [
+        {
+          "alert_id": "ALERT001",
+          "asserted_value": "true",
+          "claim_id": "CLM-fd66ca61",
+          "claim_type": "expected_activity_mismatch",
+          "evidence_refs": [
+            "customers.expected_monthly_volume=12000.0",
+            "transactions.txn_id=TXN00001",
+            "transactions.txn_id=TXN00186"
+          ],
+          "generated_at": "2026-07-20T03:40:14.079719+00:00",
+          "output_id": "OUT-f8ee1b29"
+        },
+        {
+          "alert_id": "ALERT001",
+          "asserted_value": "true",
+          "claim_id": "CLM-b2148755",
+          "claim_type": "unusual_transaction_volume",
+          "evidence_refs": [
+            "customers.expected_monthly_volume=12000.0",
+            "transactions.txn_id=TXN00001",
+            "transactions.txn_id=TXN00185",
+            "transactions.txn_id=TXN00186"
+          ],
+          "generated_at": "2026-07-20T03:40:14.079739+00:00",
+          "output_id": "OUT-f1e2c829"
+        }
+      ],
+      "processing_run_id": "LIVE-CAPTURE-V1"
+    },
+    {
+      "alert_id": "ALERT002",
+      "captured_at": "2026-07-20T03:40:16.054412+00:00",
+      "claims": [
+        {
+          "alert_id": "ALERT002",
+          "asserted_value": "true",
+          "claim_id": "CLM-143aba3d",
+          "claim_type": "expected_activity_mismatch",
+          "evidence_refs": [
+            "customers.expected_monthly_volume=2000.0",
+            "transactions.txn_id=TXN00002",
+            "transactions.amount=45000.0"
+          ],
+          "generated_at": "2026-07-20T03:40:16.054242+00:00",
+          "output_id": "OUT-7efb39e1"
+        },
+        {
+          "alert_id": "ALERT002",
+          "asserted_value": "true",
+          "claim_id": "CLM-a74551bc",
+          "claim_type": "high_risk_country",
+          "evidence_refs": [
+            "transactions.txn_id=TXN00002",
+            "transactions.counterparty_country=AE"
+          ],
+          "generated_at": "2026-07-20T03:40:16.054298+00:00",
+          "output_id": "OUT-fa45a614"
+        },
+        {
+          "alert_id": "ALERT002",
+          "asserted_value": "true",
+          "claim_id": "CLM-201ac949",
+          "claim_type": "missing_kyc_data",
+          "evidence_refs": [
+            "evidence_items.item_type=sanctions_screening",
+            "evidence_items.available=False",
+            "evidence_items.item_type=adverse_media_check",
+            "evidence_items.item_type=beneficial_ownership"
+          ],
+          "generated_at": "2026-07-20T03:40:16.054356+00:00",
+          "output_id": "OUT-028f4929"
+        }
+      ],
+      "processing_run_id": "LIVE-CAPTURE-V1"
+    },
+    {
+      "alert_id": "ALERT003",
+      "captured_at": "2026-07-20T03:40:17.442525+00:00",
+      "claims": [
+        {
+          "alert_id": "ALERT003",
+          "asserted_value": "true",
+          "claim_id": "CLM-0578a797",
+          "claim_type": "rapid_movement",
+          "evidence_refs": [
+            "transactions.txn_id=TXN00003",
+            "transactions.txn_id=TXN00004",
+            "transactions.txn_id=TXN00005",
+            "transactions.txn_id=TXN00006"
+          ],
+          "generated_at": "2026-07-20T03:40:17.442494+00:00",
+          "output_id": "OUT-4929be3a"
+        }
+      ],
+      "processing_run_id": "LIVE-CAPTURE-V1"
+    },
+    {
+      "alert_id": "ALERT004",
+      "captured_at": "2026-07-20T03:40:19.312793+00:00",
+      "claims": [
+        {
+          "alert_id": "ALERT004",
+          "asserted_value": "true",
+          "claim_id": "CLM-f27ff978",
+          "claim_type": "structuring",
+          "evidence_refs": [
+            "transactions.txn_id=TXN00007",
+            "transactions.txn_id=TXN00008",
+            "transactions.txn_id=TXN00009",
+            "transactions.txn_id=TXN00010"
+          ],
+          "generated_at": "2026-07-20T03:40:19.312630+00:00",
+          "output_id": "OUT-28cc932d"
+        },
+        {
+          "alert_id": "ALERT004",
+          "asserted_value": "true",
+          "claim_id": "CLM-d22c8b00",
+          "claim_type": "expected_activity_mismatch",
+          "evidence_refs": [
+            "customers.expected_monthly_volume=8000.0",
+            "transactions.txn_id=TXN00007",
+            "transactions.txn_id=TXN00008",
+            "transactions.txn_id=TXN00009",
+            "transactions.txn_id=TXN00010"
+          ],
+          "generated_at": "2026-07-20T03:40:19.312722+00:00",
+          "output_id": "OUT-fd50af98"
+        }
+      ],
+      "processing_run_id": "LIVE-CAPTURE-V1"
+    },
+    {
+      "alert_id": "ALERT005",
+      "captured_at": "2026-07-20T03:40:21.310430+00:00",
+      "claims": [
+        {
+          "alert_id": "ALERT005",
+          "asserted_value": "true",
+          "claim_id": "CLM-7dce4113",
+          "claim_type": "expected_activity_mismatch",
+          "evidence_refs": [
+            "customers.expected_monthly_volume=5000.0",
+            "transactions.txn_id=TXN00012",
+            "transactions.amount=60000.0"
+          ],
+          "generated_at": "2026-07-20T03:40:21.310405+00:00",
+          "output_id": "OUT-0acf49b0"
+        },
+        {
+          "alert_id": "ALERT005",
+          "asserted_value": "true",
+          "claim_id": "CLM-1d808b47",
+          "claim_type": "high_risk_country",
+          "evidence_refs": [
+            "transactions.txn_id=TXN00012",
+            "transactions.counterparty_country=IR"
+          ],
+          "generated_at": "2026-07-20T03:40:21.310416+00:00",
+          "output_id": "OUT-9beda7ff"
+        },
+        {
+          "alert_id": "ALERT005",
+          "asserted_value": "true",
+          "claim_id": "CLM-a86897f5",
+          "claim_type": "stale_kyc_profile",
+          "evidence_refs": [
+            "kyc_profile_status.current_within_12mo=False",
+            "kyc_profile_status.last_updated=2025-03-20"
+          ],
+          "generated_at": "2026-07-20T03:40:21.310422+00:00",
+          "output_id": "OUT-5c4bec7f"
+        }
+      ],
+      "processing_run_id": "LIVE-CAPTURE-V1"
+    },
+    {
+      "alert_id": "ALERT006",
+      "captured_at": "2026-07-20T03:40:22.534400+00:00",
+      "claims": [
+        {
+          "alert_id": "ALERT006",
+          "asserted_value": "true",
+          "claim_id": "CLM-cab3fd3b",
+          "claim_type": "stale_kyc_profile",
+          "evidence_refs": [
+            "kyc_profile_status.current_within_12mo=False",
+            "kyc_profile_status.last_updated=2021-12-01"
+          ],
+          "generated_at": "2026-07-20T03:40:22.534363+00:00",
+          "output_id": "OUT-107a200c"
+        }
+      ],
+      "processing_run_id": "LIVE-CAPTURE-V1"
+    },
+    {
+      "alert_id": "ALERT007",
+      "captured_at": "2026-07-20T03:40:24.878727+00:00",
+      "claims": [
+        {
+          "alert_id": "ALERT007",
+          "asserted_value": "true",
+          "claim_id": "CLM-9d3c6d8f",
+          "claim_type": "expected_activity_mismatch",
+          "evidence_refs": [
+            "customers.expected_monthly_volume=10000.0",
+            "transactions.txn_id=TXN00014",
+            "transactions.amount=22000.0"
+          ],
+          "generated_at": "2026-07-20T03:40:24.878598+00:00",
+          "output_id": "OUT-477baa47"
+        },
+        {
+          "alert_id": "ALERT007",
+          "asserted_value": "true",
+          "claim_id": "CLM-10c12c80",
+          "claim_type": "prior_sar_history",
+          "evidence_refs": [
+            "prior_cases.prior_sar_count=2",
+            "prior_cases.last_sar_date=2024-06-12"
+          ],
+          "generated_at": "2026-07-20T03:40:24.878652+00:00",
+          "output_id": "OUT-284ab559"
+        },
+        {
+          "alert_id": "ALERT007",
+          "asserted_value": "true",
+          "claim_id": "CLM-855191b2",
+          "claim_type": "missing_kyc_data",
+          "evidence_refs": [
+            "evidence_items.item_type=risk_assessment_memo",
+            "evidence_items.available=False"
+          ],
+          "generated_at": "2026-07-20T03:40:24.878684+00:00",
+          "output_id": "OUT-f750574f"
+        }
+      ],
+      "processing_run_id": "LIVE-CAPTURE-V1"
+    },
+    {
+      "alert_id": "ALERT008",
+      "captured_at": "2026-07-20T03:58:58.215094+00:00",
+      "claims": [
+        {
+          "alert_id": "ALERT008",
+          "asserted_value": "true",
+          "claim_id": "CLM-b6c9297c",
+          "claim_type": "unusual_transaction_volume",
+          "evidence_refs": [
+            "transactions.txn_id=TXN00015",
+            "transactions.txn_id=TXN00016",
+            "transactions.txn_id=TXN00017",
+            "transactions.txn_id=TXN00018",
+            "transactions.txn_id=TXN00019",
+            "transactions.txn_id=TXN00020",
+            "customers.expected_monthly_volume=3000.0"
+          ],
+          "generated_at": "2026-07-20T03:58:58.215067+00:00",
+          "output_id": "OUT-3f4e3f99"
+        },
+        {
+          "alert_id": "ALERT008",
+          "asserted_value": "true",
+          "claim_id": "CLM-8d7acc52",
+          "claim_type": "stale_kyc_profile",
+          "evidence_refs": [
+            "kyc_profile_status.current_within_12mo=False",
+            "kyc_profile_status.last_updated=2024-07-14"
+          ],
+          "generated_at": "2026-07-20T03:58:58.215080+00:00",
+          "output_id": "OUT-064231dd"
+        },
+        {
+          "alert_id": "ALERT008",
+          "asserted_value": "edd_review",
+          "claim_id": "CLM-39ffdee1",
+          "claim_type": "missing_kyc_data",
+          "evidence_refs": [
+            "evidence_items.item_type=edd_review available=False"
+          ],
+          "generated_at": "2026-07-20T03:58:58.215086+00:00",
+          "output_id": "OUT-df57af78"
+        }
+      ],
+      "processing_run_id": "DEMO-CAPTURE-REMAINING-V1"
+    },
+    {
+      "alert_id": "ALERT009",
+      "captured_at": "2026-07-20T03:59:01.026365+00:00",
+      "claims": [
+        {
+          "alert_id": "ALERT009",
+          "asserted_value": "true",
+          "claim_id": "CLM-3d74433c",
+          "claim_type": "stale_kyc_profile",
+          "evidence_refs": [
+            "kyc_profile_status.current_within_12mo=False",
+            "kyc_profile_status.last_updated=2024-10-27"
+          ],
+          "generated_at": "2026-07-20T03:59:01.026225+00:00",
+          "output_id": "OUT-c18682ce"
+        },
+        {
+          "alert_id": "ALERT009",
+          "asserted_value": "true",
+          "claim_id": "CLM-7b4eea8d",
+          "claim_type": "unusual_transaction_volume",
+          "evidence_refs": [
+            "customers.expected_monthly_volume=12000.0",
+            "transactions.txn_id=TXN00021",
+            "transactions.txn_id=TXN00022",
+            "transactions.txn_id=TXN00023",
+            "transactions.txn_id=TXN00024",
+            "transactions.txn_id=TXN00025",
+            "transactions.txn_id=TXN00026",
+            "transactions.txn_id=TXN00027"
+          ],
+          "generated_at": "2026-07-20T03:59:01.026291+00:00",
+          "output_id": "OUT-266fd560"
+        },
+        {
+          "alert_id": "ALERT009",
+          "asserted_value": "true",
+          "claim_id": "CLM-1ee17914",
+          "claim_type": "missing_kyc_data",
+          "evidence_refs": [
+            "evidence_items.item_type=risk_assessment_memo available=False"
+          ],
+          "generated_at": "2026-07-20T03:59:01.026327+00:00",
+          "output_id": "OUT-058b1993"
+        }
+      ],
+      "processing_run_id": "DEMO-CAPTURE-REMAINING-V1"
+    },
+    {
+      "alert_id": "ALERT010",
+      "captured_at": "2026-07-20T03:59:03.648518+00:00",
+      "claims": [
+        {
+          "alert_id": "ALERT010",
+          "asserted_value": "true",
+          "claim_id": "CLM-bb1605dd",
+          "claim_type": "missing_kyc_data",
+          "evidence_refs": [
+            "evidence_items.item_type=edd_review",
+            "evidence_items.available=False"
+          ],
+          "generated_at": "2026-07-20T03:59:03.648461+00:00",
+          "output_id": "OUT-18df38fa"
+        }
+      ],
+      "processing_run_id": "DEMO-CAPTURE-REMAINING-V1"
+    },
+    {
+      "alert_id": "ALERT011",
+      "captured_at": "2026-07-20T03:59:05.543045+00:00",
+      "claims": [
+        {
+          "alert_id": "ALERT011",
+          "asserted_value": "true",
+          "claim_id": "CLM-614402eb",
+          "claim_type": "expected_activity_mismatch",
+          "evidence_refs": [
+            "customers.expected_monthly_volume=12000.0",
+            "transactions.txn_id=TXN00034",
+            "transactions.txn_id=TXN00035",
+            "transactions.txn_id=TXN00036",
+            "transactions.txn_id=TXN00037",
+            "transactions.txn_id=TXN00038"
+          ],
+          "generated_at": "2026-07-20T03:59:05.542895+00:00",
+          "output_id": "OUT-99f49169"
+        },
+        {
+          "alert_id": "ALERT011",
+          "asserted_value": "risk_assessment_memo",
+          "claim_id": "CLM-bb9043c3",
+          "claim_type": "missing_kyc_data",
+          "evidence_refs": [
+            "evidence_items.item_type=risk_assessment_memo",
+            "evidence_items.available=False"
+          ],
+          "generated_at": "2026-07-20T03:59:05.542987+00:00",
+          "output_id": "OUT-bd28d9e4"
+        }
+      ],
+      "processing_run_id": "DEMO-CAPTURE-REMAINING-V1"
+    },
+    {
+      "alert_id": "ALERT012",
+      "captured_at": "2026-07-20T03:59:08.442789+00:00",
+      "claims": [
+        {
+          "alert_id": "ALERT012",
+          "asserted_value": "true",
+          "claim_id": "CLM-ffadf320",
+          "claim_type": "expected_activity_mismatch",
+          "evidence_refs": [
+            "customers.expected_monthly_volume=5000.0",
+            "transactions.txn_id=TXN00039",
+            "transactions.txn_id=TXN00040",
+            "transactions.txn_id=TXN00041",
+            "transactions.txn_id=TXN00042",
+            "transactions.txn_id=TXN00043",
+            "transactions.txn_id=TXN00044",
+            "transactions.txn_id=TXN00045",
+            "transactions.txn_id=TXN00046",
+            "transactions.txn_id=TXN00047",
+            "transactions.txn_id=TXN00048",
+            "transactions.txn_id=TXN00049"
+          ],
+          "generated_at": "2026-07-20T03:59:08.442622+00:00",
+          "output_id": "OUT-9dab5d8c"
+        },
+        {
+          "alert_id": "ALERT012",
+          "asserted_value": "true",
+          "claim_id": "CLM-b58655a9",
+          "claim_type": "stale_kyc_profile",
+          "evidence_refs": [
+            "kyc_profile_status.current_within_12mo=False",
+            "kyc_profile_status.last_updated=2024-12-29"
+          ],
+          "generated_at": "2026-07-20T03:59:08.442699+00:00",
+          "output_id": "OUT-8fd52961"
+        },
+        {
+          "alert_id": "ALERT012",
+          "asserted_value": "edd_review",
+          "claim_id": "CLM-8a754a2d",
+          "claim_type": "missing_kyc_data",
+          "evidence_refs": [
+            "evidence_items.item_type=edd_review",
+            "evidence_items.available=False"
+          ],
+          "generated_at": "2026-07-20T03:59:08.442741+00:00",
+          "output_id": "OUT-6451845b"
+        }
+      ],
+      "processing_run_id": "DEMO-CAPTURE-REMAINING-V1"
+    },
+    {
+      "alert_id": "ALERT013",
+      "captured_at": "2026-07-20T03:59:10.652578+00:00",
+      "claims": [
+        {
+          "alert_id": "ALERT013",
+          "asserted_value": "true",
+          "claim_id": "CLM-1d98abbd",
+          "claim_type": "stale_kyc_profile",
+          "evidence_refs": [
+            "kyc_profile_status.current_within_12mo=False",
+            "kyc_profile_status.last_updated=2025-02-21"
+          ],
+          "generated_at": "2026-07-20T03:59:10.652455+00:00",
+          "output_id": "OUT-46b186aa"
+        },
+        {
+          "alert_id": "ALERT013",
+          "asserted_value": "true",
+          "claim_id": "CLM-6fc3fe18",
+          "claim_type": "unusual_transaction_volume",
+          "evidence_refs": [
+            "customers.expected_monthly_volume=8000.0",
+            "transactions.txn_id=TXN00050",
+            "transactions.txn_id=TXN00051",
+            "transactions.txn_id=TXN00052",
+            "transactions.txn_id=TXN00053",
+            "transactions.txn_id=TXN00054",
+            "transactions.txn_id=TXN00055",
+            "transactions.txn_id=TXN00056",
+            "transactions.txn_id=TXN00057",
+            "transactions.txn_id=TXN00058",
+            "transactions.txn_id=TXN00059",
+            "transactions.txn_id=TXN00060"
+          ],
+          "generated_at": "2026-07-20T03:59:10.652531+00:00",
+          "output_id": "OUT-9db49601"
+        }
+      ],
+      "processing_run_id": "DEMO-CAPTURE-REMAINING-V1"
+    },
+    {
+      "alert_id": "ALERT014",
+      "captured_at": "2026-07-20T03:59:14.037329+00:00",
+      "claims": [
+        {
+          "alert_id": "ALERT014",
+          "asserted_value": "true",
+          "claim_id": "CLM-e504ef9d",
+          "claim_type": "stale_kyc_profile",
+          "evidence_refs": [
+            "kyc_profile_status.current_within_12mo=False",
+            "kyc_profile_status.last_updated=2025-02-21"
+          ],
+          "generated_at": "2026-07-20T03:59:14.037223+00:00",
+          "output_id": "OUT-2034c13b"
+        },
+        {
+          "alert_id": "ALERT014",
+          "asserted_value": "true",
+          "claim_id": "CLM-897d5ed2",
+          "claim_type": "expected_activity_mismatch",
+          "evidence_refs": [
+            "customers.expected_monthly_volume=8000.0",
+            "transactions.txn_id=TXN00050",
+            "transactions.txn_id=TXN00051",
+            "transactions.txn_id=TXN00052",
+            "transactions.txn_id=TXN00053",
+            "transactions.txn_id=TXN00054",
+            "transactions.txn_id=TXN00055",
+            "transactions.txn_id=TXN00056",
+            "transactions.txn_id=TXN00057",
+            "transactions.txn_id=TXN00058",
+            "transactions.txn_id=TXN00059",
+            "transactions.txn_id=TXN00060"
+          ],
+          "generated_at": "2026-07-20T03:59:14.037290+00:00",
+          "output_id": "OUT-41985822"
+        }
+      ],
+      "processing_run_id": "DEMO-CAPTURE-REMAINING-V1"
+    },
+    {
+      "alert_id": "ALERT015",
+      "captured_at": "2026-07-20T03:59:16.114832+00:00",
+      "claims": [
+        {
+          "alert_id": "ALERT015",
+          "asserted_value": "true",
+          "claim_id": "CLM-70c6d416",
+          "claim_type": "expected_activity_mismatch",
+          "evidence_refs": [
+            "customers.expected_monthly_volume=3000.0",
+            "transactions.txn_id=TXN00063",
+            "transactions.txn_id=TXN00064",
+            "transactions.txn_id=TXN00067",
+            "transactions.txn_id=TXN00069"
+          ],
+          "generated_at": "2026-07-20T03:59:16.114790+00:00",
+          "output_id": "OUT-d4330449"
+        },
+        {
+          "alert_id": "ALERT015",
+          "asserted_value": "risk_assessment_memo",
+          "claim_id": "CLM-2ce00639",
+          "claim_type": "missing_kyc_data",
+          "evidence_refs": [
+            "evidence_items.item_type=risk_assessment_memo",
+            "alerts.alert_id=ALERT015"
+          ],
+          "generated_at": "2026-07-20T03:59:16.114815+00:00",
+          "output_id": "OUT-a1086f0e"
+        }
+      ],
+      "processing_run_id": "DEMO-CAPTURE-REMAINING-V1"
+    },
+    {
+      "alert_id": "ALERT016",
+      "captured_at": "2026-07-20T03:59:19.292119+00:00",
+      "claims": [
+        {
+          "alert_id": "ALERT016",
+          "asserted_value": "true",
+          "claim_id": "CLM-761a340c",
+          "claim_type": "expected_activity_mismatch",
+          "evidence_refs": [
+            "customers.expected_monthly_volume=3000.0",
+            "transactions.txn_id=TXN00063",
+            "transactions.txn_id=TXN00067",
+            "transactions.txn_id=TXN00064"
+          ],
+          "generated_at": "2026-07-20T03:59:19.291994+00:00",
+          "output_id": "OUT-3593316d"
+        },
+        {
+          "alert_id": "ALERT016",
+          "asserted_value": "true",
+          "claim_id": "CLM-1cefc8a0",
+          "claim_type": "unusual_transaction_volume",
+          "evidence_refs": [
+            "transactions.txn_id=TXN00061",
+            "transactions.txn_id=TXN00062",
+            "transactions.txn_id=TXN00063",
+            "transactions.txn_id=TXN00064",
+            "transactions.txn_id=TXN00065",
+            "transactions.txn_id=TXN00066",
+            "transactions.txn_id=TXN00067",
+            "transactions.txn_id=TXN00068",
+            "transactions.txn_id=TXN00069"
+          ],
+          "generated_at": "2026-07-20T03:59:19.292053+00:00",
+          "output_id": "OUT-b114fc9b"
+        },
+        {
+          "alert_id": "ALERT016",
+          "asserted_value": "true",
+          "claim_id": "CLM-bb8a7594",
+          "claim_type": "missing_kyc_data",
+          "evidence_refs": [
+            "evidence_items.item_type=edd_review available=False"
+          ],
+          "generated_at": "2026-07-20T03:59:19.292085+00:00",
+          "output_id": "OUT-81cac482"
+        }
+      ],
+      "processing_run_id": "DEMO-CAPTURE-REMAINING-V1"
+    },
+    {
+      "alert_id": "ALERT017",
+      "captured_at": "2026-07-20T03:59:21.614169+00:00",
+      "claims": [
+        {
+          "alert_id": "ALERT017",
+          "asserted_value": "true",
+          "claim_id": "CLM-d7d324fb",
+          "claim_type": "stale_kyc_profile",
+          "evidence_refs": [
+            "kyc_profile_status.current_within_12mo=False",
+            "kyc_profile_status.last_updated=2025-04-21"
+          ],
+          "generated_at": "2026-07-20T03:59:21.614021+00:00",
+          "output_id": "OUT-444aba33"
+        },
+        {
+          "alert_id": "ALERT017",
+          "asserted_value": "true",
+          "claim_id": "CLM-caa3f763",
+          "claim_type": "unusual_transaction_volume",
+          "evidence_refs": [
+            "customers.expected_monthly_volume=8000.0",
+            "transactions.txn_id=TXN00070",
+            "transactions.txn_id=TXN00071",
+            "transactions.txn_id=TXN00072",
+            "transactions.txn_id=TXN00073",
+            "transactions.txn_id=TXN00074",
+            "transactions.txn_id=TXN00075"
+          ],
+          "generated_at": "2026-07-20T03:59:21.614095+00:00",
+          "output_id": "OUT-1803efcf"
+        },
+        {
+          "alert_id": "ALERT017",
+          "asserted_value": "true",
+          "claim_id": "CLM-092d2007",
+          "claim_type": "missing_kyc_data",
+          "evidence_refs": [
+            "evidence_items.item_type=risk_assessment_memo available=False"
+          ],
+          "generated_at": "2026-07-20T03:59:21.614132+00:00",
+          "output_id": "OUT-f4dae24f"
+        }
+      ],
+      "processing_run_id": "DEMO-CAPTURE-REMAINING-V1"
+    },
+    {
+      "alert_id": "ALERT018",
+      "captured_at": "2026-07-20T03:59:25.239200+00:00",
+      "claims": [
+        {
+          "alert_id": "ALERT018",
+          "asserted_value": "true",
+          "claim_id": "CLM-bb131291",
+          "claim_type": "expected_activity_mismatch",
+          "evidence_refs": [
+            "customers.expected_monthly_volume=8000.0",
+            "transactions.txn_id=TXN00076",
+            "transactions.txn_id=TXN00077",
+            "transactions.txn_id=TXN00078",
+            "transactions.txn_id=TXN00081",
+            "transactions.txn_id=TXN00082",
+            "transactions.txn_id=TXN00083",
+            "transactions.txn_id=TXN00084"
+          ],
+          "generated_at": "2026-07-20T03:59:25.239067+00:00",
+          "output_id": "OUT-3d127edf"
+        },
+        {
+          "alert_id": "ALERT018",
+          "asserted_value": "true",
+          "claim_id": "CLM-7e80bab3",
+          "claim_type": "unusual_transaction_volume",
+          "evidence_refs": [
+            "customers.expected_monthly_volume=8000.0",
+            "transactions.txn_id=TXN00076",
+            "transactions.txn_id=TXN00077",
+            "transactions.txn_id=TXN00078",
+            "transactions.txn_id=TXN00081",
+            "transactions.txn_id=TXN00082",
+            "transactions.txn_id=TXN00083",
+            "transactions.txn_id=TXN00084"
+          ],
+          "generated_at": "2026-07-20T03:59:25.239132+00:00",
+          "output_id": "OUT-548fa8ea"
+        },
+        {
+          "alert_id": "ALERT018",
+          "asserted_value": "edd_review",
+          "claim_id": "CLM-f83cc605",
+          "claim_type": "missing_kyc_data",
+          "evidence_refs": [
+            "evidence_items.item_type=edd_review",
+            "evidence_items.available=False"
+          ],
+          "generated_at": "2026-07-20T03:59:25.239166+00:00",
+          "output_id": "OUT-5a21c2e9"
+        }
+      ],
+      "processing_run_id": "DEMO-CAPTURE-REMAINING-V1"
+    },
+    {
+      "alert_id": "ALERT019",
+      "captured_at": "2026-07-20T03:59:28.469843+00:00",
+      "claims": [
+        {
+          "alert_id": "ALERT019",
+          "asserted_value": "true",
+          "claim_id": "CLM-82e2a103",
+          "claim_type": "expected_activity_mismatch",
+          "evidence_refs": [
+            "customers.expected_monthly_volume=8000.0",
+            "transactions.txn_id=TXN00076",
+            "transactions.txn_id=TXN00077",
+            "transactions.txn_id=TXN00078",
+            "transactions.txn_id=TXN00081",
+            "transactions.txn_id=TXN00082",
+            "transactions.txn_id=TXN00083",
+            "transactions.txn_id=TXN00084"
+          ],
+          "generated_at": "2026-07-20T03:59:28.469647+00:00",
+          "output_id": "OUT-048bb481"
+        },
+        {
+          "alert_id": "ALERT019",
+          "asserted_value": "true",
+          "claim_id": "CLM-4f8eef17",
+          "claim_type": "unusual_transaction_volume",
+          "evidence_refs": [
+            "transactions.txn_id=TXN00076",
+            "transactions.txn_id=TXN00077",
+            "transactions.txn_id=TXN00078",
+            "transactions.txn_id=TXN00079",
+            "transactions.txn_id=TXN00081",
+            "transactions.txn_id=TXN00082",
+            "transactions.txn_id=TXN00083",
+            "transactions.txn_id=TXN00084"
+          ],
+          "generated_at": "2026-07-20T03:59:28.469724+00:00",
+          "output_id": "OUT-69af7b21"
+        },
+        {
+          "alert_id": "ALERT019",
+          "asserted_value": "true",
+          "claim_id": "CLM-e23dd38f",
+          "claim_type": "missing_kyc_data",
+          "evidence_refs": [
+            "evidence_items.item_type=risk_assessment_memo",
+            "evidence_items.available=False"
+          ],
+          "generated_at": "2026-07-20T03:59:28.469765+00:00",
+          "output_id": "OUT-0872bf7b"
+        }
+      ],
+      "processing_run_id": "DEMO-CAPTURE-REMAINING-V1"
+    },
+    {
+      "alert_id": "ALERT020",
+      "captured_at": "2026-07-20T03:59:31.301845+00:00",
+      "claims": [
+        {
+          "alert_id": "ALERT020",
+          "asserted_value": "true",
+          "claim_id": "CLM-df31a8c7",
+          "claim_type": "unusual_transaction_volume",
+          "evidence_refs": [
+            "customers.expected_monthly_volume=5000.0",
+            "transactions.txn_id=TXN00092",
+            "transactions.txn_id=TXN00093",
+            "transactions.txn_id=TXN00094",
+            "transactions.txn_id=TXN00095",
+            "transactions.txn_id=TXN00096",
+            "transactions.txn_id=TXN00097",
+            "transactions.txn_id=TXN00098",
+            "transactions.txn_id=TXN00099",
+            "transactions.txn_id=TXN00100",
+            "transactions.txn_id=TXN00101"
+          ],
+          "generated_at": "2026-07-20T03:59:31.301673+00:00",
+          "output_id": "OUT-a5f7874b"
+        },
+        {
+          "alert_id": "ALERT020",
+          "asserted_value": "true",
+          "claim_id": "CLM-efd88e69",
+          "claim_type": "expected_activity_mismatch",
+          "evidence_refs": [
+            "customers.customer_id=CUST0019",
+            "customers.expected_monthly_volume=5000.0",
+            "transactions.txn_id=TXN00093"
+          ],
+          "generated_at": "2026-07-20T03:59:31.301758+00:00",
+          "output_id": "OUT-55b75eff"
+        },
+        {
+          "alert_id": "ALERT020",
+          "asserted_value": "true",
+          "claim_id": "CLM-a228a066",
+          "claim_type": "missing_kyc_data",
+          "evidence_refs": [
+            "evidence_items.item_type=edd_review",
+            "evidence_items.available=False"
+          ],
+          "generated_at": "2026-07-20T03:59:31.301800+00:00",
+          "output_id": "OUT-14c57abb"
+        }
+      ],
+      "processing_run_id": "DEMO-CAPTURE-REMAINING-V1"
+    },
+    {
+      "alert_id": "ALERT021",
+      "captured_at": "2026-07-20T03:59:34.385706+00:00",
+      "claims": [
+        {
+          "alert_id": "ALERT021",
+          "asserted_value": "true",
+          "claim_id": "CLM-a1547330",
+          "claim_type": "expected_activity_mismatch",
+          "evidence_refs": [
+            "customers.expected_monthly_volume=5000.0",
+            "transactions.txn_id=TXN00092",
+            "transactions.txn_id=TXN00093",
+            "transactions.txn_id=TXN00094",
+            "transactions.txn_id=TXN00095",
+            "transactions.txn_id=TXN00096",
+            "transactions.txn_id=TXN00099",
+            "transactions.txn_id=TXN00100",
+            "transactions.txn_id=TXN00101"
+          ],
+          "generated_at": "2026-07-20T03:59:34.385598+00:00",
+          "output_id": "OUT-5e2c7c82"
+        },
+        {
+          "alert_id": "ALERT021",
+          "asserted_value": "true",
+          "claim_id": "CLM-ff035e8a",
+          "claim_type": "unusual_transaction_volume",
+          "evidence_refs": [
+            "customers.expected_monthly_volume=5000.0",
+            "transactions.txn_id=TXN00092",
+            "transactions.txn_id=TXN00093",
+            "transactions.txn_id=TXN00094",
+            "transactions.txn_id=TXN00095",
+            "transactions.txn_id=TXN00096",
+            "transactions.txn_id=TXN00097",
+            "transactions.txn_id=TXN00098",
+            "transactions.txn_id=TXN00099",
+            "transactions.txn_id=TXN00100",
+            "transactions.txn_id=TXN00101"
+          ],
+          "generated_at": "2026-07-20T03:59:34.385653+00:00",
+          "output_id": "OUT-2ca04e47"
+        },
+        {
+          "alert_id": "ALERT021",
+          "asserted_value": "true",
+          "claim_id": "CLM-3b7e5424",
+          "claim_type": "missing_kyc_data",
+          "evidence_refs": [
+            "evidence_items.item_type=risk_assessment_memo",
+            "evidence_items.available=False"
+          ],
+          "generated_at": "2026-07-20T03:59:34.385678+00:00",
+          "output_id": "OUT-e567574c"
+        }
+      ],
+      "processing_run_id": "DEMO-CAPTURE-REMAINING-V1"
+    },
+    {
+      "alert_id": "ALERT022",
+      "captured_at": "2026-07-20T03:59:36.874241+00:00",
+      "claims": [
+        {
+          "alert_id": "ALERT022",
+          "asserted_value": "true",
+          "claim_id": "CLM-bd8258e4",
+          "claim_type": "stale_kyc_profile",
+          "evidence_refs": [
+            "kyc_profile_status.current_within_12mo=False",
+            "kyc_profile_status.last_updated=2025-01-06"
+          ],
+          "generated_at": "2026-07-20T03:59:36.873977+00:00",
+          "output_id": "OUT-12be895b"
+        },
+        {
+          "alert_id": "ALERT022",
+          "asserted_value": "true",
+          "claim_id": "CLM-e3368ae2",
+          "claim_type": "unusual_transaction_volume",
+          "evidence_refs": [
+            "customers.expected_monthly_volume=20000.0",
+            "transactions.txn_id=TXN00102",
+            "transactions.txn_id=TXN00103",
+            "transactions.txn_id=TXN00106",
+            "transactions.txn_id=TXN00107"
+          ],
+          "generated_at": "2026-07-20T03:59:36.874143+00:00",
+          "output_id": "OUT-9051e66f"
+        },
+        {
+          "alert_id": "ALERT022",
+          "asserted_value": "true",
+          "claim_id": "CLM-f7a31baa",
+          "claim_type": "missing_kyc_data",
+          "evidence_refs": [
+            "evidence_items.item_type=edd_review",
+            "evidence_items.available=False"
+          ],
+          "generated_at": "2026-07-20T03:59:36.874192+00:00",
+          "output_id": "OUT-0d41bba0"
+        }
+      ],
+      "processing_run_id": "DEMO-CAPTURE-REMAINING-V1"
+    },
+    {
+      "alert_id": "ALERT023",
+      "captured_at": "2026-07-20T03:59:43.978222+00:00",
+      "claims": [
+        {
+          "alert_id": "ALERT023",
+          "asserted_value": "true",
+          "claim_id": "CLM-c0846d18",
+          "claim_type": "stale_kyc_profile",
+          "evidence_refs": [
+            "kyc_profile_status.current_within_12mo=False",
+            "kyc_profile_status.last_updated=2024-09-17"
+          ],
+          "generated_at": "2026-07-20T03:59:43.978061+00:00",
+          "output_id": "OUT-0aed89c2"
+        },
+        {
+          "alert_id": "ALERT023",
+          "asserted_value": "18746.0 aggregated outflows and inflows across 6 transactions in May 2026",
+          "claim_id": "CLM-2dbab2fb",
+          "claim_type": "unusual_transaction_volume",
+          "evidence_refs": [
+            "transactions.txn_id=TXN00110",
+            "transactions.txn_id=TXN00111",
+            "transactions.txn_id=TXN00112",
+            "transactions.txn_id=TXN00113",
+            "transactions.txn_id=TXN00114",
+            "transactions.txn_id=TXN00115",
+            "customers.expected_monthly_volume=12000.0"
+          ],
+          "generated_at": "2026-07-20T03:59:43.978144+00:00",
+          "output_id": "OUT-9f169e38"
+        },
+        {
+          "alert_id": "ALERT023",
+          "asserted_value": "true",
+          "claim_id": "CLM-6c1ead8f",
+          "claim_type": "missing_kyc_data",
+          "evidence_refs": [
+            "evidence_items.item_type=risk_assessment_memo",
+            "evidence_items.available=False"
+          ],
+          "generated_at": "2026-07-20T03:59:43.978181+00:00",
+          "output_id": "OUT-8f9f0891"
+        }
+      ],
+      "processing_run_id": "DEMO-CAPTURE-REMAINING-V1"
+    },
+    {
+      "alert_id": "ALERT024",
+      "captured_at": "2026-07-20T03:59:45.876795+00:00",
+      "claims": [
+        {
+          "alert_id": "ALERT024",
+          "asserted_value": "true",
+          "claim_id": "CLM-4a8f0999",
+          "claim_type": "stale_kyc_profile",
+          "evidence_refs": [
+            "kyc_profile_status.current_within_12mo=False",
+            "kyc_profile_status.last_updated=2024-09-17"
+          ],
+          "generated_at": "2026-07-20T03:59:45.876709+00:00",
+          "output_id": "OUT-1f94839b"
+        },
+        {
+          "alert_id": "ALERT024",
+          "asserted_value": "true",
+          "claim_id": "CLM-89bce1e3",
+          "claim_type": "missing_kyc_data",
+          "evidence_refs": [
+            "evidence_items.item_type=edd_review available=False"
+          ],
+          "generated_at": "2026-07-20T03:59:45.876760+00:00",
+          "output_id": "OUT-1f756d14"
+        }
+      ],
+      "processing_run_id": "DEMO-CAPTURE-REMAINING-V1"
+    },
+    {
+      "alert_id": "ALERT025",
+      "captured_at": "2026-07-20T03:59:49.154029+00:00",
+      "claims": [
+        {
+          "alert_id": "ALERT025",
+          "asserted_value": "true",
+          "claim_id": "CLM-1b766485",
+          "claim_type": "stale_kyc_profile",
+          "evidence_refs": [
+            "kyc_profile_status.current_within_12mo=False",
+            "kyc_profile_status.last_updated=2024-09-23"
+          ],
+          "generated_at": "2026-07-20T03:59:49.153938+00:00",
+          "output_id": "OUT-360e1139"
+        },
+        {
+          "alert_id": "ALERT025",
+          "asserted_value": "true",
+          "claim_id": "CLM-8e08bb23",
+          "claim_type": "expected_activity_mismatch",
+          "evidence_refs": [
+            "customers.expected_monthly_volume=12000.0",
+            "transactions.txn_id=TXN00116",
+            "transactions.txn_id=TXN00117",
+            "transactions.txn_id=TXN00118",
+            "transactions.txn_id=TXN00119",
+            "transactions.txn_id=TXN00120",
+            "transactions.txn_id=TXN00121",
+            "transactions.txn_id=TXN00122",
+            "transactions.txn_id=TXN00123"
+          ],
+          "generated_at": "2026-07-20T03:59:49.153984+00:00",
+          "output_id": "OUT-2c7779ea"
+        },
+        {
+          "alert_id": "ALERT025",
+          "asserted_value": "true",
+          "claim_id": "CLM-45159d76",
+          "claim_type": "missing_kyc_data",
+          "evidence_refs": [
+            "evidence_items.item_type=risk_assessment_memo",
+            "evidence_items.available=False"
+          ],
+          "generated_at": "2026-07-20T03:59:49.154004+00:00",
+          "output_id": "OUT-1007431f"
+        }
+      ],
+      "processing_run_id": "DEMO-CAPTURE-REMAINING-V1"
+    },
+    {
+      "alert_id": "ALERT026",
+      "captured_at": "2026-07-20T04:00:06.155516+00:00",
+      "claims": [
+        {
+          "alert_id": "ALERT026",
+          "asserted_value": "true",
+          "claim_id": "CLM-d4f332fa",
+          "claim_type": "expected_activity_mismatch",
+          "evidence_refs": [
+            "customers.expected_monthly_volume=12000.0",
+            "transactions.txn_id=TXN00124",
+            "transactions.txn_id=TXN00125",
+            "transactions.txn_id=TXN00126",
+            "transactions.txn_id=TXN00127",
+            "transactions.txn_id=TXN00128",
+            "transactions.txn_id=TXN00129",
+            "transactions.txn_id=TXN00130",
+            "transactions.txn_id=TXN00131",
+            "transactions.txn_id=TXN00132"
+          ],
+          "generated_at": "2026-07-20T04:00:06.155369+00:00",
+          "output_id": "OUT-9f7fbef3"
+        },
+        {
+          "alert_id": "ALERT026",
+          "asserted_value": "true",
+          "claim_id": "CLM-87f48743",
+          "claim_type": "missing_kyc_data",
+          "evidence_refs": [
+            "evidence_items.item_type=edd_review",
+            "customers.kyc_status=pending"
+          ],
+          "generated_at": "2026-07-20T04:00:06.155465+00:00",
+          "output_id": "OUT-0b0b902f"
+        }
+      ],
+      "processing_run_id": "DEMO-CAPTURE-REMAINING-V1"
+    },
+    {
+      "alert_id": "ALERT027",
+      "captured_at": "2026-07-20T04:00:08.522660+00:00",
+      "claims": [
+        {
+          "alert_id": "ALERT027",
+          "asserted_value": "true",
+          "claim_id": "CLM-0d53d2a1",
+          "claim_type": "unusual_transaction_volume",
+          "evidence_refs": [
+            "transactions.txn_id=TXN00133",
+            "transactions.txn_id=TXN00134",
+            "transactions.txn_id=TXN00135",
+            "transactions.txn_id=TXN00136",
+            "transactions.txn_id=TXN00137",
+            "transactions.txn_id=TXN00138",
+            "transactions.txn_id=TXN00139",
+            "transactions.txn_id=TXN00140",
+            "transactions.txn_id=TXN00141",
+            "transactions.txn_id=TXN00142",
+            "customers.expected_monthly_volume=20000.0"
+          ],
+          "generated_at": "2026-07-20T04:00:08.522643+00:00",
+          "output_id": "OUT-5a59d15a"
+        },
+        {
+          "alert_id": "ALERT027",
+          "asserted_value": "true",
+          "claim_id": "CLM-02a36319",
+          "claim_type": "missing_kyc_data",
+          "evidence_refs": [
+            "evidence_items.item_type=risk_assessment_memo",
+            "alerts.alert_id=ALERT027"
+          ],
+          "generated_at": "2026-07-20T04:00:08.522654+00:00",
+          "output_id": "OUT-cff36531"
+        }
+      ],
+      "processing_run_id": "DEMO-CAPTURE-REMAINING-V1"
+    },
+    {
+      "alert_id": "ALERT028",
+      "captured_at": "2026-07-20T04:00:10.739099+00:00",
+      "claims": [
+        {
+          "alert_id": "ALERT028",
+          "asserted_value": "true",
+          "claim_id": "CLM-729a4d59",
+          "claim_type": "unusual_transaction_volume",
+          "evidence_refs": [
+            "transactions.txn_id=TXN00133",
+            "transactions.txn_id=TXN00134",
+            "transactions.txn_id=TXN00135",
+            "transactions.txn_id=TXN00136",
+            "transactions.txn_id=TXN00137",
+            "transactions.txn_id=TXN00138",
+            "transactions.txn_id=TXN00139",
+            "transactions.txn_id=TXN00140",
+            "transactions.txn_id=TXN00141",
+            "transactions.txn_id=TXN00142",
+            "customers.expected_monthly_volume=20000.0"
+          ],
+          "generated_at": "2026-07-20T04:00:10.739047+00:00",
+          "output_id": "OUT-2b7bd1e9"
+        },
+        {
+          "alert_id": "ALERT028",
+          "asserted_value": "true",
+          "claim_id": "CLM-f6fcfb4b",
+          "claim_type": "missing_kyc_data",
+          "evidence_refs": [
+            "evidence_items.item_type=edd_review",
+            "alerts.alert_id=ALERT028"
+          ],
+          "generated_at": "2026-07-20T04:00:10.739080+00:00",
+          "output_id": "OUT-2ba04239"
+        }
+      ],
+      "processing_run_id": "DEMO-CAPTURE-REMAINING-V1"
+    },
+    {
+      "alert_id": "ALERT029",
+      "captured_at": "2026-07-20T04:00:12.122460+00:00",
+      "claims": [
+        {
+          "alert_id": "ALERT029",
+          "asserted_value": "risk_assessment_memo",
+          "claim_id": "CLM-145e310a",
+          "claim_type": "missing_kyc_data",
+          "evidence_refs": [
+            "evidence_items.item_type=risk_assessment_memo",
+            "evidence_items.available=False"
+          ],
+          "generated_at": "2026-07-20T04:00:12.122426+00:00",
+          "output_id": "OUT-80bad575"
+        }
+      ],
+      "processing_run_id": "DEMO-CAPTURE-REMAINING-V1"
+    },
+    {
+      "alert_id": "ALERT030",
+      "captured_at": "2026-07-20T04:00:14.486515+00:00",
+      "claims": [
+        {
+          "alert_id": "ALERT030",
+          "asserted_value": "true",
+          "claim_id": "CLM-414a28b3",
+          "claim_type": "expected_activity_mismatch",
+          "evidence_refs": [
+            "customers.expected_monthly_volume=20000.0",
+            "transactions.txn_id=TXN00143",
+            "transactions.txn_id=TXN00144",
+            "transactions.txn_id=TXN00145",
+            "transactions.txn_id=TXN00146",
+            "transactions.txn_id=TXN00147",
+            "transactions.txn_id=TXN00148",
+            "transactions.txn_id=TXN00149"
+          ],
+          "generated_at": "2026-07-20T04:00:14.486428+00:00",
+          "output_id": "OUT-a5ef4ca4"
+        },
+        {
+          "alert_id": "ALERT030",
+          "asserted_value": "true",
+          "claim_id": "CLM-eab94ece",
+          "claim_type": "missing_kyc_data",
+          "evidence_refs": [
+            "evidence_items.item_type=edd_review",
+            "evidence_items.available=False"
+          ],
+          "generated_at": "2026-07-20T04:00:14.486482+00:00",
+          "output_id": "OUT-e0b1dc58"
+        }
+      ],
+      "processing_run_id": "DEMO-CAPTURE-REMAINING-V1"
+    },
+    {
+      "alert_id": "ALERT031",
+      "captured_at": "2026-07-20T04:00:17.199634+00:00",
+      "claims": [
+        {
+          "alert_id": "ALERT031",
+          "asserted_value": "true",
+          "claim_id": "CLM-460ef805",
+          "claim_type": "stale_kyc_profile",
+          "evidence_refs": [
+            "kyc_profile_status.current_within_12mo=False",
+            "kyc_profile_status.last_updated=2024-10-11"
+          ],
+          "generated_at": "2026-07-20T04:00:17.199381+00:00",
+          "output_id": "OUT-a61f48b3"
+        },
+        {
+          "alert_id": "ALERT031",
+          "asserted_value": "true",
+          "claim_id": "CLM-1aa66df5",
+          "claim_type": "expected_activity_mismatch",
+          "evidence_refs": [
+            "customers.expected_monthly_volume=3000.0",
+            "transactions.txn_id=TXN00152",
+            "transactions.txn_id=TXN00153",
+            "transactions.txn_id=TXN00154"
+          ],
+          "generated_at": "2026-07-20T04:00:17.199496+00:00",
+          "output_id": "OUT-a497cc93"
+        },
+        {
+          "alert_id": "ALERT031",
+          "asserted_value": "true",
+          "claim_id": "CLM-dfe7baea",
+          "claim_type": "unusual_transaction_volume",
+          "evidence_refs": [
+            "customers.expected_monthly_volume=3000.0",
+            "transactions.txn_id=TXN00150",
+            "transactions.txn_id=TXN00151",
+            "transactions.txn_id=TXN00152",
+            "transactions.txn_id=TXN00153",
+            "transactions.txn_id=TXN00154"
+          ],
+          "generated_at": "2026-07-20T04:00:17.199570+00:00",
+          "output_id": "OUT-0df4ed47"
+        }
+      ],
+      "processing_run_id": "DEMO-CAPTURE-REMAINING-V1"
+    },
+    {
+      "alert_id": "ALERT032",
+      "captured_at": "2026-07-20T04:00:19.758265+00:00",
+      "claims": [
+        {
+          "alert_id": "ALERT032",
+          "asserted_value": "true",
+          "claim_id": "CLM-02dab2d1",
+          "claim_type": "expected_activity_mismatch",
+          "evidence_refs": [
+            "customers.expected_monthly_volume=3000.0",
+            "transactions.txn_id=TXN00150",
+            "transactions.txn_id=TXN00151",
+            "transactions.txn_id=TXN00152",
+            "transactions.txn_id=TXN00153",
+            "transactions.txn_id=TXN00154"
+          ],
+          "generated_at": "2026-07-20T04:00:19.758112+00:00",
+          "output_id": "OUT-2da202ca"
+        },
+        {
+          "alert_id": "ALERT032",
+          "asserted_value": "true",
+          "claim_id": "CLM-7a038bb5",
+          "claim_type": "stale_kyc_profile",
+          "evidence_refs": [
+            "kyc_profile_status.current_within_12mo=False",
+            "kyc_profile_status.last_updated=2024-10-11"
+          ],
+          "generated_at": "2026-07-20T04:00:19.758183+00:00",
+          "output_id": "OUT-dbe48017"
+        },
+        {
+          "alert_id": "ALERT032",
+          "asserted_value": "true",
+          "claim_id": "CLM-9e054371",
+          "claim_type": "missing_kyc_data",
+          "evidence_refs": [
+            "evidence_items.item_type=edd_review available=False"
+          ],
+          "generated_at": "2026-07-20T04:00:19.758220+00:00",
+          "output_id": "OUT-caaea264"
+        }
+      ],
+      "processing_run_id": "DEMO-CAPTURE-REMAINING-V1"
+    },
+    {
+      "alert_id": "ALERT033",
+      "captured_at": "2026-07-20T04:00:21.811025+00:00",
+      "claims": [
+        {
+          "alert_id": "ALERT033",
+          "asserted_value": "true",
+          "claim_id": "CLM-7574f981",
+          "claim_type": "rapid_movement",
+          "evidence_refs": [
+            "transactions.txn_id=TXN00155",
+            "transactions.txn_id=TXN00156"
+          ],
+          "generated_at": "2026-07-20T04:00:21.810932+00:00",
+          "output_id": "OUT-477ccd60"
+        },
+        {
+          "alert_id": "ALERT033",
+          "asserted_value": "true",
+          "claim_id": "CLM-86679f50",
+          "claim_type": "unusual_transaction_volume",
+          "evidence_refs": [
+            "transactions.txn_id=TXN00155",
+            "transactions.txn_id=TXN00156",
+            "transactions.txn_id=TXN00157",
+            "transactions.txn_id=TXN00158",
+            "transactions.txn_id=TXN00159",
+            "transactions.txn_id=TXN00160",
+            "customers.expected_monthly_volume=5000.0"
+          ],
+          "generated_at": "2026-07-20T04:00:21.810991+00:00",
+          "output_id": "OUT-4d3a5fa6"
+        }
+      ],
+      "processing_run_id": "DEMO-CAPTURE-REMAINING-V1"
+    },
+    {
+      "alert_id": "ALERT034",
+      "captured_at": "2026-07-20T04:00:24.127202+00:00",
+      "claims": [
+        {
+          "alert_id": "ALERT034",
+          "asserted_value": "true",
+          "claim_id": "CLM-eb810fa8",
+          "claim_type": "stale_kyc_profile",
+          "evidence_refs": [
+            "kyc_profile_status.current_within_12mo=False",
+            "kyc_profile_status.last_updated=2024-08-05"
+          ],
+          "generated_at": "2026-07-20T04:00:24.127101+00:00",
+          "output_id": "OUT-d6303799"
+        },
+        {
+          "alert_id": "ALERT034",
+          "asserted_value": "true",
+          "claim_id": "CLM-25cc81d3",
+          "claim_type": "expected_activity_mismatch",
+          "evidence_refs": [
+            "customers.expected_monthly_volume=5000.0",
+            "transactions.txn_id=TXN00162&amount=3684.0",
+            "transactions.txn_id=TXN00164&amount=3120.0",
+            "transactions.txn_id=TXN00165&amount=4686.0",
+            "transactions.txn_id=TXN00166&amount=3183.0",
+            "transactions.txn_id=TXN00167&amount=3827.0"
+          ],
+          "generated_at": "2026-07-20T04:00:24.127167+00:00",
+          "output_id": "OUT-e9cbcec8"
+        }
+      ],
+      "processing_run_id": "DEMO-CAPTURE-REMAINING-V1"
+    },
+    {
+      "alert_id": "ALERT035",
+      "captured_at": "2026-07-20T04:00:27.650338+00:00",
+      "claims": [
+        {
+          "alert_id": "ALERT035",
+          "asserted_value": "true",
+          "claim_id": "CLM-7f938320",
+          "claim_type": "stale_kyc_profile",
+          "evidence_refs": [
+            "kyc_profile_status.current_within_12mo=False",
+            "kyc_profile_status.last_updated=2024-08-05"
+          ],
+          "generated_at": "2026-07-20T04:00:27.650198+00:00",
+          "output_id": "OUT-57fa2156"
+        },
+        {
+          "alert_id": "ALERT035",
+          "asserted_value": "true",
+          "claim_id": "CLM-33027ed6",
+          "claim_type": "expected_activity_mismatch",
+          "evidence_refs": [
+            "customers.expected_monthly_volume=5000.0",
+            "transactions.txn_id=TXN00162",
+            "transactions.txn_id=TXN00165",
+            "transactions.txn_id=TXN00166"
+          ],
+          "generated_at": "2026-07-20T04:00:27.650264+00:00",
+          "output_id": "OUT-8aa087a5"
+        },
+        {
+          "alert_id": "ALERT035",
+          "asserted_value": "true",
+          "claim_id": "CLM-afb4b16d",
+          "claim_type": "unusual_transaction_volume",
+          "evidence_refs": [
+            "customers.expected_monthly_volume=5000.0",
+            "transactions.txn_id=TXN00161",
+            "transactions.txn_id=TXN00162",
+            "transactions.txn_id=TXN00163",
+            "transactions.txn_id=TXN00164",
+            "transactions.txn_id=TXN00165",
+            "transactions.txn_id=TXN00166",
+            "transactions.txn_id=TXN00167"
+          ],
+          "generated_at": "2026-07-20T04:00:27.650299+00:00",
+          "output_id": "OUT-1069d4be"
+        }
+      ],
+      "processing_run_id": "DEMO-CAPTURE-REMAINING-V1"
+    },
+    {
+      "alert_id": "ALERT036",
+      "captured_at": "2026-07-20T04:00:30.215488+00:00",
+      "claims": [
+        {
+          "alert_id": "ALERT036",
+          "asserted_value": "true",
+          "claim_id": "CLM-c1fb6568",
+          "claim_type": "unusual_transaction_volume",
+          "evidence_refs": [
+            "transactions.txn_id=TXN00168",
+            "transactions.txn_id=TXN00169",
+            "transactions.txn_id=TXN00170",
+            "transactions.txn_id=TXN00171",
+            "transactions.txn_id=TXN00172",
+            "transactions.txn_id=TXN00173",
+            "transactions.txn_id=TXN00174",
+            "transactions.txn_id=TXN00175",
+            "customers.expected_monthly_volume=12000.0"
+          ],
+          "generated_at": "2026-07-20T04:00:30.215379+00:00",
+          "output_id": "OUT-a8e35b53"
+        },
+        {
+          "alert_id": "ALERT036",
+          "asserted_value": "true",
+          "claim_id": "CLM-86806df8",
+          "claim_type": "missing_kyc_data",
+          "evidence_refs": [
+            "evidence_items.item_type=edd_review",
+            "evidence_items.available=False"
+          ],
+          "generated_at": "2026-07-20T04:00:30.215441+00:00",
+          "output_id": "OUT-f698dd70"
+        }
+      ],
+      "processing_run_id": "DEMO-CAPTURE-REMAINING-V1"
+    },
+    {
+      "alert_id": "ALERT037",
+      "captured_at": "2026-07-20T04:00:32.935208+00:00",
+      "claims": [
+        {
+          "alert_id": "ALERT037",
+          "asserted_value": "true",
+          "claim_id": "CLM-fbac190f",
+          "claim_type": "rapid_movement",
+          "evidence_refs": [
+            "transactions.txn_id=TXN00168",
+            "transactions.txn_id=TXN00172",
+            "transactions.txn_id=TXN00169",
+            "transactions.txn_id=TXN00173"
+          ],
+          "generated_at": "2026-07-20T04:00:32.935094+00:00",
+          "output_id": "OUT-58f075c0"
+        },
+        {
+          "alert_id": "ALERT037",
+          "asserted_value": "true",
+          "claim_id": "CLM-b0559744",
+          "claim_type": "unusual_transaction_volume",
+          "evidence_refs": [
+            "customers.customer_id=CUST0029",
+            "customers.expected_monthly_volume=12000.0",
+            "transactions.txn_id=TXN00168",
+            "transactions.txn_id=TXN00169",
+            "transactions.txn_id=TXN00170",
+            "transactions.txn_id=TXN00171",
+            "transactions.txn_id=TXN00172",
+            "transactions.txn_id=TXN00173",
+            "transactions.txn_id=TXN00174",
+            "transactions.txn_id=TXN00175"
+          ],
+          "generated_at": "2026-07-20T04:00:32.935150+00:00",
+          "output_id": "OUT-22a46fb5"
+        },
+        {
+          "alert_id": "ALERT037",
+          "asserted_value": "risk_assessment_memo",
+          "claim_id": "CLM-4a0d4089",
+          "claim_type": "missing_kyc_data",
+          "evidence_refs": [
+            "evidence_items.item_type=risk_assessment_memo",
+            "evidence_items.available=False"
+          ],
+          "generated_at": "2026-07-20T04:00:32.935177+00:00",
+          "output_id": "OUT-417a1165"
+        }
+      ],
+      "processing_run_id": "DEMO-CAPTURE-REMAINING-V1"
+    },
+    {
+      "alert_id": "ALERT038",
+      "captured_at": "2026-07-20T04:00:35.608753+00:00",
+      "claims": [
+        {
+          "alert_id": "ALERT038",
+          "asserted_value": "true",
+          "claim_id": "CLM-867f9ba8",
+          "claim_type": "unusual_transaction_volume",
+          "evidence_refs": [
+            "transactions.txn_id=TXN00176",
+            "transactions.txn_id=TXN00177",
+            "transactions.txn_id=TXN00178",
+            "transactions.txn_id=TXN00179",
+            "transactions.txn_id=TXN00180",
+            "transactions.txn_id=TXN00181",
+            "transactions.txn_id=TXN00182",
+            "transactions.txn_id=TXN00183",
+            "transactions.txn_id=TXN00184",
+            "customers.expected_monthly_volume=12000.0"
+          ],
+          "generated_at": "2026-07-20T04:00:35.608664+00:00",
+          "output_id": "OUT-cfc0088b"
+        },
+        {
+          "alert_id": "ALERT038",
+          "asserted_value": "edd_review",
+          "claim_id": "CLM-d796fcdd",
+          "claim_type": "missing_kyc_data",
+          "evidence_refs": [
+            "evidence_items.item_type=edd_review",
+            "evidence_items.available=False"
+          ],
+          "generated_at": "2026-07-20T04:00:35.608722+00:00",
+          "output_id": "OUT-8be390db"
+        }
+      ],
+      "processing_run_id": "DEMO-CAPTURE-REMAINING-V1"
+    },
+    {
+      "alert_id": "ALERT039",
+      "captured_at": "2026-07-20T04:00:38.428316+00:00",
+      "claims": [
+        {
+          "alert_id": "ALERT039",
+          "asserted_value": "true",
+          "claim_id": "CLM-b8eddb78",
+          "claim_type": "expected_activity_mismatch",
+          "evidence_refs": [
+            "customers.expected_monthly_volume=12000.0",
+            "transactions.txn_id=TXN00176",
+            "transactions.txn_id=TXN00177",
+            "transactions.txn_id=TXN00178",
+            "transactions.txn_id=TXN00179",
+            "transactions.txn_id=TXN00180",
+            "transactions.txn_id=TXN00183",
+            "transactions.txn_id=TXN00184"
+          ],
+          "generated_at": "2026-07-20T04:00:38.428227+00:00",
+          "output_id": "OUT-9c0a4af7"
+        },
+        {
+          "alert_id": "ALERT039",
+          "asserted_value": "risk_assessment_memo",
+          "claim_id": "CLM-6c5fd624",
+          "claim_type": "missing_kyc_data",
+          "evidence_refs": [
+            "evidence_items.item_type=risk_assessment_memo",
+            "evidence_items.available=False"
+          ],
+          "generated_at": "2026-07-20T04:00:38.428283+00:00",
+          "output_id": "OUT-b87c7411"
+        }
+      ],
+      "processing_run_id": "DEMO-CAPTURE-REMAINING-V1"
+    }
+  ],
+  "model": "claude-haiku-4-5-20251001",
+  "schema_version": 1
+}
