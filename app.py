@@ -807,7 +807,15 @@ button[data-baseweb="tab"][aria-selected="true"]{background:#fff !important;colo
 div[data-testid="stTabs"]>div:nth-child(2){background:#eef1f4 !important;}
 div[data-testid="stNumberInput"] input{background:#fff !important;border:1px solid #999 !important;border-radius:3px !important;font-size:14px !important;color:#111 !important;font-weight:600 !important;}
 div[data-testid="stTextInput"] input{background:#fff !important;border:1px solid #999 !important;border-radius:3px !important;font-size:14px !important;color:#111 !important;}
-div[data-testid="stSelectbox"]>div>div{background:#fff !important;border:1px solid #999 !important;border-radius:3px !important;font-size:14px !important;color:#111 !important;}
+/* Selectbox COLLAPSED control (Search, Typology, Remove Keyword) — stable BaseWeb
+   selectors; the visible box is div[data-baseweb="select"]>div. Padding/width/height
+   left to BaseWeb (preserved). */
+div[data-testid="stSelectbox"] div[data-baseweb="select"]>div{background:#ffffff !important;border:1px solid #9fb7c7 !important;border-radius:4px !important;box-shadow:none !important;font-size:14px !important;font-weight:400 !important;color:#16324a !important;}
+div[data-testid="stSelectbox"] input[role="combobox"]{color:#16324a !important;-webkit-text-fill-color:#16324a !important;font-size:14px !important;}
+div[data-testid="stSelectbox"] input[role="combobox"]::placeholder{color:#5f6b76 !important;-webkit-text-fill-color:#5f6b76 !important;opacity:1 !important;}
+div[data-testid="stSelectbox"] svg[data-baseweb="icon"]{fill:#1a5276 !important;}
+div[data-testid="stSelectbox"] div[data-baseweb="select"]:hover>div{border-color:#4a8ba5 !important;cursor:pointer !important;}
+div[data-testid="stSelectbox"] div[data-baseweb="select"]:focus-within>div{border:1px solid #1a5276 !important;box-shadow:0 0 0 3px rgba(26,82,118,.18) !important;outline:none !important;}
 div[data-testid="stMultiSelect"] div[data-baseweb="select"]>div{font-size:14px !important;}
 .stCheckbox label{font-size:13px !important;color:#1a1a1a !important;}
 .stCheckbox label p{color:#1a1a1a !important;}
@@ -821,8 +829,7 @@ label[data-testid="stWidgetLabel"] p{
   opacity:1 !important;
 }
 div[data-testid="stMultiSelect"] div[data-baseweb="select"]>div{background:#fff !important;color:#111 !important;border:1px solid #999 !important;}
-ul[data-baseweb="menu"],ul[role="listbox"]{background:#fff !important;}
-ul[data-baseweb="menu"] li,li[role="option"]{background:#fff !important;color:#111 !important;}
+/* (dropdown menu styling consolidated below — see "BaseWeb dropdown MENU") */
 div[data-testid="stDataFrame"]{background:#fff !important;}
 div[data-testid="stDataFrame"] [data-testid="stTable"]{background:#fff !important;}
 .stButton>button{border-radius:4px !important;font-size:13px !important;font-weight:700 !important;letter-spacing:.02em !important;padding:8px 16px !important;border:1px solid !important;}
@@ -1006,16 +1013,11 @@ div[data-baseweb="tab-border"]{background-color:transparent !important;}
 [data-testid="stCheckbox"] [data-baseweb="checkbox"] span[data-checked="true"]{
   background-color:var(--accent) !important;border-color:var(--accent) !important;}
 
-/* TASK 7 — BaseWeb dropdown menu (renders in a PORTAL outside the widget), so
-   target it at the menu/listbox level. NOTE: the severity filter is a
-   segmented_control (chips, protected) with no dropdown; this styles the app's
-   real dropdown menus (search, typology, remove-keyword). */
-ul[data-baseweb="menu"] li[role="option"]:hover,
-ul[role="listbox"] li[role="option"]:hover{
-  background:var(--surface-hover) !important;color:var(--accent-strong) !important;}
-ul[data-baseweb="menu"] li[role="option"][aria-selected="true"],
-ul[role="listbox"] li[role="option"][aria-selected="true"]{
-  background:var(--accent-tint) !important;color:var(--accent-strong) !important;}
+/* TASK 7 — the dropdown menu renders in a PORTAL outside the widget. The verified
+   build exposes NO ul[data-baseweb="menu"] and NO [role="listbox"]; the real menu
+   is div[data-baseweb="popover"] ul with li[role="option"] items. All dropdown-menu
+   styling is consolidated in the "BaseWeb dropdown MENU" block below. (The severity
+   filter is a segmented_control — chips, protected, no dropdown.) */
 
 /* TASK 8 — demo-mode banner / role-switch button: neutral secondary variant of
    the Task 2 button system (NOT approve/reject colors), scoped to the row with
@@ -1072,20 +1074,35 @@ st.html("""
 .outcome-link b{color:var(--accent-strong);}
 .outcome-link.warn b{color:#3d2b00;}
 
-/* CORRECTION 5 — real BaseWeb dropdown menus (Search, Typology, Remove Keyword):
-   visible hover, selected, and keyboard-focus states with readable contrast, at
-   the portal (menu) level. Existing vars only. */
-ul[data-baseweb="menu"] li[role="option"]{color:#1a1a1a !important;}
-ul[data-baseweb="menu"] li[role="option"]:hover,
-ul[data-baseweb="menu"] li[role="option"][data-highlighted="true"]{
-  background:var(--surface-hover) !important;color:var(--accent-strong) !important;}
-ul[data-baseweb="menu"] li[role="option"][aria-selected="true"]{
-  background:var(--accent-tint) !important;color:var(--accent-strong) !important;
-  font-weight:600 !important;}
-ul[data-baseweb="menu"] li[role="option"]:focus,
-ul[data-baseweb="menu"] li[role="option"]:focus-visible{
-  outline:2px solid var(--accent) !important;outline-offset:-2px !important;
-  background:var(--surface-hover) !important;}
+/* BaseWeb dropdown MENU (Search, Typology, Remove Keyword) — rendered in a PORTAL
+   outside the widget. This build has NO ul[data-baseweb="menu"] and NO
+   [role="listbox"]; the menu is div[data-baseweb="popover"] ul, options are
+   li[role="option"], and each option's colored surface is its inner > div (which
+   carries the 5px pill radius). One portal is shared by all three selectboxes.
+   !important is required to beat BaseWeb's emotion rules. */
+div[data-baseweb="popover"]{background:#ffffff !important;border:1px solid #9fb7c7 !important;border-radius:8px !important;box-shadow:0 8px 24px rgba(15,45,62,.18) !important;padding:0 !important;}
+div[data-baseweb="popover"] ul{background:#ffffff !important;width:100% !important;}
+/* normal option — the li paints the white gutter; the inner > div is the pill */
+div[data-baseweb="popover"] li[role="option"]{background:#ffffff !important;}
+div[data-baseweb="popover"] li[role="option"]>div{background:transparent !important;color:#16324a !important;font-size:14px !important;font-weight:400 !important;padding-left:12px !important;padding-right:12px !important;border-radius:5px !important;}
+/* hover / BaseWeb-highlighted */
+div[data-baseweb="popover"] li[role="option"]:hover>div{background:#e7f2f7 !important;color:#0f4d67 !important;font-weight:600 !important;}
+/* keyboard focus (standard :focus/:focus-visible on the option) */
+div[data-baseweb="popover"] li[role="option"]:focus>div,
+div[data-baseweb="popover"] li[role="option"]:focus-visible>div{background:#e7f2f7 !important;color:#0f4d67 !important;font-weight:600 !important;box-shadow:inset 0 0 0 2px #4a8ba5 !important;}
+/* selected + selected-on-hover */
+div[data-baseweb="popover"] li[role="option"][aria-selected="true"]>div{background:#d6eaf2 !important;color:#0f4d67 !important;font-weight:700 !important;}
+div[data-baseweb="popover"] li[role="option"][aria-selected="true"]:hover>div{background:#c7e2ed !important;color:#0f4d67 !important;font-weight:700 !important;}
+/* disabled */
+div[data-baseweb="popover"] li[role="option"][aria-disabled="true"]{cursor:not-allowed !important;opacity:.75 !important;}
+div[data-baseweb="popover"] li[role="option"][aria-disabled="true"]>div{background:#f4f7fa !important;color:#8a96a0 !important;}
+/* mobile: constrain WIDTH only (max-width cascades to the auto-width wrappers, ul,
+   and 100%-width options); never touch the transform, which carries the dynamic
+   vertical placement. 300px max-height + vertical scroll are left untouched. */
+@media (max-width:600px){
+  div[data-baseweb="popover"]{max-width:calc(100vw - 32px) !important;}
+  div[data-baseweb="popover"] ul{width:100% !important;}
+}
 
 /* HERO CASE B — human-review gate panel in the Case File (display of the shared
    src/review_gate rule). Existing semantic colors/vars only; no new colors. */

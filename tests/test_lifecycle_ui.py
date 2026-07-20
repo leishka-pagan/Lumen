@@ -589,3 +589,122 @@ def test_display_mapping_mutates_no_committed_file(runtime):
     _override_requests()
     _run(open_case="ALERT002")
     assert _committed_hashes() == committed
+
+
+# ── BaseWeb dropdown styling (portal selectors) ──────────────────────────────
+# These assert the CSS SOURCE in app.py: the dead menu selectors are gone, only
+# stable portal selectors are used, and every required state value is present.
+import re as _re
+
+_APP_SRC = (ROOT / "app.py").read_text(encoding="utf-8")
+
+
+def _dropdown_css():
+    """The dropdown-related CSS lines only (control + popover menu), excluding
+    comments, so selector/emotion assertions never trip on prose."""
+    lines = []
+    for ln in _APP_SRC.splitlines():
+        s = ln.strip()
+        if s.startswith("/*") or s.startswith("*") or not s:
+            continue
+        if ('data-baseweb="popover"' in ln or 'data-baseweb="select"' in ln
+                or 'svg[data-baseweb="icon"]' in ln
+                or 'input[role="combobox"]' in ln
+                or 'li[role="option"]' in ln):
+            lines.append(ln)
+    return "\n".join(lines)
+
+
+def test_dropdown_css_uses_no_generated_emotion_classes():
+    css = _dropdown_css()
+    assert css, "no dropdown CSS found"
+    assert "st-emotion-cache" not in css
+    assert not _re.search(r"\.st-[a-z0-9]{2,3}\b", css)     # no st-c2 / st-bb / st-dp etc.
+
+
+def test_dead_dropdown_selectors_removed_from_active_rules():
+    # No ACTIVE rule (a line ending in a `{...}` declaration) may use the dead selectors.
+    for ln in _APP_SRC.splitlines():
+        if "{" in ln and "}" in ln and not ln.strip().startswith(("/*", "*")):
+            assert 'ul[data-baseweb="menu"]' not in ln, ln
+            assert 'ul[role="listbox"]' not in ln, ln
+            assert '[role="listbox"]' not in ln, ln
+
+
+def test_stable_popover_and_option_selectors_present():
+    for sel in ('div[data-baseweb="popover"]',
+                'div[data-baseweb="popover"] ul',
+                'div[data-baseweb="popover"] li[role="option"]',
+                'div[data-baseweb="popover"] li[role="option"]>div',
+                'li[role="option"][aria-selected="true"]',
+                'li[role="option"][aria-disabled="true"]',
+                'div[data-testid="stSelectbox"] div[data-baseweb="select"]>div',
+                'div[data-testid="stSelectbox"] input[role="combobox"]',
+                'div[data-testid="stSelectbox"] svg[data-baseweb="icon"]'):
+        assert sel in _APP_SRC, f"missing stable selector: {sel}"
+
+
+def test_collapsed_control_state_values():
+    css = _APP_SRC
+    # normal control box
+    assert _re.search(r'div\[data-testid="stSelectbox"\] div\[data-baseweb="select"\]>div\{[^}]*'
+                      r'background:#ffffff[^}]*border:1px solid #9fb7c7[^}]*border-radius:4px[^}]*'
+                      r'box-shadow:none[^}]*color:#16324a', css)
+    # placeholder + arrow
+    assert _re.search(r'input\[role="combobox"\]::placeholder\{[^}]*color:#5f6b76', css)
+    assert _re.search(r'svg\[data-baseweb="icon"\]\{fill:#1a5276', css)
+    # hover + focus ring (no layout change: box-shadow, outline none)
+    assert _re.search(r'div\[data-baseweb="select"\]:hover>div\{[^}]*border-color:#4a8ba5[^}]*cursor:pointer', css)
+    assert _re.search(r'div\[data-baseweb="select"\]:focus-within>div\{[^}]*border:1px solid #1a5276[^}]*'
+                      r'box-shadow:0 0 0 3px rgba\(26,82,118,\.18\)[^}]*outline:none', css)
+
+
+def test_popover_state_values():
+    css = _APP_SRC
+    assert _re.search(r'div\[data-baseweb="popover"\]\{[^}]*background:#ffffff[^}]*'
+                      r'border:1px solid #9fb7c7[^}]*border-radius:8px[^}]*'
+                      r'box-shadow:0 8px 24px rgba\(15,45,62,\.18\)[^}]*padding:0', css)
+
+
+def test_option_state_values():
+    css = _APP_SRC
+    # normal
+    assert _re.search(r'li\[role="option"\]>div\{[^}]*background:transparent[^}]*color:#16324a[^}]*'
+                      r'font-size:14px[^}]*font-weight:400[^}]*padding-left:12px[^}]*'
+                      r'padding-right:12px[^}]*border-radius:5px', css)
+    # hover
+    assert _re.search(r'li\[role="option"\]:hover>div\{[^}]*background:#e7f2f7[^}]*color:#0f4d67[^}]*font-weight:600', css)
+    # keyboard focus + inset ring
+    assert _re.search(r'li\[role="option"\]:focus-visible>div\{[^}]*background:#e7f2f7[^}]*color:#0f4d67[^}]*'
+                      r'font-weight:600[^}]*box-shadow:inset 0 0 0 2px #4a8ba5', css)
+    # selected + selected-on-hover
+    assert _re.search(r'li\[role="option"\]\[aria-selected="true"\]>div\{[^}]*background:#d6eaf2[^}]*color:#0f4d67[^}]*font-weight:700', css)
+    assert _re.search(r'li\[role="option"\]\[aria-selected="true"\]:hover>div\{[^}]*background:#c7e2ed[^}]*font-weight:700', css)
+    # disabled
+    assert _re.search(r'li\[role="option"\]\[aria-disabled="true"\]\{[^}]*cursor:not-allowed[^}]*opacity:\.75', css)
+    assert _re.search(r'li\[role="option"\]\[aria-disabled="true"\]>div\{[^}]*background:#f4f7fa[^}]*color:#8a96a0', css)
+
+
+def test_mobile_popover_constraint_present_and_transform_untouched():
+    css = _APP_SRC
+    assert _re.search(r'@media \(max-width:600px\)\{[^@]*'
+                      r'div\[data-baseweb="popover"\]\{max-width:calc\(100vw - 32px\)', css)
+    # never override transform / left / top on the POPOVER CONTAINER rule itself
+    # (that carries the dynamic vertical placement); descendant rules are exempt.
+    for m in _re.finditer(r'div\[data-baseweb="popover"\]\{([^}]*)\}', css):
+        body = m.group(1)
+        assert "transform:" not in body, body
+        assert not _re.search(r'(?<![\w-])left:', body), body     # not padding-left/margin-left
+        assert not _re.search(r'(?<![\w-])top:', body), body
+
+
+def test_option_height_and_position_not_overridden():
+    """Virtualization must be preserved: no height/position/top/width on the option li."""
+    css = _APP_SRC
+    for ln in css.splitlines():
+        m = _re.match(r'\s*div\[data-baseweb="popover"\] li\[role="option"\](?:\[[^\]]+\])?\{(.*)\}', ln)
+        if m:                                        # a rule on the li itself (not >div)
+            body = m.group(1)
+            assert "height:" not in body, ln
+            assert "position:" not in body, ln
+            assert _re.search(r'\btop:', body) is None, ln
