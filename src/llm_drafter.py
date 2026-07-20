@@ -32,6 +32,7 @@ import pandas as pd
 import anthropic
 
 from . import audit
+from .capture_guardrails import CAPTURE_MODEL, MAX_OUTPUT_TOKENS_PER_REQUEST
 from .verifier import KNOWN_CLAIM_TYPES, REQUIRES_EVIDENCE_REFS
 
 # API configuration. The SDK reads ANTHROPIC_API_KEY from the environment.
@@ -232,6 +233,56 @@ def _build_output(alert: dict, claim_type: str, asserted_value: str, evidence_re
         "evidence_refs": evidence_refs,
         "generated_at": datetime.now(timezone.utc).isoformat(),
     }
+
+
+def build_capture_request(alert: dict, source_tables: dict[str, pd.DataFrame]) -> dict[str, Any]:
+    """The EXACT ``messages.create`` kwargs for a one-time CAPTURE request.
+
+    Reuses the existing single forced tool, the existing prompts, and the same
+    source-data path as ``draft_claims`` — but pins the fixed capture model and the
+    capture output-token cap (both imported from ``capture_guardrails``; never
+    redefined). Extended thinking and any model fallback are simply ABSENT here, which
+    is how they stay disabled. Pure: builds a dict, opens no client and no network.
+    """
+    return {
+        "model": CAPTURE_MODEL,
+        "max_tokens": MAX_OUTPUT_TOKENS_PER_REQUEST,
+        "system": _build_system_prompt(),
+        "tools": [_build_tool()],
+        "tool_choice": {"type": "any"},   # forced single structured tool; no web/tool use
+        "messages": [{"role": "user", "content": _build_user_message(alert, source_tables)}],
+    }
+
+
+def draft_claims_for_capture(alert: dict, source_tables: dict[str, pd.DataFrame], client: Any):
+    """Capture-specific single-request adapter for the guarded capture runner.
+
+    Issues EXACTLY ONE forced-tool request with the INJECTED ``client`` (the runner
+    constructs it with timeout/retries per the guardrails; tests inject a fake), then
+    returns ``(normalized_claim_rows, input_tokens, output_tokens)``. It reuses the
+    same tool schema, prompts, extraction, and per-claim validation as ``draft_claims``,
+    but returns the provider ``usage`` and — unlike ``draft_claims`` — neither swallows
+    errors nor writes an audit event: the capture runner must see a failure to halt, and
+    it owns its own durable ledger. ``draft_claims`` and every normal caller are
+    unchanged.
+    """
+    response = client.messages.create(**build_capture_request(alert, source_tables))
+    valid: list[dict] = []
+    for claim in _extract_claims(response):
+        claim_type = claim.get("claim_type")
+        asserted_value = claim.get("asserted_value")
+        evidence_refs = claim.get("evidence_refs", [])
+        if claim_type not in KNOWN_CLAIM_TYPES:
+            continue
+        if not isinstance(asserted_value, str) or not asserted_value.strip():
+            continue
+        if not isinstance(evidence_refs, list):
+            evidence_refs = []
+        if claim_type in REQUIRES_EVIDENCE_REFS and len(evidence_refs) == 0:
+            continue
+        valid.append(_build_output(alert, claim_type, asserted_value, list(evidence_refs)))
+    usage = getattr(response, "usage", None)
+    return valid, getattr(usage, "input_tokens", None), getattr(usage, "output_tokens", None)
 
 
 def draft_claims(
