@@ -441,6 +441,52 @@ def claim_verdict_label(result) -> str:
     return CLAIM_VERDICT_LABELS.get(key, key)
 
 
+# ── Session-only human disposition (demo affordance) ─────────────────────────
+# An analyst can fill in the required review fields in the Case File so the
+# anti-rubber-stamp gate can be demonstrated live. The values live in
+# st.session_state ONLY: nothing is written to human_reviews.csv, audit_log.csv,
+# or any other file, and no lifecycle record changes. The gate DECISION is not
+# reimplemented here — it is delegated to src.review_gate.evaluate_review, the
+# same shared rule the decision pipeline uses.
+SESSION_DISPOSITION_FIELDS = ("evidence_reviewed", "draft_disposition",
+                              "decision_reason", "final_note", "final_action")
+# Gate field name -> the label the analyst actually sees on the form.
+DISPOSITION_FIELD_LABELS = {
+    "evidence_reviewed": "Evidence reviewed",
+    "draft_disposition": "AI draft accepted / edited / rejected",
+    "decision_reason":   "Decision reason",
+    "final_note":        "Final analyst note",
+    "final_action":      "Final action",
+}
+DISPOSITION_CHOICES = ("accepted", "edited", "rejected")
+FINAL_ACTION_CHOICES = ("monitor", "escalate", "close")
+
+
+def get_session_disposition(alert_id: str):
+    """The session-only disposition recorded for this alert, or None."""
+    return st.session_state.get("session_dispositions", {}).get(alert_id)
+
+
+def effective_review(alert_id: str, stored_review):
+    """The review the gate should judge.
+
+    A session disposition for this alert wins; otherwise the stored
+    human_reviews.csv row, exactly as before. Never mutates either input.
+    """
+    session = get_session_disposition(alert_id)
+    if session is None:
+        return stored_review
+    merged = dict(stored_review) if stored_review is not None else {"alert_id": alert_id}
+    merged.update({k: session.get(k, "") for k in SESSION_DISPOSITION_FIELDS})
+    merged["reviewer"] = session.get("reviewer", merged.get("reviewer", "—"))
+    return merged
+
+
+def missing_disposition_labels(gate_result) -> str:
+    """Visible names of the fields the gate is still waiting on."""
+    return ", ".join(DISPOSITION_FIELD_LABELS.get(m, m) for m in gate_result.missing)
+
+
 def lifecycle_queue_label(lc) -> str:
     return QUEUE_STATUS_LABELS[derive_queue_status(lc)]
 
@@ -658,6 +704,8 @@ if "selected_alert"    not in st.session_state: st.session_state.selected_alert 
 if "case_search"       not in st.session_state: st.session_state.case_search       = None
 if "open_case"         not in st.session_state: st.session_state.open_case         = None
 if "settings_cl"       not in st.session_state: st.session_state.settings_cl       = []
+# alert_id -> session-only disposition. Demo affordance; never written to disk.
+if "session_dispositions" not in st.session_state: st.session_state.session_dispositions = {}
 
 _qp_alert = st.query_params.get("alert")
 if _qp_alert and _qp_alert in alerts_df["alert_id"].values:
@@ -1160,6 +1208,16 @@ div[data-baseweb="popover"] li[role="option"][aria-disabled="true"]>div{backgrou
    deliberately NOT green (green over-signals correctness for mere completeness). */
 .gate-complete{border-left:5px solid #2e728f;background:#e8f4f8;}
 .gate-complete .gate-title,.gate-complete .gate-body{color:#1a5276;}
+/* Session-only disposition form under a BLOCKED gate. Demo affordance: the values
+   never leave st.session_state. Graphite chrome + existing semantic red/green. */
+.disp-form-hdr{margin-top:14px;font-size:13px;font-weight:800;color:#17202A;
+  letter-spacing:.03em;}
+.disp-form-note{display:block;margin-top:3px;font-size:12px;font-weight:500;
+  color:#667085;letter-spacing:0;}
+.disp-missing{margin-top:10px;padding:10px 12px;border-radius:6px;font-size:13px;
+  background:#FDECEC;border:1px solid #D98F8F;color:#8F1D1D;}
+.disp-recorded{margin-top:10px;padding:10px 12px;border-radius:6px;font-size:13px;
+  background:#EDF7F0;border:1px solid #89B99A;color:#1F6A3D;}
 /* Case File outcome summary rail — three equal derived-status cards. Per-card
    background/border/text color is set inline from the derived value. */
 .case-summary-rail{background:#F4F6F8;border:1px solid #D0D5DD;border-radius:8px;
@@ -1585,6 +1643,74 @@ div[data-testid="stDialog"]:has(.st-key-close_case_dialog) div[role="dialog"] > 
 </style>""")
 
 
+def render_disposition_form(alert_id: str) -> None:
+    """Session-only human disposition form, shown under a BLOCKED gate panel.
+
+    Writes to st.session_state ONLY — no CSV write, no audit event, no lifecycle
+    mutation. Completeness is judged by src.review_gate.evaluate_review (the shared
+    rule), never by logic duplicated here.
+    """
+    existing = get_session_disposition(alert_id) or {}
+
+    def _index(options, value):
+        return options.index(value) if value in options else None
+
+    st.markdown(
+        '<div class="disp-form-hdr">Record disposition'
+        '<span class="disp-form-note">Session only — nothing is written to '
+        'human_reviews.csv or the audit log. Clears when the session ends.</span></div>',
+        unsafe_allow_html=True,
+    )
+    with st.form(key=f"disposition_form_{alert_id}"):
+        evidence_reviewed = st.checkbox(
+            "Evidence reviewed", value=bool(existing.get("evidence_reviewed", False)),
+            key=f"disp_evidence_{alert_id}")
+        draft_disposition = st.selectbox(
+            "AI draft accepted / edited / rejected", list(DISPOSITION_CHOICES),
+            index=_index(list(DISPOSITION_CHOICES), existing.get("draft_disposition")),
+            placeholder="Select one", key=f"disp_draft_{alert_id}")
+        decision_reason = st.text_area(
+            "Decision reason", value=existing.get("decision_reason", ""),
+            key=f"disp_reason_{alert_id}")
+        final_note = st.text_area(
+            "Final analyst note", value=existing.get("final_note", ""),
+            key=f"disp_note_{alert_id}")
+        final_action = st.selectbox(
+            "Final action", list(FINAL_ACTION_CHOICES),
+            index=_index(list(FINAL_ACTION_CHOICES), existing.get("final_action")),
+            placeholder="Select one", key=f"disp_action_{alert_id}")
+        submitted = st.form_submit_button("Record disposition", type="primary")
+
+    if submitted:
+        st.session_state.session_dispositions[alert_id] = {
+            "evidence_reviewed": bool(evidence_reviewed),
+            "draft_disposition": draft_disposition or "",
+            "decision_reason":   decision_reason or "",
+            "final_note":        final_note or "",
+            "final_action":      final_action or "",
+            "reviewer":          f"session:{st.session_state.current_user['id']}",
+        }
+        # The coordinator clears open_case before invoking this dialog (call-once),
+        # so re-arm it or the rerun would close the Case File instead of refreshing it.
+        st.session_state.open_case = alert_id
+        st.rerun()
+
+    recorded = get_session_disposition(alert_id)
+    if recorded is not None:
+        # Same shared rule, asked again for the message under the form.
+        result = evaluate_review(recorded, enforce=True)
+        if result.missing:
+            st.markdown(
+                '<div class="disp-missing">Disposition not recorded — the gate stays '
+                f'<b>BLOCKED</b>. Still missing: <b>{missing_disposition_labels(result)}</b>.'
+                '</div>', unsafe_allow_html=True)
+        else:
+            st.markdown(
+                '<div class="disp-recorded">Session disposition recorded. The gate above '
+                'now reads <b>COMPLETE</b> for this session only.</div>',
+                unsafe_allow_html=True)
+
+
 @st.dialog("Case File", width="large")
 def show_case_dialog(alert_id: str, source: dict) -> None:
     case = get_case_detail(alert_id, source)
@@ -1812,7 +1938,12 @@ def show_case_dialog(alert_id: str, source: dict) -> None:
     else:
         # COMPLETE or BLOCKED — a human review is on file. Preserve the populated card
         # fields/compact layout and the anti-rubber-stamp gate exactly.
-        rv = case["review"]
+        # A session-only disposition (if the analyst recorded one for this alert this
+        # session) supersedes the stored row for DISPLAY and for the gate. With no
+        # session disposition, `rv` is the stored row and behavior is unchanged.
+        _stored_rv = case["review"]
+        _session_disp = get_session_disposition(alert_id)
+        rv = effective_review(alert_id, _stored_rv)
         st.markdown(f"""
         <div class="case-panel" style="margin-top:12px;">
           <div class="case-panel-hdr"><span class="case-panel-title">Human Review</span></div>
@@ -1859,15 +1990,33 @@ def show_case_dialog(alert_id: str, source: dict) -> None:
                 '<div class="gate-foot">Enforcement: enabled</div></div>'
             )
         else:
+            # A session disposition carries its own decision/action; the lifecycle
+            # record is NOT consulted (and for a stored-BLOCKED case has neither).
+            if _session_disp is not None:
+                _decision = _session_disp["draft_disposition"]
+                _final = _session_disp["final_action"]
+                _origin = ('<div class="gate-foot">Session-only demo disposition — '
+                           'not written to human_reviews.csv</div>')
+            else:
+                _decision = lc.human_review_decision.value
+                _final = lc.final_action
+                _origin = ''
             _gate_html = (
                 '<div class="gate-panel gate-complete">'
                 '<div class="gate-title">REVIEW REQUIREMENTS: COMPLETE</div>'
                 '<div class="gate-body">All required review fields are present. '
-                f'Review decision recorded: <b>{lc.human_review_decision.value}</b>. '
-                f'Final case action: <b>{lc.final_action}</b>.</div>'
+                f'Review decision recorded: <b>{_decision}</b>. '
+                f'Final case action: <b>{_final}</b>.</div>'
+                f'{_origin}'
                 '<div class="gate-foot">Enforcement: enabled</div></div>'
             )
         st.markdown(_gate_html, unsafe_allow_html=True)
+
+        # Session-only disposition affordance, offered ONLY where the STORED review is
+        # blocked. A case whose committed review is already COMPLETE renders exactly as
+        # before — no form, no change.
+        if lc.review_gate is ReviewGateStatus.BLOCKED:
+            render_disposition_form(alert_id)
 
     if st.button("Close", key="close_case_dialog", type="primary"):
         st.session_state.open_case = None
