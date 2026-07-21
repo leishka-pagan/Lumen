@@ -487,6 +487,26 @@ def missing_disposition_labels(gate_result) -> str:
     return ", ".join(DISPOSITION_FIELD_LABELS.get(m, m) for m in gate_result.missing)
 
 
+# One string, used verbatim by both the gate panel and the summary rail so the two
+# surfaces can never describe the same session disposition differently.
+SESSION_DISPOSITION_NOTE = "Session-only demo disposition — not written to human_reviews.csv"
+
+
+def session_rail_labels(session_disposition, gate_result) -> tuple[str, str]:
+    """(REVIEW REQUIREMENTS, RECORDED DISPOSITION) for a session disposition.
+
+    Derived from the SAME evaluate_review outcome the gate panel renders, so the rail
+    and the panel cannot disagree. Completeness keys off ``missing`` rather than
+    ``blocked``: with enforcement switched off the gate stops blocking but an
+    incomplete review is still incomplete, and the rail must not claim otherwise.
+    Mirrors the lifecycle invariant that a non-complete review carries no final action.
+    """
+    if gate_result.missing:
+        return "BLOCKED", "NONE"
+    action = str(session_disposition.get("final_action", "")).strip()
+    return "COMPLETE", (action.upper() if action else "NONE")
+
+
 def lifecycle_queue_label(lc) -> str:
     return QUEUE_STATUS_LABELS[derive_queue_status(lc)]
 
@@ -1218,6 +1238,9 @@ div[data-baseweb="popover"] li[role="option"][aria-disabled="true"]>div{backgrou
   background:#FDECEC;border:1px solid #D98F8F;color:#8F1D1D;}
 .disp-recorded{margin-top:10px;padding:10px 12px;border-radius:6px;font-size:13px;
   background:#EDF7F0;border:1px solid #89B99A;color:#1F6A3D;}
+/* Rail provenance line, shown only when a session disposition drives the rail. */
+.rail-session-note{margin:-6px 0 12px;font-size:11px;font-weight:700;color:#667085;
+  text-transform:uppercase;letter-spacing:.05em;}
 /* Case File outcome summary rail — three equal derived-status cards. Per-card
    background/border/text color is set inline from the derived value. */
 .case-summary-rail{background:#F4F6F8;border:1px solid #D0D5DD;border-radius:8px;
@@ -1757,6 +1780,21 @@ def show_case_dialog(alert_id: str, source: dict) -> None:
     _review_req = lifecycle_review_requirements_label(lc)
     _recorded_disp = lifecycle_recorded_disposition_label(lc)
 
+    # ── Session-disposition overlay, computed ONCE here and reused by the gate panel
+    #    further down, so the rail and the panel are two views of one evaluation.
+    #    With no session disposition for this alert every value below is untouched and
+    #    the rail markup is byte-identical to the lifecycle-only render.
+    _enforce = bool(st.session_state.risk_settings.get("block_rubber_stamp", True))
+    _session_disp = get_session_disposition(alert_id)
+    _eff_review = effective_review(alert_id, case["review"])
+    _rail_note = ""
+    if _session_disp is not None:
+        # AI DRAFT ACCURACY is deliberately NOT touched: a human disposition says
+        # nothing about whether the AI's claims matched the evidence.
+        _review_req, _recorded_disp = session_rail_labels(
+            _session_disp, evaluate_review(_eff_review, enforce=_enforce))
+        _rail_note = f'<div class="rail-session-note">{SESSION_DISPOSITION_NOTE}</div>'
+
     st.markdown(
         '<div class="case-summary-rail">'
         f'<div class="case-summary-card" style="{_accuracy_style(_ai_verif)}">'
@@ -1768,7 +1806,8 @@ def show_case_dialog(alert_id: str, source: dict) -> None:
         f'<div class="case-summary-card" style="{_summary_style(_recorded_disp)}">'
         '<div class="case-summary-label">RECORDED DISPOSITION</div>'
         f'<div class="case-summary-value">{_recorded_disp}</div></div>'
-        '</div>',
+        '</div>'
+        f'{_rail_note}',
         unsafe_allow_html=True,
     )
 
@@ -1941,9 +1980,9 @@ def show_case_dialog(alert_id: str, source: dict) -> None:
         # A session-only disposition (if the analyst recorded one for this alert this
         # session) supersedes the stored row for DISPLAY and for the gate. With no
         # session disposition, `rv` is the stored row and behavior is unchanged.
-        _stored_rv = case["review"]
-        _session_disp = get_session_disposition(alert_id)
-        rv = effective_review(alert_id, _stored_rv)
+        # `_session_disp` / `_eff_review` were computed once for the summary rail above;
+        # reusing them is what keeps the rail and this panel in agreement.
+        rv = _eff_review
         st.markdown(f"""
         <div class="case-panel" style="margin-top:12px;">
           <div class="case-panel-hdr"><span class="case-panel-title">Human Review</span></div>
@@ -1966,7 +2005,7 @@ def show_case_dialog(alert_id: str, source: dict) -> None:
         # pipeline execution). It applies the SAME shared rule the decision pipeline
         # uses (src/pipeline.py Step 3 -> src/review_gate.evaluate_review). This is a
         # stored, seeded review — no reviewer clicked Submit or Approve here.
-        _enforce = bool(st.session_state.risk_settings.get("block_rubber_stamp", True))
+        # `_enforce` is the same value the rail above evaluated with.
         _gate = evaluate_review(rv, enforce=_enforce)
         _missing = ", ".join(_gate.missing) if _gate.missing else "none"
         if not _gate.enforcement_enabled:
@@ -1995,8 +2034,7 @@ def show_case_dialog(alert_id: str, source: dict) -> None:
             if _session_disp is not None:
                 _decision = _session_disp["draft_disposition"]
                 _final = _session_disp["final_action"]
-                _origin = ('<div class="gate-foot">Session-only demo disposition — '
-                           'not written to human_reviews.csv</div>')
+                _origin = f'<div class="gate-foot">{SESSION_DISPOSITION_NOTE}</div>'
             else:
                 _decision = lc.human_review_decision.value
                 _final = lc.final_action
