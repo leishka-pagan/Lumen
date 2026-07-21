@@ -146,6 +146,26 @@ def test_semantic_amber_and_terracotta_reserved_for_pending():
     assert "#F5E9E2" in pill and "#C58B6C" in pill and "#6A3D2A" in pill
 
 
+def test_reset_demo_pastel_is_the_only_yellow_utility_surface():
+    """Reset Demo is the single authorized pastel-yellow utility control. Its palette
+    is confined to the keyed rule and never becomes a general application accent."""
+    i = _SRC.index("div.st-key-demo_reset .stButton>button{")
+    block = _SRC[i:i + 1700]
+    pastel = ("#FFF9D9", "#F8EDB8", "#D8C779", "#584C1F", "#F5E6A3", "#C5B15D",
+              "#4D421B", "#EED985", "#B49A3F", "#453A14", "#F2E6AE",
+              "#F3F0DF", "#D8D1A9", "#938B68")
+    for c in pastel:
+        assert c in block, f"{c} missing from the Reset Demo rules"
+        assert _SRC.count(c) == block.count(c), f"{c} leaked outside Reset Demo"
+    # it must not be reused on the header, nav, tables or the role-switch
+    for surface in (".id-bar{", ".sub-nav{", 'div[data-baseweb="tab-list"]{',
+                    ".lv-table thead tr", 'stColumn"]:nth-child(3) .stButton>button{'):
+        j = _SRC.find(surface)
+        if j != -1:
+            assert not any(c in _SRC[j:j + 400] for c in pastel), \
+                f"pastel yellow leaked onto {surface}"
+
+
 def test_semantic_and_decorative_palettes_do_not_collide():
     decorative = {v.upper() for v in GRAPHITE.values()}
     semantic = {c.upper() for c in SEMANTIC_RED | SEMANTIC_GREEN | SEMANTIC_AMBER | TERRACOTTA}

@@ -155,6 +155,52 @@ def test_header_button_selectors_are_scoped():
     assert 'div[data-testid="column"]:nth-child(3)' not in _SRC
 
 
+def _reset_block() -> str:
+    """The keyed Reset Demo rule set (default through :disabled)."""
+    i = _SRC.index("div.st-key-demo_reset .stButton>button{")
+    return _SRC[i:i + 1700]
+
+
+def test_reset_demo_pastel_utility_states():
+    """Reset Demo is the one intentional pastel-yellow utility control; each state is
+    pinned. Wording, icon, key and callback are asserted separately and unchanged."""
+    css = _CSS.replace("\n", " ")
+    assert re.search(r"div\.st-key-demo_reset \.stButton>button\{[^}]*"
+                     r"background:linear-gradient\(180deg,#FFF9D9 0%,#F8EDB8 100%\)[^}]*"
+                     r"border:1px solid #D8C779[^}]*color:#584C1F[^}]*min-height:44px[^}]*"
+                     r"border-radius:10px[^}]*box-shadow:0 4px 10px rgba\(88,76,31,0\.12\)[^}]*"
+                     r"transform:none[^}]*font-size:12px[^}]*font-weight:750", css)
+    assert re.search(r"demo_reset \.stButton>button:hover\{[^}]*background:#F5E6A3[^}]*"
+                     r"border-color:#C5B15D[^}]*color:#4D421B[^}]*"
+                     r"box-shadow:0 6px 14px rgba\(88,76,31,0\.16\)[^}]*transform:translateY\(-1px\)", css)
+    assert re.search(r"demo_reset \.stButton>button:active\{[^}]*background:#EED985[^}]*"
+                     r"border-color:#B49A3F[^}]*color:#453A14[^}]*"
+                     r"box-shadow:inset 0 2px 3px rgba\(88,76,31,0\.16\)[^}]*transform:translateY\(0\)", css)
+    assert re.search(r"demo_reset \.stButton>button:focus-visible\{[^}]*outline:none[^}]*"
+                     r"border-color:#B49A3F[^}]*box-shadow:0 0 0 3px #F2E6AE", css)
+    assert re.search(r"demo_reset \.stButton>button:disabled\{[^}]*background:#F3F0DF[^}]*"
+                     r"border-color:#D8D1A9[^}]*color:#938B68[^}]*box-shadow:none[^}]*"
+                     r"transform:none[^}]*opacity:1", css)
+
+
+def test_reset_demo_pastel_is_confined_to_that_button():
+    """The pastel palette must not leak onto any other surface."""
+    block = _reset_block()
+    for pastel in ("#FFF9D9", "#F8EDB8", "#D8C779", "#584C1F", "#F5E6A3", "#C5B15D",
+                   "#4D421B", "#EED985", "#B49A3F", "#453A14", "#F2E6AE",
+                   "#F3F0DF", "#D8D1A9", "#938B68"):
+        assert pastel in block, f"{pastel} missing from the Reset Demo rules"
+        assert _SRC.count(pastel) == block.count(pastel), \
+            f"{pastel} also used outside the Reset Demo button"
+
+
+def test_reset_demo_wording_icon_and_callback_unchanged():
+    at = _run(view_as="Analyst")
+    assert "↻ Reset Demo" in {b.label for b in at.button}       # wording + icon intact
+    assert "demo_reset" in {b.key for b in at.button if b.key}   # key intact
+    assert "_open_demo_reset()" in _SRC and "reset_override_demo(" in _SRC
+
+
 # ── 7 — exact desktop colors present ─────────────────────────────────────────
 def test_exact_desktop_colors_present():
     required = [
@@ -162,7 +208,8 @@ def test_exact_desktop_colors_present():
         "#F5E9E2", "#C58B6C", "#6A3D2A", "#9B5438",                                    # pending pill
         "#D0D5DD", "#334155", "#17202A",                                              # role-bar
         "#F4F6F8",                                                                     # control row
-        "#98A2B3", "#334155", "#EEF1F4", "#CBD5E1", "#A8B6C8",                          # reset demo states
+        "#FFF9D9", "#F8EDB8", "#D8C779", "#584C1F", "#F5E6A3", "#C5B15D",              # reset demo (pastel)
+        "#EED985", "#B49A3F", "#453A14", "#F2E6AE", "#F3F0DF", "#D8D1A9", "#938B68",   # reset demo states
         "#526276", "#475569", "#3F4C5E", "#2F3947",                                    # role-switch states
     ]
     for hexval in required:

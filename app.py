@@ -1306,23 +1306,25 @@ div[data-testid="stHorizontalBlock"]:has(.role-bar){
   align-items:center !important;}
 
 /* Reset Demo button (2nd stColumn), keyed selector — widget key/callback unchanged. */
+/* Reset Demo — restrained pastel-yellow utility control. Wording, icon, key,
+   callback, dialog and baseline restoration are unchanged; colours only. */
 div.st-key-demo_reset .stButton>button{
-  background:linear-gradient(180deg,#FFFFFF 0%,#F4F6F8 100%) !important;border:1px solid #98A2B3 !important;
-  color:#334155 !important;
+  background:linear-gradient(180deg,#FFF9D9 0%,#F8EDB8 100%) !important;border:1px solid #D8C779 !important;
+  color:#584C1F !important;
   min-height:44px !important;width:100% !important;padding:0 14px !important;margin:0 !important;
-  border-radius:10px !important;box-shadow:0 4px 10px rgba(17,24,39,0.12) !important;
+  border-radius:10px !important;box-shadow:0 4px 10px rgba(88,76,31,0.12) !important;transform:none !important;
   font-size:12px !important;font-weight:750 !important;cursor:pointer !important;white-space:nowrap !important;
   transition:background .12s ease,border-color .12s ease,box-shadow .12s ease,transform .12s ease,color .12s ease !important;}
 div.st-key-demo_reset .stButton>button:hover{
-  background:#EEF1F4 !important;border-color:#475569 !important;color:#334155 !important;
-  box-shadow:0 6px 14px rgba(51,65,85,0.18) !important;transform:translateY(-1px) !important;}
+  background:#F5E6A3 !important;border-color:#C5B15D !important;color:#4D421B !important;
+  box-shadow:0 6px 14px rgba(88,76,31,0.16) !important;transform:translateY(-1px) !important;}
 div.st-key-demo_reset .stButton>button:active{
-  background:#CBD5E1 !important;border-color:#334155 !important;color:#334155 !important;
-  box-shadow:inset 0 2px 3px rgba(17,24,39,0.14) !important;transform:translateY(0) !important;}
+  background:#EED985 !important;border-color:#B49A3F !important;color:#453A14 !important;
+  box-shadow:inset 0 2px 3px rgba(88,76,31,0.16) !important;transform:translateY(0) !important;}
 div.st-key-demo_reset .stButton>button:focus-visible{
-  outline:none !important;box-shadow:0 0 0 3px #A8B6C8 !important;}
+  outline:none !important;border-color:#B49A3F !important;box-shadow:0 0 0 3px #F2E6AE !important;}
 div.st-key-demo_reset .stButton>button:disabled{
-  background:#EEF1F4 !important;border-color:#D0D5DD !important;color:#667085 !important;
+  background:#F3F0DF !important;border-color:#D8D1A9 !important;color:#938B68 !important;
   box-shadow:none !important;transform:none !important;opacity:1 !important;}
 
 /* MIDNIGHT LUMEN — header-only responsive layout (≤700px). Nothing below the header
