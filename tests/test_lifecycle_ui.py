@@ -648,41 +648,41 @@ def test_collapsed_control_state_values():
     css = _APP_SRC
     # normal control box
     assert _re.search(r'div\[data-testid="stSelectbox"\] div\[data-baseweb="select"\]>div\{[^}]*'
-                      r'background:#ffffff[^}]*border:1px solid #9fb7c7[^}]*border-radius:4px[^}]*'
-                      r'box-shadow:none[^}]*color:#16324a', css)
+                      r'background:#FFFFFF[^}]*border:1px solid #98A2B3[^}]*border-radius:8px[^}]*'
+                      r'box-shadow:none[^}]*color:#17202A', css)
     # placeholder + arrow
-    assert _re.search(r'input\[role="combobox"\]::placeholder\{[^}]*color:#5f6b76', css)
-    assert _re.search(r'svg\[data-baseweb="icon"\]\{fill:#1a5276', css)
+    assert _re.search(r'input\[role="combobox"\]::placeholder\{[^}]*color:#667085', css)
+    assert _re.search(r'svg\[data-baseweb="icon"\]\{fill:#475569', css)
     # hover + focus ring (no layout change: box-shadow, outline none)
-    assert _re.search(r'div\[data-baseweb="select"\]:hover>div\{[^}]*border-color:#4a8ba5[^}]*cursor:pointer', css)
-    assert _re.search(r'div\[data-baseweb="select"\]:focus-within>div\{[^}]*border:1px solid #1a5276[^}]*'
-                      r'box-shadow:0 0 0 3px rgba\(26,82,118,\.18\)[^}]*outline:none', css)
+    assert _re.search(r'div\[data-baseweb="select"\]:hover>div\{[^}]*border-color:#66788A[^}]*cursor:pointer', css)
+    assert _re.search(r'div\[data-baseweb="select"\]:focus-within>div\{[^}]*border:1px solid #475569[^}]*'
+                      r'box-shadow:0 0 0 3px #DCE3EA[^}]*outline:none', css)
 
 
 def test_popover_state_values():
     css = _APP_SRC
     assert _re.search(r'div\[data-baseweb="popover"\]\{[^}]*background:#ffffff[^}]*'
-                      r'border:1px solid #9fb7c7[^}]*border-radius:8px[^}]*'
-                      r'box-shadow:0 8px 24px rgba\(15,45,62,\.18\)[^}]*padding:0', css)
+                      r'border:1px solid #98A2B3[^}]*border-radius:8px[^}]*'
+                      r'box-shadow:0 8px 24px rgba\(17,24,39,\.18\)[^}]*padding:0', css)
 
 
 def test_option_state_values():
     css = _APP_SRC
     # normal
-    assert _re.search(r'li\[role="option"\]>div\{[^}]*background:transparent[^}]*color:#16324a[^}]*'
-                      r'font-size:14px[^}]*font-weight:400[^}]*padding-left:12px[^}]*'
+    assert _re.search(r'li\[role="option"\]>div\{[^}]*background:transparent[^}]*color:#17202A[^}]*'
+                      r'font-size:13px[^}]*font-weight:400[^}]*padding-left:12px[^}]*'
                       r'padding-right:12px[^}]*border-radius:5px', css)
     # hover
-    assert _re.search(r'li\[role="option"\]:hover>div\{[^}]*background:#e7f2f7[^}]*color:#0f4d67[^}]*font-weight:600', css)
+    assert _re.search(r'li\[role="option"\]:hover>div\{[^}]*background:#EEF1F4[^}]*color:#334155[^}]*font-weight:600', css)
     # keyboard focus + inset ring
-    assert _re.search(r'li\[role="option"\]:focus-visible>div\{[^}]*background:#e7f2f7[^}]*color:#0f4d67[^}]*'
-                      r'font-weight:600[^}]*box-shadow:inset 0 0 0 2px #4a8ba5', css)
+    assert _re.search(r'li\[role="option"\]:focus-visible>div\{[^}]*background:#EEF1F4[^}]*color:#334155[^}]*'
+                      r'font-weight:600[^}]*box-shadow:inset 0 0 0 2px #475569', css)
     # selected + selected-on-hover
-    assert _re.search(r'li\[role="option"\]\[aria-selected="true"\]>div\{[^}]*background:#d6eaf2[^}]*color:#0f4d67[^}]*font-weight:700', css)
-    assert _re.search(r'li\[role="option"\]\[aria-selected="true"\]:hover>div\{[^}]*background:#c7e2ed[^}]*font-weight:700', css)
+    assert _re.search(r'li\[role="option"\]\[aria-selected="true"\]>div\{[^}]*background:#CBD5E1[^}]*color:#334155[^}]*font-weight:700', css)
+    assert _re.search(r'li\[role="option"\]\[aria-selected="true"\]:hover>div\{[^}]*background:#A8B6C8[^}]*font-weight:700', css)
     # disabled
     assert _re.search(r'li\[role="option"\]\[aria-disabled="true"\]\{[^}]*cursor:not-allowed[^}]*opacity:\.75', css)
-    assert _re.search(r'li\[role="option"\]\[aria-disabled="true"\]>div\{[^}]*background:#f4f7fa[^}]*color:#8a96a0', css)
+    assert _re.search(r'li\[role="option"\]\[aria-disabled="true"\]>div\{[^}]*background:#F4F6F8[^}]*color:#667085', css)
 
 
 def test_mobile_popover_constraint_present_and_transform_untouched():

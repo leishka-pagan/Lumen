@@ -1,4 +1,4 @@
-"""Global header (Midnight Lumen) — structure, scoping, exact colors, and read-only guarantees.
+"""Global header (Institutional Graphite) — structure, scoping, exact colors, and read-only guarantees.
 
 Two layers:
 - RENDER tests drive the real app via AppTest and assert the header markup, the visible
@@ -158,12 +158,12 @@ def test_header_button_selectors_are_scoped():
 # ── 7 — exact desktop colors present ─────────────────────────────────────────
 def test_exact_desktop_colors_present():
     required = [
-        "#0B1F33", "#294763", "#F5B942", "#132B45", "#35516D", "#F4F7FB", "#C3D0DE",   # id-bar/sub-nav/badge
-        "#FFF3D0", "#E3A72F", "#7A4A00", "#A15C00",                                    # pending pill
-        "#D7E0EA", "#3A4657", "#142033",                                              # role-bar
-        "#F3F6FA",                                                                     # control row
-        "#27364A", "#FFF7DF", "#FCE9B2", "#C7D7F7", "#E8EDF3", "#8B98A8",              # reset demo states
-        "#2457C5", "#1E46A0", "#173A86", "#AEC7FF",                                    # role-switch states
+        "#111827", "#1F2937", "#26313F", "#334155", "#CBD5E1", "#475569", "#F8FAFC",   # id-bar / sub-nav / badge
+        "#F5E9E2", "#C58B6C", "#6A3D2A", "#9B5438",                                    # pending pill
+        "#D0D5DD", "#334155", "#17202A",                                              # role-bar
+        "#F4F6F8",                                                                     # control row
+        "#98A2B3", "#334155", "#EEF1F4", "#CBD5E1", "#A8B6C8",                          # reset demo states
+        "#526276", "#475569", "#3F4C5E", "#2F3947",                                    # role-switch states
     ]
     for hexval in required:
         assert hexval in _SRC, f"missing header color {hexval}"
@@ -171,10 +171,10 @@ def test_exact_desktop_colors_present():
 
 def test_id_bar_and_logo_exact_rule():
     css = _CSS.replace("\n", " ")
-    assert re.search(r'\.id-bar\{[^}]*background:#0B1F33[^}]*min-height:74px[^}]*'
-                     r'border-bottom:1px solid #294763[^}]*box-shadow:0 8px 24px rgba\(11,31,51,0\.18\)', css)
-    assert re.search(r'\.id-bar-logo\{[^}]*font-size:30px[^}]*font-weight:800[^}]*letter-spacing:-0\.6px', css)
-    assert re.search(r'\.id-bar-logo span\{[^}]*color:#F5B942', css)
+    assert re.search(r'\.id-bar\{[^}]*background:linear-gradient\(135deg,#111827[^}]*min-height:92px[^}]*'
+                     r'border-bottom:1px solid #334155[^}]*box-shadow:0 10px 28px rgba\(17,24,39,0\.24\)', css)
+    assert re.search(r'\.id-bar-logo\{[^}]*font-size:38px[^}]*font-weight:850[^}]*letter-spacing:-1px', css)
+    assert re.search(r'\.id-bar-logo span\{[^}]*color:#CBD5E1', css)
 
 
 # ── 8 — the <=700px header media query exists ────────────────────────────────

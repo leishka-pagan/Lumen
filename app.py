@@ -680,73 +680,75 @@ if "keywords" not in st.session_state:
 st.html("""
 <style>
 *,html,body,[class*="css"]{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif !important;box-sizing:border-box;}
-.stApp{background:#eef1f4;}
+.stApp{background:#F4F6F8;color:#17202A;}
 .stMainBlockContainer{padding:0 !important;max-width:100% !important;}
 header[data-testid="stHeader"]{display:none !important;}
 div[data-testid="stToolbar"]{display:none !important;}
 #MainMenu{display:none !important;}
 
-/* MIDNIGHT LUMEN header — brand row (.id-bar), context row (.sub-nav), pending pill.
-   Header-only; no :root var, no navigation/table/dialog selector is touched. */
-.id-bar{background:#0B1F33;color:#FFFFFF;min-height:74px;padding:0 24px;margin:0;gap:24px;
+/* OBSIDIAN PLUM header — brand row (.id-bar), context row (.sub-nav), pending pill.
+   Styling only; the accessible non-h1 brand, stColumn scoping and mobile structure
+   from 66dbb92 are preserved unchanged. */
+.id-bar{background:linear-gradient(135deg,#111827 0%,#1F2937 62%,#26313F 100%);color:#FFFFFF;
+  min-height:92px;padding:0 30px;margin:0;gap:28px;
   display:flex;align-items:center;justify-content:space-between;
-  border-bottom:1px solid #294763;border-radius:0;box-shadow:0 8px 24px rgba(11,31,51,0.18);}
-.id-bar-logo{color:#FFFFFF;background:transparent;font-size:30px;font-weight:800;line-height:1;
-  letter-spacing:-0.6px;padding:0;margin:0;border:none;border-radius:0;box-shadow:none;white-space:nowrap;}
-.id-bar-logo span{color:#F5B942;font-size:inherit;font-weight:inherit;}
+  border-bottom:1px solid #334155;border-radius:0;box-shadow:0 10px 28px rgba(17,24,39,0.24);}
+.id-bar-logo{color:#FFFFFF;background:transparent;font-size:38px;font-weight:850;line-height:1;
+  letter-spacing:-1px;padding:0;margin:0;border:none;border-radius:0;box-shadow:none;white-space:nowrap;}
+.id-bar-logo span{color:#CBD5E1;font-size:inherit;font-weight:850;}
 .id-bar-right{display:flex;align-items:center;gap:12px;}
-.id-bar-right a{color:#F4F7FB;text-decoration:none;}
+.id-bar-right a{color:#F8FAFC;text-decoration:none;}
 .id-bar-right a:hover{text-decoration:underline;}
-.id-bar-user{background:#132B45;border:1px solid #35516D;color:#F4F7FB;padding:8px 12px;margin:0;
-  border-radius:9px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.05);
-  font-size:12px;font-weight:700;line-height:1.2;letter-spacing:0.1px;white-space:nowrap;}
+.id-bar-user{background:rgba(255,255,255,0.06);border:1px solid #475569;color:#F8FAFC;padding:9px 14px;margin:0;
+  border-radius:10px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.08),0 4px 12px rgba(0,0,0,0.14);
+  font-size:13px;font-weight:750;line-height:1.2;letter-spacing:0.1px;white-space:nowrap;}
 
-.sub-nav{background:#132B45;color:#C3D0DE;min-height:38px;height:auto;padding:0 24px;margin:0;gap:16px;
+.sub-nav{background:#1F2937;color:#CBD5E1;min-height:46px;height:auto;padding:0 30px;margin:0;gap:16px;
   display:flex;align-items:center;justify-content:space-between;
-  border-bottom:1px solid #294763;border-radius:0;box-shadow:none;overflow:visible;}
-.sub-nav-left{color:#F4F7FB;font-size:12px;font-weight:700;line-height:1.3;letter-spacing:0.2px;white-space:nowrap;}
-.sub-nav-right{color:#C3D0DE;font-size:11px;font-weight:600;line-height:1.3;gap:12px;
+  border-bottom:1px solid #334155;border-radius:0;box-shadow:none;overflow:visible;}
+.sub-nav-left{color:#F8FAFC;font-size:13px;font-weight:750;line-height:1.3;letter-spacing:0.2px;white-space:nowrap;}
+.sub-nav-right{color:#CBD5E1;font-size:12px;font-weight:600;line-height:1.3;gap:12px;
   display:flex;align-items:center;justify-content:flex-end;white-space:nowrap;font-variant-numeric:tabular-nums;}
-.hdr-pending{display:inline-flex;align-items:center;gap:6px;background:#FFF3D0;border:1px solid #E3A72F;
-  color:#7A4A00;font-size:11px;font-weight:800;line-height:1.1;letter-spacing:0.1px;
-  padding:4px 9px;margin:0;border-radius:999px;box-shadow:none;}
-.hdr-pending .dot{width:6px;height:6px;border-radius:50%;background:#A15C00;border:none;box-shadow:none;display:inline-block;}
+.hdr-pending{display:inline-flex;align-items:center;gap:6px;background:#F5E9E2;border:1px solid #C58B6C;
+  color:#6A3D2A;font-size:12px;font-weight:800;line-height:1.1;letter-spacing:0.1px;
+  padding:5px 10px;margin:0;border-radius:999px;box-shadow:none;}
+.hdr-pending .dot{width:6px;height:6px;border-radius:50%;background:#9B5438;border:none;box-shadow:none;display:inline-block;}
 
 .page-body{padding:12px 26px 20px 26px;}
-.section-h{font-size:18px !important;font-weight:700 !important;color:#173453 !important;margin:0 0 12px 0 !important;padding:0 !important;}
-.section-h .section-count{color:#5a6570;font-weight:600;font-size:14px;}
+.section-h{font-size:18px !important;font-weight:850 !important;color:#17202A !important;letter-spacing:-0.2px !important;margin:0 0 12px 0 !important;padding:0 !important;}
+.section-h .section-count{color:#667085;font-weight:600;font-size:14px;}
 
 /* MIDNIGHT LUMEN — demo-role banner (informational; wording unchanged) */
-.role-bar{background:#FFFFFF;border:1px solid #D7E0EA;border-left:4px solid #F5B942;color:#3A4657;
-  min-height:44px;padding:10px 14px;margin:0;gap:8px;border-radius:10px;box-shadow:0 4px 12px rgba(20,32,51,0.08);
-  font-size:13px;font-weight:500;line-height:1.35;display:flex;align-items:center;}
-.role-bar b,.role-bar strong{color:#142033;font-weight:800;}
+.role-bar{background:#FFFFFF;border:1px solid #D0D5DD;border-left:5px solid #475569;color:#334155;
+  min-height:48px;padding:11px 15px;margin:0;gap:8px;border-radius:11px;box-shadow:0 5px 14px rgba(17,24,39,0.10);
+  font-size:13px;font-weight:550;line-height:1.35;display:flex;align-items:center;}
+.role-bar b,.role-bar strong{color:#17202A;font-weight:800;}
 .pending-badge{display:inline-flex;align-items:center;gap:6px;background:#fde8e8;border:1px solid #d99;border-radius:5px;padding:10px 14px;font-size:14px;font-weight:700;color:#a01818;justify-content:center;}
 
 .metric-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px;}
-.metric-cell{background:#fff;padding:16px 20px;border:1px solid #cdd6de;border-top:4px solid #1a5276;border-radius:6px;box-shadow:0 1px 2px rgba(0,0,0,.05);}
+.metric-cell{background:#FFFFFF;padding:16px 20px;border:1px solid #D0D5DD;border-top:4px solid #475569;border-radius:6px;box-shadow:0 1px 2px rgba(17,24,39,.05);}
 .metric-cell-label{font-size:12px;font-weight:700;color:#4a5560;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px;}
 .metric-cell-value{font-size:34px;font-weight:800;line-height:1;color:#1a1a1a;font-variant-numeric:tabular-nums;}
 .metric-cell-value.danger{color:#a01818;}
 .metric-cell-value.warn{color:#8a5600;}
-.metric-cell-value.info{color:#1a5276;}
+.metric-cell-value.info{color:#3F4C5E;}
 .metric-cell-sub{font-size:12px;color:#5a6570;margin-top:5px;font-weight:500;}
 
-.panel{background:#fff;border:1px solid #cdd6de;border-radius:6px;margin-bottom:16px;overflow:hidden;}
-.panel-header{background:#f4f7fa;border-bottom:1px solid #cdd6de;padding:11px 18px;display:flex;justify-content:space-between;align-items:center;}
-.panel-title{font-size:17px;font-weight:700;color:#173453;}
+.panel{background:#fff;border:1px solid #D0D5DD;border-radius:6px;margin-bottom:16px;overflow:hidden;}
+.panel-header{background:#F4F6F8;border-bottom:1px solid #D0D5DD;padding:11px 18px;display:flex;justify-content:space-between;align-items:center;}
+.panel-title{font-size:17px;font-weight:700;color:#17202A;}
 .panel-subtitle{font-size:13px;color:#5a6570;}
 
 .data-table{width:100%;border-collapse:collapse;font-size:13px;}
-.data-table thead tr{background:linear-gradient(to bottom,#e0e8f0,#c8d8e8);}
-.data-table th{padding:8px 12px;text-align:left;font-size:12px;font-weight:700;color:#1a3a5c;border-right:1px solid #b8ccd8;border-bottom:2px solid #8aaabf;white-space:nowrap;}
+.data-table thead tr{background:linear-gradient(180deg,#374151 0%,#2B3139 100%);}
+.data-table th{padding:8px 12px;text-align:left;font-size:12px;font-weight:850;color:#FFFFFF;letter-spacing:.2px;border-right:1px solid #46515F;border-bottom:none;white-space:nowrap;}
 .data-table th:last-child{border-right:none;}
 .data-table td{padding:8px 12px;border-bottom:1px solid #e8e8e8;border-right:1px solid #f0f0f0;color:#1a1a1a;vertical-align:middle;}
 .data-table td:last-child{border-right:none;}
-.data-table tbody tr:nth-child(even) td{background:#f4f7fa;}
+.data-table tbody tr:nth-child(even) td{background:#F4F6F8;}
 .data-table tbody tr:nth-child(odd) td{background:#fff;}
 .data-table tbody tr:hover td{background:#ddeeff !important;cursor:pointer;}
-.data-table tbody tr.selected td{background:#c8dcf0 !important;border-left:3px solid #1a5276;}
+.data-table tbody tr.selected td{background:#EEF1F4 !important;border-left:3px solid #475569;}
 .data-table tbody tr.has-pending td{border-left:3px solid #f0c040;}
 
 .badge{display:inline-block;padding:2px 8px;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;border-radius:3px;border:1px solid;}
@@ -762,17 +764,17 @@ div[data-testid="stToolbar"]{display:none !important;}
 .rb-t{width:70px;height:8px;background:#ddd;border:1px solid #bbb;border-radius:1px;overflow:hidden;}
 .rb-v{font-size:11px;font-weight:700;color:#333;min-width:30px;font-variant-numeric:tabular-nums;}
 
-.edit-form{background:#f8f9fa;border:1px solid #b8ccd8;border-left:4px solid #1a5276;padding:14px 16px;margin:6px 0 10px 0;}
-.edit-form-title{font-size:13px;font-weight:700;color:#1a5276;letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px;}
+.edit-form{background:#F4F6F8;border:1px solid #D0D5DD;border-left:4px solid #475569;padding:14px 16px;margin:6px 0 10px 0;}
+.edit-form-title{font-size:13px;font-weight:800;color:#334155;letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px;}
 
 .case-panel{background:#fff;border:1px solid #b0b0b0;margin-top:14px;}
-.case-panel-hdr{background:linear-gradient(to bottom,#1a5276,#154360);padding:8px 14px;display:flex;justify-content:space-between;align-items:center;}
+.case-panel-hdr{background:linear-gradient(180deg,#374151 0%,#2B3139 100%);padding:8px 14px;display:flex;justify-content:space-between;align-items:center;}
 .case-panel-title{font-size:13px;font-weight:700;color:#fff;}
 .case-panel-id{font-size:11px;color:#a8c4e0;}
 .case-grid{display:grid;grid-template-columns:1fr 1fr;}
 .case-section{padding:14px 16px;border-right:1px solid #e8e8e8;border-bottom:1px solid #e8e8e8;}
 .case-section:nth-child(even){border-right:none;}
-.case-section-title{font-size:11px;font-weight:700;color:#1a5276;letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px;padding-bottom:5px;border-bottom:1px solid #d0e0ec;}
+.case-section-title{font-size:11px;font-weight:800;color:#334155;letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px;padding-bottom:5px;border-bottom:1px solid #D0D5DD;}
 .field-row{display:flex;justify-content:space-between;margin-bottom:6px;font-size:13px;}
 .field-lbl{color:#555;font-weight:500;}
 .field-val{color:#1a1a1a;font-weight:600;text-align:right;}
@@ -799,34 +801,35 @@ div[data-testid="stToolbar"]{display:none !important;}
 .review-field{margin-top:10px;}
 .review-text{margin:3px 0 0 0;font-size:13px;line-height:1.5;color:#2a2a2a;}
 
-.settings-section-title{font-size:13px;font-weight:700;color:#1a5276;letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px;}
+.settings-section-title{font-size:13px;font-weight:800;color:#334155;letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px;}
 .field-desc-txt{font-size:13px;color:#333;margin:2px 0 8px 0;line-height:1.45;}
 .kw-chip{display:inline-block;padding:3px 9px;background:#e8eeff;color:#1a2e8c;border:1px solid #99aacc;border-radius:3px;font-size:13px;font-weight:500;margin:2px;}
 
 /* FIX 4: log-tbl and badges — all bumped to 13px for readability */
-.log-tbl{width:100%;border-collapse:collapse;font-size:13px;border:1px solid #cdd6de;}
-.log-tbl th{padding:10px 14px;background:#e0e8f0;border-bottom:2px solid #8aaabf;font-size:13px;font-weight:700;color:#1a3a5c;text-transform:uppercase;letter-spacing:.05em;text-align:left;}
+.log-tbl{width:100%;border-collapse:collapse;font-size:13px;border:1px solid #D0D5DD;}
+.log-tbl th{padding:10px 14px;background:linear-gradient(180deg,#374151 0%,#2B3139 100%);border-bottom:none;font-size:12px;font-weight:850;color:#FFFFFF;text-transform:uppercase;letter-spacing:.05em;text-align:left;}
 .log-tbl td{padding:9px 14px;border-bottom:1px solid #e8e8e8;color:#2a2a2a;font-size:13px;}
 .log-tbl tbody tr:nth-child(even) td{background:#f7f9fc;}
 .lt-change{background:#fef3e2;color:#6b3800;border:1px solid #dba;padding:3px 9px;border-radius:3px;font-size:13px;font-weight:700;}
 .lt-add{background:#e8f5e8;color:#1a5c1a;border:1px solid #9c9;padding:3px 9px;border-radius:3px;font-size:13px;font-weight:700;}
 .lt-remove{background:#fde8e8;color:#7b0000;border:1px solid #c88;padding:3px 9px;border-radius:3px;font-size:13px;font-weight:700;}
 
-div[data-testid="stTabs"]>div:first-child{background:linear-gradient(to bottom,#eef1f4,#dfe4ea) !important;border-bottom:2px solid #cdd6de !important;padding:0 26px !important;gap:0 !important;}
-button[data-baseweb="tab"]{font-size:14px !important;font-weight:600 !important;color:#3a4652 !important;padding:11px 20px !important;border-radius:0 !important;background:transparent !important;border-bottom:3px solid transparent !important;}
-button[data-baseweb="tab"][aria-selected="true"]{background:#fff !important;color:#173453 !important;border-bottom:3px solid #1a5276 !important;}
-div[data-testid="stTabs"]>div:nth-child(2){background:#eef1f4 !important;}
-div[data-testid="stNumberInput"] input{background:#fff !important;border:1px solid #999 !important;border-radius:3px !important;font-size:14px !important;color:#111 !important;font-weight:600 !important;}
-div[data-testid="stTextInput"] input{background:#fff !important;border:1px solid #999 !important;border-radius:3px !important;font-size:14px !important;color:#111 !important;}
+div[data-testid="stTabs"]>div:first-child{background:transparent !important;border-bottom:none !important;padding:0 !important;gap:0 !important;}
+div[data-testid="stTabs"]>div:nth-child(2){background:transparent !important;}
+div[data-testid="stNumberInput"] input{background:#FFFFFF !important;border:1px solid #98A2B3 !important;border-radius:8px !important;font-size:13px !important;color:#17202A !important;font-weight:600 !important;}
+div[data-testid="stTextInput"] input{background:#FFFFFF !important;border:1px solid #98A2B3 !important;border-radius:8px !important;font-size:13px !important;color:#17202A !important;}
+div[data-testid="stNumberInput"] input:hover,div[data-testid="stTextInput"] input:hover{border-color:#66788A !important;}
+div[data-testid="stNumberInput"] input:focus,div[data-testid="stTextInput"] input:focus{
+  border-color:#475569 !important;box-shadow:0 0 0 3px #DCE3EA !important;outline:none !important;}
 /* Selectbox COLLAPSED control (Search, Typology, Remove Keyword) — stable BaseWeb
    selectors; the visible box is div[data-baseweb="select"]>div. Padding/width/height
    left to BaseWeb (preserved). */
-div[data-testid="stSelectbox"] div[data-baseweb="select"]>div{background:#ffffff !important;border:1px solid #9fb7c7 !important;border-radius:4px !important;box-shadow:none !important;font-size:14px !important;font-weight:400 !important;color:#16324a !important;}
-div[data-testid="stSelectbox"] input[role="combobox"]{color:#16324a !important;-webkit-text-fill-color:#16324a !important;font-size:14px !important;}
-div[data-testid="stSelectbox"] input[role="combobox"]::placeholder{color:#5f6b76 !important;-webkit-text-fill-color:#5f6b76 !important;opacity:1 !important;}
-div[data-testid="stSelectbox"] svg[data-baseweb="icon"]{fill:#1a5276 !important;}
-div[data-testid="stSelectbox"] div[data-baseweb="select"]:hover>div{border-color:#4a8ba5 !important;cursor:pointer !important;}
-div[data-testid="stSelectbox"] div[data-baseweb="select"]:focus-within>div{border:1px solid #1a5276 !important;box-shadow:0 0 0 3px rgba(26,82,118,.18) !important;outline:none !important;}
+div[data-testid="stSelectbox"] div[data-baseweb="select"]>div{background:#FFFFFF !important;border:1px solid #98A2B3 !important;border-radius:8px !important;box-shadow:none !important;font-size:13px !important;font-weight:400 !important;color:#17202A !important;}
+div[data-testid="stSelectbox"] input[role="combobox"]{color:#17202A !important;-webkit-text-fill-color:#17202A !important;font-size:13px !important;}
+div[data-testid="stSelectbox"] input[role="combobox"]::placeholder{color:#667085 !important;-webkit-text-fill-color:#667085 !important;opacity:1 !important;}
+div[data-testid="stSelectbox"] svg[data-baseweb="icon"]{fill:#475569 !important;}
+div[data-testid="stSelectbox"] div[data-baseweb="select"]:hover>div{border-color:#66788A !important;cursor:pointer !important;}
+div[data-testid="stSelectbox"] div[data-baseweb="select"]:focus-within>div{border:1px solid #475569 !important;box-shadow:0 0 0 3px #DCE3EA !important;outline:none !important;}
 div[data-testid="stMultiSelect"] div[data-baseweb="select"]>div{font-size:14px !important;}
 .stCheckbox label{font-size:13px !important;color:#1a1a1a !important;}
 .stCheckbox label p{color:#1a1a1a !important;}
@@ -844,7 +847,7 @@ div[data-testid="stMultiSelect"] div[data-baseweb="select"]>div{background:#fff 
 div[data-testid="stDataFrame"]{background:#fff !important;}
 div[data-testid="stDataFrame"] [data-testid="stTable"]{background:#fff !important;}
 .stButton>button{border-radius:4px !important;font-size:13px !important;font-weight:700 !important;letter-spacing:.02em !important;padding:8px 16px !important;border:1px solid !important;}
-.stButton>button[kind="primary"]{background:linear-gradient(to bottom,#2166a8,#1a5276) !important;color:#fff !important;border-color:#154360 !important;}
+.stButton>button[kind="primary"]{background:linear-gradient(180deg,#526276 0%,#475569 100%) !important;color:#fff !important;border-color:#334155 !important;}
 .stButton>button[kind="secondary"]{background:linear-gradient(to bottom,#f0f0f0,#e0e0e0) !important;color:#333 !important;border-color:#aaa !important;}
 
 /* FIX 5: Switch button — scoped to the role-bar column, smaller and proportionate */
@@ -857,10 +860,12 @@ div[data-testid="stColumn"]:last-of-type .stButton>button{
 
 /* Alert Queue filter bar — one aligned panel, not scattered controls */
 div[data-testid="stVerticalBlockBorderWrapper"]:has(.filter-bar-labels){
-  padding:14px 16px 16px 16px !important;background:#fff;}
+  padding:14px 16px 16px 16px !important;background:#F4F6F8;
+  border:1px solid #D0D5DD !important;border-radius:11px !important;
+  box-shadow:0 3px 10px rgba(17,24,39,0.06) !important;}
 .filter-bar-labels{display:grid;grid-template-columns:2.1fr 1.6fr 2.3fr;
   gap:1rem;margin-bottom:6px;}
-.filter-bar-labels span{font-size:12px;font-weight:700;color:#5a6570;
+.filter-bar-labels span{font-size:11px;font-weight:800;color:#334155;letter-spacing:0.35px;
   letter-spacing:.05em;text-transform:uppercase;}
 div[data-testid="stVerticalBlockBorderWrapper"]:has(.filter-bar-labels) div[data-testid="stSelectbox"]{
   margin-top:2px;}
@@ -872,20 +877,20 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.filter-bar-labels) div[data
 
 /* Manager Review — pending override cards: static, NOT clickable (no whole-card
    hover / translate / border shift / pointer). Content and font sizes preserved. */
-.ov-card{background:#ffffff;border:1px solid #cdd6de;border-left:5px solid #f0c040;
+.ov-card{background:#ffffff;border:1px solid #D0D5DD;border-left:5px solid #C58B6C;
   border-radius:8px;padding:16px 18px;margin:0 0 16px 0;
   box-shadow:0 4px 12px rgba(23,52,83,.12);}
 /* CORRECTION 1: whole-card hover removed — the card must NOT read as clickable.
    Interactivity lives only in the per-card "Open Case File" button. */
 .ov-card-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;}
-.ov-card-id{font-size:15px;font-weight:700;color:#173453;}
+.ov-card-id{font-size:15px;font-weight:700;color:#17202A;}
 .ov-card-ts{font-size:13px;color:#5a6570;font-variant-numeric:tabular-nums;}
 .ov-card-body{font-size:14px;color:#1a1a1a;margin-bottom:8px;line-height:1.5;}
 .ov-card-meta{font-size:14px;color:#4a5560;margin-bottom:6px;}
 .ov-card-reason{font-size:14px;color:#1a1a1a;line-height:1.5;}
 /* Manager Review — Override History panel wrapper (keyed st.container). Boxes only
    this panel; Change Log and Audit Trail are unaffected. */
-.st-key-override_history_panel{background:#ffffff;border:1px solid #cdd6de;
+.st-key-override_history_panel{background:#ffffff;border:1px solid #D0D5DD;
   border-radius:8px;box-shadow:0 4px 12px rgba(23,52,83,.10);overflow:hidden;
   margin-top:18px;margin-bottom:16px;}
 /* Manager Review — responsive action row (keyed horizontal st.container). Layout
@@ -941,8 +946,8 @@ st.html("""
 <style>
 :root{
   /* Accent = brand teal (tabs, checkboxes, radio, dropdown) */
-  --accent:#2e728f;          /* existing: id-bar / table header / lv-open */
-  --accent-strong:#1a5276;   /* existing: navy — active-tab text / strong accent */
+  --accent:#475569;          /* Obsidian Plum: primary plum (decorative accent) */
+  --accent-strong:#334155;   /* Obsidian Plum: strong plum (decorative strong accent) */
   --accent-tint:#e8eeff;     /* existing: kw-chip bg / selected-option tint */
   --surface-hover:#eef3f5;   /* existing: table row hover */
   /* PASS / positive -> Approve */
@@ -975,7 +980,7 @@ div[class*="st-key-apr_"] .stButton>button[kind="primary"]:active{
   background:#176437 !important;transform:translateY(0) !important;
   box-shadow:inset 0 1px 3px rgba(0,0,0,.18) !important;}
 div[class*="st-key-apr_"] .stButton>button[kind="primary"]:focus-visible{
-  outline:3px solid #4a8ba5 !important;outline-offset:2px !important;}
+  outline:none !important;box-shadow:0 0 0 3px #A8B6C8 !important;}
 div[class*="st-key-rej_"] .stButton>button[kind="secondary"]{
   background:linear-gradient(to bottom,#a01818,#7b0000) !important;
   color:#ffffff !important;border:1px solid #7b0000 !important;border-radius:6px !important;
@@ -988,20 +993,14 @@ div[class*="st-key-rej_"] .stButton>button[kind="secondary"]:active{
   background:#7b0000 !important;transform:translateY(0) !important;
   box-shadow:inset 0 1px 3px rgba(0,0,0,.18) !important;}
 div[class*="st-key-rej_"] .stButton>button[kind="secondary"]:focus-visible{
-  outline:3px solid #4a8ba5 !important;outline-offset:2px !important;}
+  outline:none !important;box-shadow:0 0 0 3px #A8B6C8 !important;}
 
 /* TASK 3 (pass 1) removed by CORRECTION 1: the pending-card hover created a false
    "whole card is clickable" affordance. Card interactivity now lives only in the
    per-card "Open Case File" button (Manager Review). */
 
-/* TASK 4 — tab bar: accent active indicator, inactive hover, no default
-   Streamlit tab accent left visible. */
-button[data-baseweb="tab"][aria-selected="true"]{
-  color:var(--accent-strong) !important;
-  border-bottom:3px solid var(--accent) !important;}
-button[data-baseweb="tab"][aria-selected="false"]:hover{
-  color:var(--accent-strong) !important;
-  background:var(--surface-hover) !important;}
+/* TASK 4 — superseded by the Institutional Graphite navigation tray below; the old
+   underline-accent tab rules are removed so they cannot fight the new tab design. */
 div[data-baseweb="tab-highlight"]{background-color:var(--accent) !important;}
 div[data-baseweb="tab-border"]{background-color:transparent !important;}
 
@@ -1033,21 +1032,23 @@ div[data-baseweb="tab-border"]{background-color:transparent !important;}
 /* MIDNIGHT LUMEN — role-switch button (→ Manager / → Analyst): the 3rd stColumn of
    the header control row ONLY. Widget key/callback unchanged (positional selector). */
 div[data-testid="stHorizontalBlock"]:has(.role-bar) div[data-testid="stColumn"]:nth-child(3) .stButton>button{
-  background:#2457C5 !important;border:1px solid #2457C5 !important;color:#FFFFFF !important;
-  min-height:42px !important;width:100% !important;padding:0 14px !important;margin:0 !important;
-  border-radius:9px !important;box-shadow:0 4px 10px rgba(36,87,197,0.22) !important;
+  background:linear-gradient(180deg,#526276 0%,#475569 100%) !important;border:1px solid #334155 !important;
+  color:#FFFFFF !important;
+  min-height:44px !important;width:100% !important;padding:0 14px !important;margin:0 !important;
+  border-radius:10px !important;box-shadow:0 5px 12px rgba(51,65,85,0.24) !important;
   font-size:12px !important;font-weight:800 !important;
   transition:background .12s ease,border-color .12s ease,box-shadow .12s ease,transform .12s ease !important;}
 div[data-testid="stHorizontalBlock"]:has(.role-bar) div[data-testid="stColumn"]:nth-child(3) .stButton>button:hover{
-  background:#1E46A0 !important;border-color:#1E46A0 !important;color:#FFFFFF !important;
-  box-shadow:0 6px 14px rgba(36,87,197,0.25) !important;transform:translateY(-1px) !important;}
+  background:linear-gradient(180deg,#475569 0%,#3F4C5E 100%) !important;border-color:#2F3947 !important;
+  color:#FFFFFF !important;
+  box-shadow:0 7px 16px rgba(51,65,85,0.30) !important;transform:translateY(-1px) !important;}
 div[data-testid="stHorizontalBlock"]:has(.role-bar) div[data-testid="stColumn"]:nth-child(3) .stButton>button:active{
-  background:#173A86 !important;border-color:#173A86 !important;color:#FFFFFF !important;
-  box-shadow:inset 0 1px 2px rgba(11,31,51,0.25) !important;transform:translateY(0) !important;}
+  background:#2F3947 !important;border-color:#2F3947 !important;color:#FFFFFF !important;
+  box-shadow:inset 0 2px 3px rgba(17,24,39,0.28) !important;transform:translateY(0) !important;}
 div[data-testid="stHorizontalBlock"]:has(.role-bar) div[data-testid="stColumn"]:nth-child(3) .stButton>button:focus-visible{
-  outline:none !important;border-color:#2457C5 !important;box-shadow:0 0 0 3px #AEC7FF !important;}
+  outline:none !important;box-shadow:0 0 0 3px #A8B6C8 !important;}
 div[data-testid="stHorizontalBlock"]:has(.role-bar) div[data-testid="stColumn"]:nth-child(3) .stButton>button:disabled{
-  background:#E8EDF3 !important;border-color:#D7E0EA !important;color:#8B98A8 !important;
+  background:#EEF1F4 !important;border-color:#D0D5DD !important;color:#667085 !important;
   box-shadow:none !important;transform:none !important;opacity:1 !important;}
 </style>
 """)
@@ -1086,7 +1087,7 @@ st.html("""
 /* CORRECTION 3 — verification → human-outcome linkage banner (text computed in
    Python from existing values). */
 .outcome-link{border-radius:6px;padding:12px 16px;margin-top:12px;font-size:14px;
-  line-height:1.5;border:1px solid #cdd6de;border-left:5px solid var(--accent);
+  line-height:1.5;border:1px solid #D0D5DD;border-left:5px solid var(--accent);
   background:#fff;color:#1a1a1a;}
 .outcome-link.ok{border-left-color:var(--pass);}
 .outcome-link.warn{border-left-color:var(--warn);background:var(--warn-bg);color:var(--warn-text);}
@@ -1099,22 +1100,22 @@ st.html("""
    li[role="option"], and each option's colored surface is its inner > div (which
    carries the 5px pill radius). One portal is shared by all three selectboxes.
    !important is required to beat BaseWeb's emotion rules. */
-div[data-baseweb="popover"]{background:#ffffff !important;border:1px solid #9fb7c7 !important;border-radius:8px !important;box-shadow:0 8px 24px rgba(15,45,62,.18) !important;padding:0 !important;}
+div[data-baseweb="popover"]{background:#ffffff !important;border:1px solid #98A2B3 !important;border-radius:8px !important;box-shadow:0 8px 24px rgba(17,24,39,.18) !important;padding:0 !important;}
 div[data-baseweb="popover"] ul{background:#ffffff !important;width:100% !important;}
 /* normal option — the li paints the white gutter; the inner > div is the pill */
 div[data-baseweb="popover"] li[role="option"]{background:#ffffff !important;}
-div[data-baseweb="popover"] li[role="option"]>div{background:transparent !important;color:#16324a !important;font-size:14px !important;font-weight:400 !important;padding-left:12px !important;padding-right:12px !important;border-radius:5px !important;}
+div[data-baseweb="popover"] li[role="option"]>div{background:transparent !important;color:#17202A !important;font-size:13px !important;font-weight:400 !important;padding-left:12px !important;padding-right:12px !important;border-radius:5px !important;}
 /* hover / BaseWeb-highlighted */
-div[data-baseweb="popover"] li[role="option"]:hover>div{background:#e7f2f7 !important;color:#0f4d67 !important;font-weight:600 !important;}
+div[data-baseweb="popover"] li[role="option"]:hover>div{background:#EEF1F4 !important;color:#334155 !important;font-weight:600 !important;}
 /* keyboard focus (standard :focus/:focus-visible on the option) */
 div[data-baseweb="popover"] li[role="option"]:focus>div,
-div[data-baseweb="popover"] li[role="option"]:focus-visible>div{background:#e7f2f7 !important;color:#0f4d67 !important;font-weight:600 !important;box-shadow:inset 0 0 0 2px #4a8ba5 !important;}
+div[data-baseweb="popover"] li[role="option"]:focus-visible>div{background:#EEF1F4 !important;color:#334155 !important;font-weight:600 !important;box-shadow:inset 0 0 0 2px #475569 !important;}
 /* selected + selected-on-hover */
-div[data-baseweb="popover"] li[role="option"][aria-selected="true"]>div{background:#d6eaf2 !important;color:#0f4d67 !important;font-weight:700 !important;}
-div[data-baseweb="popover"] li[role="option"][aria-selected="true"]:hover>div{background:#c7e2ed !important;color:#0f4d67 !important;font-weight:700 !important;}
+div[data-baseweb="popover"] li[role="option"][aria-selected="true"]>div{background:#CBD5E1 !important;color:#334155 !important;font-weight:700 !important;}
+div[data-baseweb="popover"] li[role="option"][aria-selected="true"]:hover>div{background:#A8B6C8 !important;color:#334155 !important;font-weight:700 !important;}
 /* disabled */
 div[data-baseweb="popover"] li[role="option"][aria-disabled="true"]{cursor:not-allowed !important;opacity:.75 !important;}
-div[data-baseweb="popover"] li[role="option"][aria-disabled="true"]>div{background:#f4f7fa !important;color:#8a96a0 !important;}
+div[data-baseweb="popover"] li[role="option"][aria-disabled="true"]>div{background:#F4F6F8 !important;color:#667085 !important;}
 /* mobile: constrain WIDTH only (max-width cascades to the auto-width wrappers, ul,
    and 100%-width options); never touch the transform, which carries the dynamic
    vertical placement. 300px max-height + vertical scroll are left untouched. */
@@ -1126,7 +1127,7 @@ div[data-baseweb="popover"] li[role="option"][aria-disabled="true"]>div{backgrou
 /* HERO CASE B — human-review gate panel in the Case File (display of the shared
    src/review_gate rule). Existing semantic colors/vars only; no new colors. */
 .gate-panel{border-radius:6px;padding:12px 16px;margin-top:12px;font-size:14px;
-  line-height:1.5;border:1px solid #cdd6de;border-left:6px solid var(--accent);background:#fff;}
+  line-height:1.5;border:1px solid #D0D5DD;border-left:6px solid var(--accent);background:#fff;}
 .gate-panel .gate-title{font-size:15px;font-weight:800;letter-spacing:.03em;margin-bottom:4px;}
 .gate-panel .gate-body{color:#1a1a1a;}
 .gate-panel .gate-missing{margin-top:6px;color:#1a1a1a;}
@@ -1143,7 +1144,7 @@ div[data-baseweb="popover"] li[role="option"][aria-disabled="true"]>div{backgrou
 .gate-complete .gate-title,.gate-complete .gate-body{color:#1a5276;}
 /* Case File outcome summary rail — three equal derived-status cards. Per-card
    background/border/text color is set inline from the derived value. */
-.case-summary-rail{background:#f4f7fa;border:1px solid #cdd6de;border-radius:8px;
+.case-summary-rail{background:#F4F6F8;border:1px solid #D0D5DD;border-radius:8px;
   box-shadow:0 3px 10px rgba(23,52,83,.08);padding:10px;margin-bottom:12px;
   display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
 .case-summary-card{border-radius:6px;padding:10px 12px;}
@@ -1170,32 +1171,42 @@ st.html("""<style>
 /* the tray — fit-content so it reads as a bounded control, not a full-width band */
 div[data-testid="stTabs"] div[data-baseweb="tab-list"]{
   display:inline-flex !important;width:fit-content !important;
-  background:#dfe4ea !important;border:1px solid #b8ccd8 !important;
-  border-radius:10px !important;padding:6px !important;gap:6px !important;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.6),0 1px 3px rgba(0,0,0,.12) !important;}
-/* every tab, including inactive: its own white bordered tab, equal height */
+  background:#FFFFFF !important;border:1px solid #D0D5DD !important;
+  border-radius:12px !important;padding:6px !important;gap:6px !important;
+  box-shadow:0 6px 18px rgba(17,24,39,0.12) !important;}
+/* every tab, including inactive: its own bordered tab, equal height */
 button[data-baseweb="tab"]{
-  background:#ffffff !important;color:#173453 !important;
-  border:1px solid #cdd6de !important;border-radius:6px !important;
-  padding:8px 18px !important;
-  box-shadow:0 1px 2px rgba(0,0,0,.08) !important;
+  background:linear-gradient(180deg,#FFFFFF 0%,#F4F6F8 100%) !important;color:#334155 !important;
+  border:1px solid #D0D5DD !important;border-radius:8px !important;
+  min-height:42px !important;padding:0 16px !important;
+  font-size:13px !important;font-weight:700 !important;
+  box-shadow:0 2px 5px rgba(17,24,39,0.06) !important;
   transition:background .12s ease,border-color .12s ease,box-shadow .12s ease,color .12s ease,transform .08s ease !important;}
-/* inactive hover: light-teal surface, teal-blue border, lifts 1px */
+/* inactive hover: pale lavender surface, lifts 1px */
 button[data-baseweb="tab"][aria-selected="false"]:hover{
-  background:#e8f4f8 !important;border-color:#4a8ba5 !important;color:#173453 !important;
-  transform:translateY(-1px) !important;box-shadow:0 2px 4px rgba(0,0,0,.12) !important;}
-/* active tab: strong solid-teal selected state, white text */
+  background:#EEF1F4 !important;border-color:#98A2B3 !important;color:#2B3139 !important;
+  transform:translateY(-1px) !important;box-shadow:0 2px 4px rgba(17,24,39,0.10) !important;}
+/* active tab: plum gradient, white text */
 button[data-baseweb="tab"][aria-selected="true"]{
-  background:#2e728f !important;color:#ffffff !important;
-  border-color:#1a5276 !important;
-  box-shadow:0 2px 5px rgba(0,0,0,.18) !important;}
-/* active hover: stay teal with white text, darken toward navy (never white) */
+  background:linear-gradient(180deg,#526276 0%,#475569 100%) !important;color:#FFFFFF !important;
+  border:1px solid #334155 !important;transform:none !important;
+  box-shadow:0 4px 10px rgba(51,65,85,0.22) !important;}
+/* active hover: stay plum with white text */
 button[data-baseweb="tab"][aria-selected="true"]:hover{
-  background:#1a5276 !important;color:#ffffff !important;border-color:#1a5276 !important;
-  box-shadow:0 2px 6px rgba(0,0,0,.20) !important;}
+  background:linear-gradient(180deg,#475569 0%,#3F4C5E 100%) !important;color:#FFFFFF !important;
+  border-color:#2F3947 !important;transform:none !important;
+  box-shadow:0 4px 10px rgba(51,65,85,0.26) !important;}
+/* Tab LABEL colour: Streamlit paints the label paragraph with its own theme class,
+   so the label is set explicitly at higher specificity (inactive slate, active white). */
+div[data-testid="stTabs"] button[data-baseweb="tab"],
+div[data-testid="stTabs"] button[data-baseweb="tab"] p{color:#334155 !important;}
+div[data-testid="stTabs"] button[data-baseweb="tab"][aria-selected="false"]:hover,
+div[data-testid="stTabs"] button[data-baseweb="tab"][aria-selected="false"]:hover p{color:#2B3139 !important;}
+div[data-testid="stTabs"] button[data-baseweb="tab"][aria-selected="true"],
+div[data-testid="stTabs"] button[data-baseweb="tab"][aria-selected="true"] p{color:#FFFFFF !important;}
 /* strong keyboard focus */
 button[data-baseweb="tab"]:focus-visible{
-  outline:3px solid #1a5276 !important;outline-offset:2px !important;border-radius:6px !important;}
+  outline:none !important;box-shadow:0 0 0 3px #A8B6C8 !important;border-radius:8px !important;}
 /* no separate sliding underline — each tab's own border is the boundary */
 div[data-baseweb="tab-highlight"]{background-color:transparent !important;height:0 !important;}
 div[data-baseweb="tab-border"]{background-color:transparent !important;height:0 !important;}
@@ -1203,22 +1214,22 @@ div[data-baseweb="tab-border"]{background-color:transparent !important;height:0 
 /* "Open Case File" (Manager Review) — neutral outlined secondary action, exact
    spec colors; keyed .st-key-oc_* hook; st.button + routing/callbacks unchanged. */
 div[class*="st-key-oc_"] .stButton>button[kind="secondary"]{
-  background:#ffffff !important;color:#1a5276 !important;
-  border:1px solid #2e728f !important;border-radius:6px !important;
-  box-shadow:0 1px 2px rgba(23,52,83,.08) !important;
+  background:#ffffff !important;color:#334155 !important;
+  border:1px solid #98A2B3 !important;border-radius:6px !important;
+  box-shadow:0 1px 2px rgba(17,24,39,.08) !important;
   transition:background .15s ease,border-color .15s ease,box-shadow .15s ease,transform .15s ease !important;}
 div[class*="st-key-oc_"] .stButton>button[kind="secondary"]:hover{
-  background:#e8f4f8 !important;color:#173453 !important;border-color:#245d74 !important;
-  box-shadow:0 2px 5px rgba(23,52,83,.14) !important;transform:translateY(-1px) !important;}
+  background:#EEF1F4 !important;color:#2B3139 !important;border-color:#475569 !important;
+  box-shadow:0 2px 5px rgba(51,65,85,.16) !important;transform:translateY(-1px) !important;}
 div[class*="st-key-oc_"] .stButton>button[kind="secondary"]:active{
-  background:#d5eaf1 !important;transform:translateY(0) !important;
+  background:#CBD5E1 !important;transform:translateY(0) !important;
   box-shadow:inset 0 1px 2px rgba(23,52,83,.14) !important;}
 div[class*="st-key-oc_"] .stButton>button[kind="secondary"]:focus-visible{
-  outline:3px solid #4a8ba5 !important;outline-offset:2px !important;}
+  outline:none !important;box-shadow:0 0 0 3px #A8B6C8 !important;}
 
 /* Case File neutral empty states (alert with no human review on file). No verdict,
    no fabricated review — just parity with the panels that would otherwise appear. */
-.gate-empty{border-left-color:#cdd6de !important;}
+.gate-empty{border-left-color:#D0D5DD !important;}
 .gate-empty .gate-title{color:#5a6570 !important;font-weight:700 !important;}
 .case-empty{padding:14px 16px;color:#5a6570;font-size:14px;line-height:1.5;}
 </style>""")
@@ -1246,7 +1257,7 @@ st.html("""<style>
 .ovreq-panel.rejected .ovreq-badge{color:#7b0000;border-color:#dc7c7c;}
 .ovreq-details{display:grid;grid-template-columns:minmax(130px,180px) 1fr;gap:7px 14px;}
 .ovreq-lbl{color:#5d6570;font-size:11px;font-weight:700;text-transform:uppercase;}
-.ovreq-val{color:#173453;font-size:13px;font-weight:600;}
+.ovreq-val{color:#17202A;font-size:13px;font-weight:600;}
 .ovreq-val.reason{line-height:1.45;}
 @media (max-width:700px){
   .ovreq-head{flex-wrap:wrap;}
@@ -1290,41 +1301,42 @@ st.html("""<style>
 /* MIDNIGHT LUMEN — header control row (banner + two buttons). Scoped to the ONE
    stHorizontalBlock that contains .role-bar; no other horizontal block is touched. */
 div[data-testid="stHorizontalBlock"]:has(.role-bar){
-  background:#F3F6FA !important;padding:12px 24px 14px !important;margin:0 0 12px 0 !important;
+  background:#F4F6F8 !important;padding:14px 24px 16px !important;margin:0 0 6px 0 !important;
   gap:12px !important;border:none !important;border-radius:0 !important;box-shadow:none !important;
   align-items:center !important;}
 
 /* Reset Demo button (2nd stColumn), keyed selector — widget key/callback unchanged. */
 div.st-key-demo_reset .stButton>button{
-  background:#FFFFFF !important;border:1px solid #D7E0EA !important;color:#27364A !important;
-  min-height:42px !important;width:100% !important;padding:0 14px !important;margin:0 !important;
-  border-radius:9px !important;box-shadow:0 2px 6px rgba(20,32,51,0.10) !important;
-  font-size:12px !important;font-weight:700 !important;cursor:pointer !important;white-space:nowrap !important;
+  background:linear-gradient(180deg,#FFFFFF 0%,#F4F6F8 100%) !important;border:1px solid #98A2B3 !important;
+  color:#334155 !important;
+  min-height:44px !important;width:100% !important;padding:0 14px !important;margin:0 !important;
+  border-radius:10px !important;box-shadow:0 4px 10px rgba(17,24,39,0.12) !important;
+  font-size:12px !important;font-weight:750 !important;cursor:pointer !important;white-space:nowrap !important;
   transition:background .12s ease,border-color .12s ease,box-shadow .12s ease,transform .12s ease,color .12s ease !important;}
 div.st-key-demo_reset .stButton>button:hover{
-  background:#FFF7DF !important;border-color:#E3A72F !important;color:#7A4A00 !important;
-  box-shadow:0 4px 10px rgba(161,92,0,0.14) !important;transform:translateY(-1px) !important;}
+  background:#EEF1F4 !important;border-color:#475569 !important;color:#334155 !important;
+  box-shadow:0 6px 14px rgba(51,65,85,0.18) !important;transform:translateY(-1px) !important;}
 div.st-key-demo_reset .stButton>button:active{
-  background:#FCE9B2 !important;border-color:#A15C00 !important;color:#7A4A00 !important;
-  box-shadow:inset 0 1px 2px rgba(20,32,51,0.12) !important;transform:translateY(0) !important;}
+  background:#CBD5E1 !important;border-color:#334155 !important;color:#334155 !important;
+  box-shadow:inset 0 2px 3px rgba(17,24,39,0.14) !important;transform:translateY(0) !important;}
 div.st-key-demo_reset .stButton>button:focus-visible{
-  outline:none !important;border-color:#2457C5 !important;box-shadow:0 0 0 3px #C7D7F7 !important;}
+  outline:none !important;box-shadow:0 0 0 3px #A8B6C8 !important;}
 div.st-key-demo_reset .stButton>button:disabled{
-  background:#E8EDF3 !important;border-color:#D7E0EA !important;color:#8B98A8 !important;
+  background:#EEF1F4 !important;border-color:#D0D5DD !important;color:#667085 !important;
   box-shadow:none !important;transform:none !important;opacity:1 !important;}
 
 /* MIDNIGHT LUMEN — header-only responsive layout (≤700px). Nothing below the header
    control row is affected; no header metadata is hidden. */
 @media (max-width:700px){
   .id-bar{flex-direction:column !important;align-items:flex-start !important;justify-content:flex-start !important;
-    min-height:0 !important;padding:14px 16px 12px !important;gap:10px !important;box-shadow:0 5px 16px rgba(11,31,51,0.18) !important;}
-  .id-bar-logo{font-size:26px !important;font-weight:800 !important;line-height:1 !important;padding:0 !important;margin:0 !important;}
-  .id-bar-user{font-size:11px !important;font-weight:700 !important;padding:6px 9px !important;border-radius:8px !important;white-space:nowrap !important;max-width:100% !important;}
+    min-height:0 !important;padding:17px 18px 15px !important;gap:12px !important;box-shadow:0 5px 16px rgba(17,24,39,0.22) !important;}
+  .id-bar-logo{font-size:31px !important;font-weight:850 !important;line-height:1 !important;letter-spacing:-0.7px !important;padding:0 !important;margin:0 !important;}
+  .id-bar-user{font-size:12px !important;font-weight:750 !important;padding:7px 10px !important;border-radius:8px !important;white-space:nowrap !important;max-width:100% !important;}
   .sub-nav{flex-direction:column !important;align-items:flex-start !important;justify-content:flex-start !important;
-    min-height:0 !important;height:auto !important;padding:10px 16px 12px !important;gap:8px !important;overflow:visible !important;}
+    min-height:0 !important;height:auto !important;padding:12px 18px 14px !important;gap:9px !important;overflow:visible !important;}
   .sub-nav-left{font-size:12px !important;white-space:normal !important;width:100% !important;}
   .sub-nav-right{display:grid !important;grid-template-columns:1fr !important;align-items:start !important;
-    justify-items:start !important;width:100% !important;gap:6px !important;font-size:11px !important;white-space:normal !important;}
+    justify-items:start !important;width:100% !important;gap:7px !important;font-size:11px !important;white-space:normal !important;}
   div[data-testid="stHorizontalBlock"]:has(.role-bar){
     display:grid !important;grid-template-columns:minmax(0,1fr) minmax(0,1fr) !important;
     padding:10px 16px 12px !important;gap:8px !important;margin-bottom:10px !important;align-items:stretch !important;}
@@ -1336,14 +1348,15 @@ div.st-key-demo_reset .stButton>button:disabled{
   .role-bar{min-height:0 !important;padding:10px 12px !important;font-size:12px !important;line-height:1.35 !important;border-radius:9px !important;}
   div.st-key-demo_reset .stButton>button,
   div[data-testid="stHorizontalBlock"]:has(.role-bar) div[data-testid="stColumn"]:nth-child(3) .stButton>button{
-    width:100% !important;min-height:40px !important;padding:0 8px !important;font-size:11px !important;border-radius:8px !important;}
+    width:100% !important;min-height:42px !important;padding:0 8px !important;font-size:11.5px !important;border-radius:8px !important;}
+  div[data-testid="stTabs"] button[data-baseweb="tab"]{min-height:40px !important;font-size:12px !important;}
 }
 /* Reset confirmation dialog */
 .drd-warn{background:#fff8e1;border:1px solid #eab308;border-left:5px solid #eab308;color:#5d4000;
   border-radius:6px;padding:14px 16px;margin-bottom:16px;font-size:14px;line-height:1.5;}
 .st-key-demo_reset_dialog [data-testid="stHorizontalBlock"]{gap:12px !important;}
 .st-key-demo_reset_cancel .stButton>button{
-  background:#ffffff !important;color:#173453 !important;border:1px solid #8aaabe !important;
+  background:#ffffff !important;color:#17202A !important;border:1px solid #98A2B3 !important;
   height:40px !important;min-height:40px !important;border-radius:6px !important;}
 .st-key-demo_reset_go .stButton>button{
   background:linear-gradient(180deg,#a01818,#7b0000) !important;color:#ffffff !important;
@@ -1542,7 +1555,7 @@ div[data-testid="stDialog"]:has(.st-key-close_case_dialog) div[role="dialog"] > 
 div[data-testid="stDialog"]:has(.st-key-close_case_dialog) div[role="dialog"] > div:has(> [data-testid="stVerticalBlock"])::-webkit-scrollbar-thumb{
   background:#8aaabe !important;border-radius:10px !important;border:3px solid #eef3f5 !important;}
 div[data-testid="stDialog"]:has(.st-key-close_case_dialog) div[role="dialog"] > div:has(> [data-testid="stVerticalBlock"])::-webkit-scrollbar-thumb:hover{
-  background:#4a8ba5 !important;}
+  background:#475569 !important;}
 /* Firefox has no ::-webkit-scrollbar — give it the standard properties instead. Chromium
    supports selector(::-webkit-scrollbar), so it skips this block and keeps the design above. */
 @supports not selector(::-webkit-scrollbar){
@@ -1577,7 +1590,7 @@ def show_case_dialog(alert_id: str, source: dict) -> None:
         if v in ("MIXED", "NEEDS REVIEW", "PENDING"):
             return "background:#fff8e1;border:1px solid #e0b877;color:#7d4e00;"
         if v in ("NOT RECORDED", "NONE", "NOT EVALUATED", "NOT PROCESSED", "NOT REQUIRED"):
-            return "background:#f7f8f9;border:1px solid #cdd6de;color:#5a6570;"
+            return "background:#f7f8f9;border:1px solid #D0D5DD;color:#5a6570;"
         return "background:#e8f4f8;border:1px solid #8aaabf;color:#1a5276;"  # COMPLETE / allowed disposition
 
     # Every rail value comes from the canonical lifecycle record — never from the
@@ -1858,7 +1871,7 @@ with tab1:
     # Lifecycle-derived status badges. Each reuses an existing palette hex already used
     # elsewhere in this file (rail/severity/override styles) — no new colors introduced.
     STA_STYLE = {
-        "Not Processed":    "background:#f7f8f9;color:#5a6570;border-color:#cdd6de;",  # neutral
+        "Not Processed":    "background:#f7f8f9;color:#5a6570;border-color:#D0D5DD;",  # neutral
         "Processing Error": "background:#fde8e8;color:#7b0000;border-color:#c88;",     # red
         "Awaiting Manager": "background:#fff8e1;color:#7d4e00;border-color:#e0b877;",  # amber
         "Awaiting Review":  "background:#e8eeff;color:#1a2e8c;border-color:#99a;",     # blue
@@ -1939,7 +1952,7 @@ with tab1:
         is_sel   = sel == r["alert_id"]
         has_pend = r["alert_id"] in pending_alert_ids
         row_style = (
-            "background:#e7eef1;box-shadow:inset 3px 0 0 #2e728f;" if is_sel else
+            "background:#EEF1F4;box-shadow:inset 3px 0 0 #475569;" if is_sel else
             "box-shadow:inset 3px 0 0 #d9a441;" if has_pend else ""
         )
 
@@ -1988,7 +2001,7 @@ with tab1:
 
         rows_html += (
             f'<tr style="{row_style}">'
-            + _cell(aid, "font-weight:700;color:#1a5276;font-size:13px;")
+            + _cell(aid, "font-weight:800;color:#3F4C5E;font-size:13px;")
             + _cell(r["customer"], "font-weight:600;font-size:13px;")
             + _cell(r["rule"], "font-size:13px;")
             + _cell(sev_html, td_style=sev_bg)
@@ -2004,20 +2017,22 @@ with tab1:
     table_html = f"""
 <style>
   .lv-table {{ width:100%; border-collapse:collapse; font-size:13.5px; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif; }}
-  .lv-table thead tr {{ background:#2e728f; }}
-  .lv-table th {{ padding:11px 14px; text-align:left; font-size:13px; font-weight:700;
-       color:#fff; border-right:1px solid #4a8ba5; letter-spacing:.03em;
+  .lv-table thead tr {{ background:linear-gradient(180deg,#374151 0%,#2B3139 100%); }}
+  .lv-table th {{ padding:11px 14px; text-align:left; font-size:12px; font-weight:850;
+       color:#FFFFFF; border-right:1px solid #46515F; letter-spacing:.2px;
+       min-height:42px; box-shadow:inset 0 -1px 0 rgba(255,255,255,0.05);
        border-bottom:none; white-space:nowrap; }}
   .lv-table th:last-child {{ border-right:none; }}
-  .lv-table td {{ padding:0; border-bottom:1px solid #e6e6e6;
-       border-right:1px solid #efefef; color:#1a1a1a; vertical-align:middle; background:#fff; }}
+  .lv-table td {{ padding:0; border-bottom:1px solid #D0D5DD;
+       border-right:1px solid #D0D5DD; color:#17202A; vertical-align:middle; background:#FFFFFF;
+       font-size:12.5px; font-weight:500; }}
   .lv-table td:last-child {{ border-right:none; }}
   .lv-table td a {{ color:inherit; }}
-  .lv-table td a:focus-visible {{ outline:2px solid #2e728f; outline-offset:-2px; }}
-  .lv-table tbody tr:nth-child(even) td {{ background:#f7f8f9; }}
-  .lv-table tbody tr:nth-child(odd) td {{ background:#fff; }}
-  .lv-table tbody tr:hover td {{ background:#eef3f5 !important; cursor:pointer; }}
-  .lv-open {{ color:#2e728f; font-weight:700; font-size:13px; white-space:nowrap; }}
+  .lv-table td a:focus-visible {{ outline:none; box-shadow:0 0 0 3px #A8B6C8; }}
+  .lv-table tbody tr:nth-child(even) td {{ background:#F4F6F8; }}
+  .lv-table tbody tr:nth-child(odd) td {{ background:#FFFFFF; }}
+  .lv-table tbody tr:hover td {{ background:#EEF1F4 !important; cursor:pointer; }}
+  .lv-open {{ color:#3F4C5E; font-weight:800; font-size:13px; white-space:nowrap; }}
   .lv-table tbody tr:hover .lv-open {{ text-decoration:underline; }}
 </style>
 <table class="lv-table">
@@ -2061,12 +2076,12 @@ with tab2:
         # shared gate with enforce=True (even if the Risk Settings toggle is off).
         # Pure: evaluate_review / get_case_detail write NO audit event.
         st.html("""<style>
-.st-key-human_review_oversight{background:#ffffff;border:1px solid #cdd6de;border-radius:10px;
+.st-key-human_review_oversight{background:#ffffff;border:1px solid #D0D5DD;border-radius:10px;
   padding:16px;margin-bottom:22px;box-shadow:0 4px 14px rgba(23,52,83,.10);}
-.hro-title{font-size:18px;font-weight:800;color:#173453;margin-bottom:4px;}
+.hro-title{font-size:18px;font-weight:800;color:#17202A;margin-bottom:4px;}
 .hro-subtitle{font-size:13px;color:#5d6573;margin-bottom:14px;}
-.hro-rail{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;background:#f4f7fa;
-  border:1px solid #cdd6de;border-radius:8px;padding:10px;margin-bottom:18px;}
+.hro-rail{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;background:#F4F6F8;
+  border:1px solid #D0D5DD;border-radius:8px;padding:10px;margin-bottom:18px;}
 .hro-metric{padding:10px 12px;border-radius:6px;border:1px solid;}
 .hro-metric-lbl{font-size:11px;text-transform:uppercase;font-weight:700;letter-spacing:.04em;}
 .hro-metric-val{font-size:22px;font-weight:800;margin-top:3px;}
@@ -2079,10 +2094,10 @@ with tab2:
 .hro-warn{background:#fff8e1;border:1px solid #eab308;color:#8a5a00;border-radius:6px;
   padding:9px 12px;font-size:13px;font-weight:600;margin-bottom:14px;}
 .hro-subhead{font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;
-  color:#173453;margin:16px 0 8px;}
+  color:#17202A;margin:16px 0 8px;}
 .hro-empty{font-size:13px;color:#5d6573;padding:6px 2px;}
-.hro-metric-total{background:#f4f7fa;border-color:#cdd6de;}
-.hro-metric-total .hro-metric-lbl,.hro-metric-total .hro-metric-val{color:#173453;}
+.hro-metric-total{background:#F4F6F8;border-color:#D0D5DD;}
+.hro-metric-total .hro-metric-lbl,.hro-metric-total .hro-metric-val{color:#17202A;}
 /* Requires Attention card — the keyed container OWNS the card (bg/border/left-border/
    radius/padding/shadow); the Open Case File button renders INSIDE it, not detached. */
 div[class*="st-key-hro_att_"]{background:#fff1f1;border:1px solid #e9a0a0;border-left:5px solid #a00000;
@@ -2095,14 +2110,14 @@ div[class*="st-key-completed_review_grid"]{
   display:grid !important;grid-template-columns:1fr 1fr !important;gap:14px !important;
   align-items:start !important;grid-auto-rows:max-content !important;}
 div[class*="st-key-hro_done_"]{
-  background:#ffffff !important;border:1px solid #cdd6de !important;border-left:4px solid #2e728f !important;
+  background:#ffffff !important;border:1px solid #D0D5DD !important;border-left:4px solid #475569 !important;
   border-radius:8px !important;padding:16px !important;box-shadow:0 3px 10px rgba(23,52,83,.08) !important;
   height:auto !important;min-height:0 !important;align-self:start !important;}
 /* Open Case File button sits INSIDE the card, 12px below the content (block gap). */
 div[class*="st-key-hro_att_"] [data-testid="stVerticalBlock"],
 div[class*="st-key-hro_done_"] [data-testid="stVerticalBlock"]{gap:12px !important;}
 .hro-card-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:8px;}
-.hro-card-title{font-size:16px;font-weight:800;color:#173453;}
+.hro-card-title{font-size:16px;font-weight:800;color:#17202A;}
 .hro-card-sub{font-size:12px;color:#5d6573;}
 .hro-badges{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
 .hro-badge{text-transform:uppercase;font-size:11px;font-weight:800;padding:4px 8px;border-radius:999px;border:1px solid;white-space:nowrap;}
@@ -2110,44 +2125,44 @@ div[class*="st-key-hro_done_"] [data-testid="stVerticalBlock"]{gap:12px !importa
 .badge-green{background:#edf8f0;border-color:#9ed3aa;color:#176437;}
 .badge-amber{background:#fff8e1;border-color:#eab308;color:#8a5a00;}
 .badge-blue{background:#e8f4f8;border-color:#9fc6d8;color:#1a5276;}
-.badge-neutral{background:#f4f7fa;border-color:#cdd6de;color:#5d6573;}
+.badge-neutral{background:#F4F6F8;border-color:#D0D5DD;color:#5d6573;}
 .hro-details{display:flex;flex-wrap:wrap;gap:16px;}
 .hro-field{display:flex;flex-direction:column;min-width:0;}
 .hro-lbl{font-size:11px;text-transform:uppercase;font-weight:700;color:#5d6573;}
-.hro-val{font-size:13px;font-weight:600;color:#173453;overflow-wrap:anywhere;}
+.hro-val{font-size:13px;font-weight:600;color:#17202A;overflow-wrap:anywhere;}
 div[class*="st-key-hro_"] .stButton>button{
-  background:#ffffff !important;color:#1a5276 !important;border:1px solid #2e728f !important;
+  background:#ffffff !important;color:#334155 !important;border:1px solid #98A2B3 !important;
   border-radius:6px !important;height:38px !important;min-height:38px !important;padding:0 16px !important;
   font-weight:600 !important;white-space:nowrap !important;width:auto !important;
   transition:background .15s ease,border-color .15s ease,box-shadow .15s ease,transform .15s ease !important;}
 div[class*="st-key-hro_"] .stButton>button:hover{
-  background:#e8f4f8 !important;border-color:#1a5276 !important;transform:translateY(-1px) !important;}
+  background:#EEF1F4 !important;border-color:#475569 !important;transform:translateY(-1px) !important;}
 div[class*="st-key-hro_"] .stButton>button:focus-visible{
-  outline:3px solid #4a8ba5 !important;outline-offset:2px !important;}
+  outline:none !important;box-shadow:0 0 0 3px #A8B6C8 !important;}
 /* Secondary nav — Manager Review view segmented control. Scoped under the keyed
    wrapper so the Alert Queue severity/status controls are untouched. */
 .st-key-manager_review_view div[data-testid="stButtonGroup"]{
-  display:inline-flex !important;width:fit-content !important;background:#dfe4ea !important;
-  border:1px solid #b8ccd8 !important;border-radius:10px !important;padding:5px !important;gap:5px !important;
+  display:inline-flex !important;width:fit-content !important;background:#FFFFFF !important;
+  border:1px solid #D0D5DD !important;border-radius:10px !important;padding:5px !important;gap:5px !important;
   margin-bottom:18px !important;box-shadow:0 2px 6px rgba(23,52,83,.12) !important;}
 .st-key-manager_review_view button[kind="segmented_control"]{
-  background:#ffffff !important;border:1px solid #cdd6de !important;color:#173453 !important;
+  background:#ffffff !important;border:1px solid #D0D5DD !important;color:#17202A !important;
   border-radius:6px !important;height:40px !important;padding:0 18px !important;font-size:13px !important;font-weight:700 !important;
   transition:background .15s ease,border-color .15s ease,box-shadow .15s ease,transform .15s ease !important;}
-.st-key-manager_review_view button[kind="segmented_control"] p{color:#173453 !important;}
+.st-key-manager_review_view button[kind="segmented_control"] p{color:#17202A !important;}
 .st-key-manager_review_view button[kind="segmented_control"]:hover{
-  background:#e8f4f8 !important;border-color:#4a8ba5 !important;color:#173453 !important;
-  transform:translateY(-1px) !important;box-shadow:0 2px 5px rgba(23,52,83,.12) !important;}
+  background:#EEF1F4 !important;border-color:#98A2B3 !important;color:#2B3139 !important;
+  transform:translateY(-1px) !important;box-shadow:0 2px 5px rgba(17,24,39,.12) !important;}
 .st-key-manager_review_view button[kind="segmented_controlActive"]{
-  background:#2e728f !important;border:1px solid #1a5276 !important;color:#ffffff !important;
+  background:linear-gradient(180deg,#526276 0%,#475569 100%) !important;border:1px solid #334155 !important;color:#ffffff !important;
   border-radius:6px !important;height:40px !important;padding:0 18px !important;font-size:13px !important;font-weight:700 !important;
   box-shadow:0 2px 6px rgba(23,52,83,.18) !important;}
 .st-key-manager_review_view button[kind="segmented_controlActive"] p{color:#ffffff !important;}
 .st-key-manager_review_view button[kind="segmented_controlActive"]:hover{
-  background:#1a5276 !important;border-color:#1a5276 !important;color:#ffffff !important;}
+  background:#2F3947 !important;border-color:#2F3947 !important;color:#ffffff !important;}
 .st-key-manager_review_view button[kind="segmented_control"]:focus-visible,
 .st-key-manager_review_view button[kind="segmented_controlActive"]:focus-visible{
-  outline:3px solid #4a8ba5 !important;outline-offset:2px !important;}
+  outline:none !important;box-shadow:0 0 0 3px #A8B6C8 !important;}
 @media (max-width:700px){.hro-rail{grid-template-columns:1fr;}.hro-details{flex-direction:column;gap:8px;}
   div[class*="st-key-completed_review_grid"]{grid-template-columns:1fr !important;gap:12px !important;}
   div[class*="st-key-hro_done_"]{min-width:0 !important;}}
@@ -2299,21 +2314,21 @@ div[class*="st-key-hro_"] .stButton>button:focus-visible{
             # this is global). st.html injects CSS with no layout container.
             st.html("""<style>
 div[data-testid="stDialog"] div[role="dialog"]{
-  background:#ffffff !important;border:1px solid #cdd6de !important;border-radius:10px !important;
+  background:#ffffff !important;border:1px solid #D0D5DD !important;border-radius:10px !important;
   box-shadow:0 10px 30px rgba(23,52,83,.18) !important;}
-.ovd-summary{background:#f4f7fa;border:1px solid #cdd6de;border-radius:7px;padding:14px 16px;margin-bottom:14px;}
+.ovd-summary{background:#F4F6F8;border:1px solid #D0D5DD;border-radius:7px;padding:14px 16px;margin-bottom:14px;}
 .ovd-row{display:flex;gap:12px;margin-bottom:7px;font-size:13px;align-items:baseline;}
 .ovd-row:last-child{margin-bottom:0;}
 .ovd-lbl{flex:0 0 150px;font-size:11px;font-weight:700;color:#5d6573;text-transform:uppercase;letter-spacing:.03em;}
-.ovd-val{color:#173453;font-weight:600;overflow-wrap:anywhere;}
+.ovd-val{color:#17202A;font-weight:600;overflow-wrap:anywhere;}
 .ovd-help{font-size:12px;color:#5d6570;text-align:right;margin-top:4px;margin-bottom:10px;}
-.st-key-override_decision_dialog textarea{border:1px solid #8aaabe !important;border-radius:6px !important;}
+.st-key-override_decision_dialog textarea{border:1px solid #98A2B3 !important;border-radius:6px !important;}
 .st-key-override_decision_dialog textarea:focus{
-  border-color:#2e728f !important;box-shadow:0 0 0 3px rgba(46,114,143,.18) !important;}
+  border-color:#475569 !important;box-shadow:0 0 0 3px #DCE3EA !important;}
 /* Cancel + Confirm are form submit buttons — always enabled (no disabled=), always
    clickable. Approve green / Reject red keyed by the decision suffix in the key. */
 div[class*="st-key-override_submit_cancel_"] button{
-  background:#ffffff !important;color:#173453 !important;border:1px solid #8aaabe !important;
+  background:#ffffff !important;color:#17202A !important;border:1px solid #98A2B3 !important;
   border-radius:6px !important;height:40px !important;min-height:40px !important;font-weight:600 !important;
   cursor:pointer !important;opacity:1 !important;}
 div[class*="st-key-override_submit_confirm_"][class*="_approved"] button{
@@ -2420,7 +2435,7 @@ div[class*="st-key-override_submit_confirm_"][class*="_rejected"] button{
 
                 hist_rows = "".join(
                     f'<tr>'
-                    f'<td style="white-space:nowrap;font-weight:700;color:#1a5276;">{_hesc(override_display_id(r["change_id"]))}</td>'
+                    f'<td style="white-space:nowrap;font-weight:800;color:#3F4C5E;">{_hesc(override_display_id(r["change_id"]))}</td>'
                     f'<td style="white-space:nowrap;">{_hesc(r["alert_id"])}</td>'
                     f'<td>{_hesc(r["field_changed"])}</td>'
                     f'<td><span class="ov-old">{_hesc(sev_label(r["field_changed"], r["old_value"]))}</span>'
