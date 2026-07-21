@@ -1641,28 +1641,22 @@ def show_case_dialog(alert_id: str, source: dict) -> None:
             f'</div>'
         )
 
-    # Draft provenance line (processed records only) + panel body. A NOT_PROCESSED alert
-    # gets the explicit "no draft exists" explanation and NO provenance line.
+    # Panel body. A NOT_PROCESSED alert gets the explicit "no draft exists" explanation.
+    # The internal draft provenance (ai_draft_source / processing_run_id / model_id) stays
+    # on the lifecycle record and in the CSVs, but is NOT surfaced to analysts here: the
+    # Case File shows only the draft claim, its source evidence, and the verdict.
     if lc.processing_status is ProcessingStatus.NOT_PROCESSED:
-        _prov_html = ""
         _panel_body = ('<div class="case-empty">This synthetic inventory alert has not '
                        'been run through the LUMEN processing workflow. No AI draft or '
                        'verification result exists.</div>')
     else:
-        if lc.ai_draft_source is AIDraftSource.CAPTURED_LIVE:
-            _prov = (f"DRAFT PROVENANCE: CAPTURED LIVE · RUN {lc.processing_run_id} · "
-                     f"MODEL: {lc.model_id}")
-        else:
-            _prov = (f"DRAFT PROVENANCE: SYNTHETIC FIXTURE · RUN {lc.processing_run_id} · "
-                     f"MODEL: NONE")
-        _prov_html = f'<div class="field-desc-txt">{_prov}</div>'
         _panel_body = "".join(_claim_card(cl) for cl in case["ai_claims"]) \
             or '<div class="field-desc-txt">No AI claims drafted for this alert.</div>'
 
     st.markdown(f"""
     <div class="case-panel" style="margin-top:12px;">
       <div class="case-panel-hdr"><span class="case-panel-title">AI Draft Verification</span></div>
-      <div style="padding:14px 16px;background:#f5f5f5;">{_prov_html}{_panel_body}</div>
+      <div style="padding:14px 16px;background:#f5f5f5;">{_panel_body}</div>
     </div>
     """, unsafe_allow_html=True)
 

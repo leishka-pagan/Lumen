@@ -188,11 +188,15 @@ def test_alert022_is_processed_from_a_live_capture(runtime):
     assert "HUMAN-REVIEW GATE: NOT EVALUATED" not in md
 
 
-def test_formerly_decorative_alert_shows_captured_live_provenance(runtime):
+def test_formerly_decorative_alert_hides_technical_provenance(runtime):
     md = _md(_run(open_case="ALERT022"))
-    assert ("DRAFT PROVENANCE: CAPTURED LIVE · RUN DEMO-CAPTURE-REMAINING-V1 · "
-            "MODEL: claude-haiku-4-5-20251001") in md
+    assert "DRAFT PROVENANCE" not in md
+    assert "claude-haiku-4-5-20251001" not in md
+    assert "DEMO-CAPTURE-REMAINING-V1" not in md
     assert "SYNTHETIC FIXTURE" not in md
+    assert "Draft Claim" in md
+    assert "Source Evidence" in md
+    assert "Verdict" in md
 
 
 # ── ALERT002/005 NOT REQUIRED + override panel ───────────────────────────────
@@ -210,13 +214,17 @@ def test_not_required_with_pending_override_panel(alert_id, runtime):
 
 
 # ── Draft provenance is truthful ─────────────────────────────────────────────
-def test_captured_live_provenance_is_truthful(runtime):
+def test_captured_live_case_hides_technical_provenance(runtime):
     md = _md(_run(open_case="ALERT001"))
-    assert ("DRAFT PROVENANCE: CAPTURED LIVE · RUN LIVE-CAPTURE-V1 · "
-            "MODEL: claude-haiku-4-5-20251001") in md
+    assert "DRAFT PROVENANCE" not in md
+    assert "claude-haiku-4-5-20251001" not in md
+    assert "LIVE-CAPTURE-V1" not in md
+    assert "CAPTURED LIVE" not in md
     assert "SYNTHETIC FIXTURE" not in md
     assert "AI Draft Verification" in md and "AI Claim Verification" not in md
     assert "Draft Claim" in md              # claim label renamed (CSS uppercases to DRAFT CLAIM)
+    assert "Source Evidence" in md
+    assert "Verdict" in md
 
 
 # ── Fail closed on bad/missing lifecycle; never fall back to alerts.status ───
