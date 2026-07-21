@@ -423,8 +423,22 @@ QUEUE_STATUS_LABELS = {
     QueueStatus.CLOSED:           "Closed",
 }
 # AI-verification rail label per lifecycle.ai_verification value.
-AI_VERIF_LABELS = {"not_evaluated": "NOT EVALUATED", "pass": "PASS",
-                   "mixed": "MIXED", "fail": "FAIL"}
+AI_VERIF_LABELS = {"not_evaluated": "NOT EVALUATED", "pass": "VERIFIED",
+                   "mixed": "MIXED", "fail": "UNSUPPORTED"}
+# Claim-level EVIDENCE VERDICT label per verifier result. DISPLAY ONLY — the stored
+# verifier statuses (PASS / FAIL / NEEDS_REVIEW) and every comparison against them are
+# unchanged; only the rendered word differs.
+CLAIM_VERDICT_LABELS = {"PASS": "SUPPORTED", "FAIL": "CONTRADICTED",
+                        "NEEDS_REVIEW": "NEEDS REVIEW", "NEEDS REVIEW": "NEEDS REVIEW"}
+# The exact sentence shown once per Case File, under the evidence-check heading.
+EVIDENCE_CHECK_NOTE = ("This checks whether the AI-generated draft matches the source "
+                       "evidence. It is not an AML clearance decision.")
+
+
+def claim_verdict_label(result) -> str:
+    """Visible evidence verdict for one claim (display only)."""
+    key = str(result).strip().upper()
+    return CLAIM_VERDICT_LABELS.get(key, key)
 
 
 def lifecycle_queue_label(lc) -> str:
@@ -779,9 +793,13 @@ div[data-testid="stToolbar"]{display:none !important;}
 .field-lbl{color:#555;font-weight:500;}
 .field-val{color:#1a1a1a;font-weight:600;text-align:right;}
 .verify-row{display:flex;justify-content:space-between;align-items:center;padding:6px 10px;margin:3px 0;background:#f8f8f8;border:1px solid #e8e8e8;font-size:13px;}
-.v-pass{color:#1a5c1a;font-weight:700;font-size:11px;background:#e8f5e8;padding:2px 6px;border:1px solid #9c9;border-radius:2px;}
-.v-fail{color:#7b0000;font-weight:700;font-size:11px;background:#fde8e8;padding:2px 6px;border:1px solid #c88;border-radius:2px;}
-.v-review{color:#6b3800;font-weight:700;font-size:11px;background:#fef3e2;padding:2px 6px;border:1px solid #dba;border-radius:2px;}
+/* Claim-level EVIDENCE VERDICT badges (SUPPORTED / CONTRADICTED / NEEDS REVIEW). */
+.v-pass{color:#1F6A3D;font-weight:700;font-size:11px;background:#EDF7F0;padding:2px 6px;border:1px solid #89B99A;border-radius:2px;}
+.v-fail{color:#8F1D1D;font-weight:700;font-size:11px;background:#FDECEC;padding:2px 6px;border:1px solid #D98F8F;border-radius:2px;}
+.v-review{color:#7A5200;font-weight:700;font-size:11px;background:#FFF7E6;padding:2px 6px;border:1px solid #D9B56C;border-radius:2px;}
+/* Case File evidence-check explanation — muted body copy, no box of its own. */
+.evidence-check-note{background:transparent;border:none;color:#667085;padding:10px 14px 0;
+  margin:0;font-size:12px;font-weight:500;line-height:1.4;border-radius:0;box-shadow:none;}
 .warn-box{background:#fff8e1;border:1px solid #f0c040;border-left:4px solid #f0c040;padding:12px 16px;font-size:14px;color:#5d4000;margin:8px 0 0 0;}
 
 .claim-card{background:#fff;border:1px solid #d8d8d8;border-left:5px solid #999;margin:0 0 12px 0;}
@@ -1580,9 +1598,9 @@ def show_case_dialog(alert_id: str, source: dict) -> None:
     </div>
     """, unsafe_allow_html=True)
 
-    # ── Case outcome summary: three DERIVED status cards (AI Verification, Review
+    # ── Case outcome summary: three DERIVED status cards (AI Draft Accuracy, Review
     #    Requirements, Recorded Disposition), directly below the identity header and
-    #    above AI Claim Verification. DISPLAY ONLY — computed from existing case
+    #    above the AI Draft Evidence Check. DISPLAY ONLY — computed from existing case
     #    values; no stored value, verifier, gate, pipeline, or audit logic changes.
     def _summary_style(v):
         if v == "PASS":
@@ -1595,6 +1613,17 @@ def show_case_dialog(alert_id: str, source: dict) -> None:
             return "background:#f7f8f9;border:1px solid #D0D5DD;color:#5a6570;"
         return "background:#e8f4f8;border:1px solid #8aaabf;color:#1a5276;"  # COMPLETE / allowed disposition
 
+    def _accuracy_style(v):
+        """Colours for the AI-DRAFT-ACCURACY card only. Review requirements and recorded
+        disposition keep _summary_style so no unrelated status is recoloured."""
+        if v == "VERIFIED":
+            return "background:#EDF7F0;border:1px solid #89B99A;color:#1F6A3D;"
+        if v == "UNSUPPORTED":
+            return "background:#FDECEC;border:1px solid #D98F8F;color:#8F1D1D;"
+        if v in ("MIXED", "NEEDS REVIEW"):
+            return "background:#FFF7E6;border:1px solid #D9B56C;color:#7A5200;"
+        return "background:#F4F6F8;border:1px solid #D0D5DD;color:#667085;"   # NOT EVALUATED
+
     # Every rail value comes from the canonical lifecycle record — never from the
     # verifier summary, the review gate, or alerts.status.
     lc = lifecycle_index[a["alert_id"]]
@@ -1604,8 +1633,8 @@ def show_case_dialog(alert_id: str, source: dict) -> None:
 
     st.markdown(
         '<div class="case-summary-rail">'
-        f'<div class="case-summary-card" style="{_summary_style(_ai_verif)}">'
-        '<div class="case-summary-label">AI VERIFICATION</div>'
+        f'<div class="case-summary-card" style="{_accuracy_style(_ai_verif)}">'
+        '<div class="case-summary-label">AI DRAFT ACCURACY</div>'
         f'<div class="case-summary-value">{_ai_verif}</div></div>'
         f'<div class="case-summary-card" style="{_summary_style(_review_req)}">'
         '<div class="case-summary-label">REVIEW REQUIREMENTS</div>'
@@ -1618,7 +1647,7 @@ def show_case_dialog(alert_id: str, source: dict) -> None:
     )
 
     # ── OVERRIDE REQUEST context — directly below the Case Outcome Summary rail and
-    #    above AI Claim Verification. Renders whenever this alert has at least one
+    #    above the AI Draft Evidence Check. Renders whenever this alert has at least one
     #    override request (regardless of entry source), derived LIVE from
     #    pending_overrides.csv. A governance record DISTINCT from a Human Review: it
     #    neither creates nor implies one, and never alters the Human Review section
@@ -1637,7 +1666,7 @@ def show_case_dialog(alert_id: str, source: dict) -> None:
             f'<div class="claim-line"><span class="claim-tag">② Source Evidence</span>'
             f'<span class="claim-val">{cl["note"]}</span></div>'
             f'<div class="claim-result-line"><span class="claim-tag">③ Verdict</span>'
-            f'<span class="{badge} hero-verdict">{cl["result"]}</span></div>'
+            f'<span class="{badge} hero-verdict">{claim_verdict_label(cl["result"])}</span></div>'
             f'</div>'
         )
 
@@ -1655,7 +1684,8 @@ def show_case_dialog(alert_id: str, source: dict) -> None:
 
     st.markdown(f"""
     <div class="case-panel" style="margin-top:12px;">
-      <div class="case-panel-hdr"><span class="case-panel-title">AI Draft Verification</span></div>
+      <div class="case-panel-hdr"><span class="case-panel-title">AI Draft Evidence Check</span></div>
+      <div class="evidence-check-note">{EVIDENCE_CHECK_NOTE}</div>
       <div style="padding:14px 16px;background:#f5f5f5;">{_panel_body}</div>
     </div>
     """, unsafe_allow_html=True)
@@ -1663,7 +1693,10 @@ def show_case_dialog(alert_id: str, source: dict) -> None:
     # Re-run the deterministic verifier on the displayed claims and compare its summary
     # with the RECORDED lifecycle result. Display only — no lifecycle or audit mutation.
     if lc.processing_status is ProcessingStatus.PROCESSED:
-        if derive_ai_verification(case["ai_claims"]) != _ai_verif:
+        # Compare INTERNAL result to INTERNAL recorded value (never the display label,
+        # which is now VERIFIED / MIXED / UNSUPPORTED).
+        _recorded_internal = lc.ai_verification.value.upper().replace("_", " ")
+        if derive_ai_verification(case["ai_claims"]) != _recorded_internal:
             st.markdown(
                 '<div class="warn-box">CURRENT VERIFICATION DIFFERS FROM THE RECORDED '
                 'PROCESSING RESULT.</div>',
@@ -1707,23 +1740,28 @@ def show_case_dialog(alert_id: str, source: dict) -> None:
     if _fails:
         _n = len(_fails)
         _rv = case["review"]
+        # Same trigger condition as before (internal result == FAIL); wording only.
+        _lead = (f"<b>{_n} AI-drafted claim is contradicted by the source evidence.</b>"
+                 if _n == 1 else
+                 f"<b>{_n} AI-drafted claims are contradicted by the source evidence.</b>")
+        _subject = "contradicted draft claim" if _n == 1 else "contradicted draft claims"
         if lc.review_gate is ReviewGateStatus.COMPLETE and _rv:
             _cls, _msg = "ok", (
-                f"<b>{_n} draft claim(s) failed verification.</b> The human reviewer "
+                f"{_lead} The human reviewer "
                 f"({_rv.get('reviewer', '—')}) recorded review decision "
                 f"'{lc.human_review_decision.value}' and final case action "
-                f"'{lc.final_action}'. The failed draft claim did not become the final "
+                f"'{lc.final_action}'. The {_subject} did not become the final "
                 f"disposition."
             )
         elif lc.review_gate is ReviewGateStatus.BLOCKED and _rv:
             _cls, _msg = "warn", (
-                f"<b>{_n} draft claim(s) failed verification.</b> The stored "
+                f"{_lead} The stored "
                 f"human-review decision is '{lc.human_review_decision.value}', but the "
                 f"review is incomplete and no final disposition is recorded."
             )
         else:
             _cls, _msg = "warn", (
-                f"<b>{_n} draft claim(s) failed verification.</b> No completed human "
+                f"{_lead} No completed human "
                 f"review is on file — the unsupported claim must not be accepted without "
                 f"human sign-off."
             )
@@ -2122,6 +2160,11 @@ div[class*="st-key-hro_done_"] [data-testid="stVerticalBlock"]{gap:12px !importa
 .badge-amber{background:#fff8e1;border-color:#eab308;color:#8a5a00;}
 .badge-blue{background:#e8f4f8;border-color:#9fc6d8;color:#1a5276;}
 .badge-neutral{background:#F4F6F8;border-color:#D0D5DD;color:#5d6573;}
+/* AI-DRAFT-ACCURACY badges only (other oversight dimensions keep their palette). */
+.badge-acc-verified{background:#EDF7F0;border-color:#89B99A;color:#1F6A3D;}
+.badge-acc-mixed{background:#FFF7E6;border-color:#D9B56C;color:#7A5200;}
+.badge-acc-unsupported{background:#FDECEC;border-color:#D98F8F;color:#8F1D1D;}
+.badge-acc-none{background:#F4F6F8;border-color:#D0D5DD;color:#667085;}
 .hro-details{display:flex;flex-wrap:wrap;gap:16px;}
 .hro-field{display:flex;flex-direction:column;min-width:0;}
 .hro-lbl{font-size:11px;text-transform:uppercase;font-weight:700;color:#5d6573;}
@@ -2180,6 +2223,12 @@ div[class*="st-key-hro_"] .stButton>button:focus-visible{
 
         def _hro_badge(dim, value, blocked_ctx):
             v = str(value).upper()
+            if dim == "AI DRAFT ACCURACY":
+                # AI-accuracy badge uses the accuracy palette; other dimensions keep theirs.
+                acc = {"VERIFIED": "badge-acc-verified", "UNSUPPORTED": "badge-acc-unsupported",
+                       "MIXED": "badge-acc-mixed", "NEEDS REVIEW": "badge-acc-mixed",
+                       "NOT EVALUATED": "badge-acc-none"}.get(v, "badge-acc-none")
+                return f'<span class="hro-badge {acc}">{dim}: {v}</span>'
             if v == "PASS":
                 cls = "badge-green"
             elif v in ("FAIL", "BLOCKED"):
@@ -2215,7 +2264,7 @@ div[class*="st-key-hro_"] .stButton>button:focus-visible{
                 cust, ai, review_req, disp = alert_id, "NOT EVALUATED", \
                     ("BLOCKED" if blocked else "COMPLETE"), "NONE"
             badges = (
-                _hro_badge("AI VERIFICATION", ai, blocked)
+                _hro_badge("AI DRAFT ACCURACY", ai, blocked)
                 + _hro_badge("REVIEW REQUIREMENTS", review_req, blocked)
                 + _hro_badge("RECORDED DISPOSITION", disp, blocked)
             )

@@ -103,7 +103,7 @@ def test_provenance_line_removed_from_source():
 @pytest.mark.parametrize("alert_id", CASE_ALERTS)
 def test_claims_evidence_and_verdicts_still_render(alert_id):
     md = _case(alert_id)
-    assert "AI Draft Verification" in md          # section heading
+    assert "AI Draft Evidence Check" in md        # section heading
     assert "Draft Claim" in md                    # 1. draft claim
     assert "Source Evidence" in md                # 2. source evidence
     assert "Verdict" in md                        # 3. verdict
@@ -168,6 +168,6 @@ def test_rendering_case_file_is_read_only(alert_id, monkeypatch):
     monkeypatch.setattr(audit_mod, "log_event", lambda **kw: calls.append(kw) or {})
     before = _committed_hashes()
     md = _case(alert_id)
-    assert "AI Draft Verification" in md
+    assert "AI Draft Evidence Check" in md
     assert calls == [], f"opening {alert_id} wrote audit events: {calls}"
     assert _committed_hashes() == before, "a committed data file changed"

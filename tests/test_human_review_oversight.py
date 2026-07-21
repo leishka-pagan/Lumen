@@ -95,7 +95,7 @@ def test_default_view_shows_all_three_reviews():
 
 def test_alert007_requires_attention_badges_and_missing_fields():
     card = _card(_manager(), "ALERT007 · Roland Beck")
-    assert "AI VERIFICATION: PASS" in card
+    assert "AI DRAFT ACCURACY: VERIFIED" in card
     assert "REVIEW REQUIREMENTS: BLOCKED" in card
     assert "RECORDED DISPOSITION: NONE" in card
     assert "reviewer:jdoe" in card
@@ -107,11 +107,11 @@ def test_completed_review_badges_alert001_and_alert004():
     at = _manager()
     c1 = _card(at, "ALERT001 · Dana Whitfield")
     # RECORDED DISPOSITION is lifecycle.final_action (MONITOR), never the review decision (EDITED)
-    assert "AI VERIFICATION: PASS" in c1 and "REVIEW REQUIREMENTS: COMPLETE" in c1 and "RECORDED DISPOSITION: MONITOR" in c1
+    assert "AI DRAFT ACCURACY: VERIFIED" in c1 and "REVIEW REQUIREMENTS: COMPLETE" in c1 and "RECORDED DISPOSITION: MONITOR" in c1
     assert "RECORDED DISPOSITION: EDITED" not in c1
     assert "Review ID: REV003" in c1 and "Final Action" in c1
     c4 = _card(at, "ALERT004 · Tomas Herrera")
-    assert "AI VERIFICATION: PASS" in c4 and "REVIEW REQUIREMENTS: COMPLETE" in c4 and "RECORDED DISPOSITION: ESCALATE" in c4
+    assert "AI DRAFT ACCURACY: VERIFIED" in c4 and "REVIEW REQUIREMENTS: COMPLETE" in c4 and "RECORDED DISPOSITION: ESCALATE" in c4
     assert "RECORDED DISPOSITION: EDITED" not in c4
     assert "Review ID: REV002" in c4 and "Final Action" in c4
 
@@ -187,7 +187,7 @@ def test_switching_views_preserves_role_and_writes_no_audit(monkeypatch):
 def test_alert004_remains_pass_complete_escalate_and_100_readiness():
     at = _manager()
     c4 = _card(at, "ALERT004 · Tomas Herrera")
-    assert "AI VERIFICATION: PASS" in c4 and "REVIEW REQUIREMENTS: COMPLETE" in c4 and "RECORDED DISPOSITION: ESCALATE" in c4
+    assert "AI DRAFT ACCURACY: VERIFIED" in c4 and "REVIEW REQUIREMENTS: COMPLETE" in c4 and "RECORDED DISPOSITION: ESCALATE" in c4
     assert "RECORDED DISPOSITION: EDITED" not in c4
     _btn(at, "hro_ALERT004").click().run()
     assert not at.exception, [str(e.value) for e in at.exception]
@@ -205,7 +205,7 @@ def test_hro_badges_derive_from_lifecycle_not_alerts_status():
                         ("ALERT007", "Roland Beck")):
         card = _card(at, f"{alert} · {cust}")
         lc = idx[alert]
-        assert f"AI VERIFICATION: {app.lifecycle_ai_verification_label(lc)}" in card
+        assert f"AI DRAFT ACCURACY: {app.lifecycle_ai_verification_label(lc)}" in card
         assert f"REVIEW REQUIREMENTS: {app.lifecycle_review_requirements_label(lc)}" in card
         assert f"RECORDED DISPOSITION: {app.lifecycle_recorded_disposition_label(lc)}" in card
     # ALERT007 alerts.status is 'closed' and ALERT001/004 are 'in_review' — none of those

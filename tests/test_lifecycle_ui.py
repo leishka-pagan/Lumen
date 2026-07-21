@@ -39,15 +39,15 @@ PROCESSED = list(ALL_ALERTS)
 HERO = [f"ALERT{i:03d}" for i in range(1, 8)]
 REMAINING = [f"ALERT{i:03d}" for i in range(8, 40)]
 
-# alert_id -> (AI VERIFICATION, REVIEW REQUIREMENTS, RECORDED DISPOSITION, Queue label)
+# alert_id -> (AI DRAFT ACCURACY, REVIEW REQUIREMENTS, RECORDED DISPOSITION, Queue label)
 SEVEN = {
-    "ALERT001": ("PASS",  "COMPLETE",     "MONITOR",  "Awaiting Manager"),
+    "ALERT001": ("VERIFIED", "COMPLETE",     "MONITOR",  "Awaiting Manager"),
     "ALERT002": ("MIXED", "PENDING",      "NONE",     "Awaiting Manager"),
-    "ALERT003": ("PASS",  "NOT REQUIRED", "MONITOR",  "Closed"),
-    "ALERT004": ("PASS",  "COMPLETE",     "ESCALATE", "Closed"),
-    "ALERT005": ("PASS",  "NOT REQUIRED", "MONITOR",  "Awaiting Manager"),
-    "ALERT006": ("PASS",  "PENDING",      "NONE",     "Awaiting Review"),
-    "ALERT007": ("PASS",  "BLOCKED",      "NONE",     "Blocked"),
+    "ALERT003": ("VERIFIED", "NOT REQUIRED", "MONITOR",  "Closed"),
+    "ALERT004": ("VERIFIED", "COMPLETE",     "ESCALATE", "Closed"),
+    "ALERT005": ("VERIFIED", "NOT REQUIRED", "MONITOR",  "Awaiting Manager"),
+    "ALERT006": ("VERIFIED", "PENDING",      "NONE",     "Awaiting Review"),
+    "ALERT007": ("VERIFIED", "BLOCKED",      "NONE",     "Blocked"),
 }
 
 
@@ -148,7 +148,7 @@ def test_queue_renamed_and_status_counts_from_lifecycle(runtime):
 def test_seven_case_rails(alert_id, runtime):
     ai, req, disp, _q = SEVEN[alert_id]
     md = _md(_run(open_case=alert_id))
-    assert _pair("AI VERIFICATION", ai) in md
+    assert _pair("AI DRAFT ACCURACY", ai) in md
     assert _pair("REVIEW REQUIREMENTS", req) in md
     assert _pair("RECORDED DISPOSITION", disp) in md
 
@@ -179,11 +179,11 @@ def test_alert001_004_recorded_disposition_is_action_not_review_word(runtime):
 def test_alert022_is_processed_from_a_live_capture(runtime):
     """Formerly decorative: ALERT022 now carries a real captured draft and a real verdict."""
     md = _md(_run(open_case="ALERT022"))
-    assert _pair("AI VERIFICATION", "MIXED") in md
+    assert _pair("AI DRAFT ACCURACY", "MIXED") in md
     assert _pair("REVIEW REQUIREMENTS", "PENDING") in md
     assert _pair("RECORDED DISPOSITION", "NONE") in md
     # the retired NOT_PROCESSED empty states must be gone
-    assert _pair("AI VERIFICATION", "NOT EVALUATED") not in md
+    assert _pair("AI DRAFT ACCURACY", "NOT EVALUATED") not in md
     assert "has not been run through the LUMEN processing workflow" not in md
     assert "HUMAN-REVIEW GATE: NOT EVALUATED" not in md
 
@@ -221,7 +221,7 @@ def test_captured_live_case_hides_technical_provenance(runtime):
     assert "LIVE-CAPTURE-V1" not in md
     assert "CAPTURED LIVE" not in md
     assert "SYNTHETIC FIXTURE" not in md
-    assert "AI Draft Verification" in md and "AI Claim Verification" not in md
+    assert "AI Draft Evidence Check" in md and "AI Draft Verification" not in md
     assert "Draft Claim" in md              # claim label renamed (CSS uppercases to DRAFT CLAIM)
     assert "Source Evidence" in md
     assert "Verdict" in md
@@ -512,7 +512,7 @@ def test_all_retired_case_readiness_strings_absent(runtime):
 def test_alert022_94pct_evidence_is_independent_of_disposition(runtime):
     md = _md(_run(open_case="ALERT022"))
     assert _evidence_pair(94) in md                              # Evidence Completeness 94%
-    assert _pair("AI VERIFICATION", "MIXED") in md
+    assert _pair("AI DRAFT ACCURACY", "MIXED") in md
     assert _pair("REVIEW REQUIREMENTS", "PENDING") in md
     assert _pair("RECORDED DISPOSITION", "NONE") in md           # evidence != disposition
 

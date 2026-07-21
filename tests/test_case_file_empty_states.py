@@ -68,7 +68,7 @@ def test_alert001_review_present_path_intact_ai_verdict_and_human_outcome():
     # together with the recorded human outcome.
     md = _open("ALERT001")
     assert REVIEW_MISSING_MSG not in md                       # not the empty-state branch
-    assert ">PASS<" in md                                     # both captured claims verify
+    assert ">SUPPORTED<" in md                                # both captured claims verify
     assert "reviewer:mchen" in md                             # human review rendered
     # The review DECISION (edited) stays distinct from the final case action (monitor):
     # the review panel shows the decision, the summary rail shows the disposition.
@@ -82,7 +82,7 @@ def test_alert007_review_present_path_intact_prior_sar_pass_and_gate_blocked():
     # present branch: prior-SAR claim PASS + human-review gate BLOCKED (same rule).
     md = _open("ALERT007")
     assert REVIEW_MISSING_MSG not in md
-    assert ">PASS<" in md                                     # prior_sar_history PASS (contrast case)
+    assert ">SUPPORTED<" in md                                # prior_sar_history supported (contrast)
     assert "reviewer:jdoe" in md
     assert "HUMAN-REVIEW GATE: BLOCKED" in md
 
@@ -96,7 +96,7 @@ def _summary_pair(label: str, value: str) -> str:
 
 def test_case_outcome_summary_alert001_pass_complete_monitor():
     md = _open("ALERT001")
-    assert _summary_pair("AI VERIFICATION", "PASS") in md
+    assert _summary_pair("AI DRAFT ACCURACY", "VERIFIED") in md
     assert _summary_pair("REVIEW REQUIREMENTS", "COMPLETE") in md
     # Recorded disposition is the lifecycle final_action (MONITOR), never the review
     # decision word (EDITED).
@@ -106,14 +106,14 @@ def test_case_outcome_summary_alert001_pass_complete_monitor():
 
 def test_case_outcome_summary_alert007_pass_blocked_none():
     md = _open("ALERT007")
-    assert _summary_pair("AI VERIFICATION", "PASS") in md
+    assert _summary_pair("AI DRAFT ACCURACY", "VERIFIED") in md
     assert _summary_pair("REVIEW REQUIREMENTS", "BLOCKED") in md
     assert _summary_pair("RECORDED DISPOSITION", "NONE") in md
 
 
 def test_case_outcome_summary_alert003_pass_not_required_monitor():
     md = _open("ALERT003")
-    assert _summary_pair("AI VERIFICATION", "PASS") in md
+    assert _summary_pair("AI DRAFT ACCURACY", "VERIFIED") in md
     assert _summary_pair("REVIEW REQUIREMENTS", "NOT REQUIRED") in md
     assert _summary_pair("RECORDED DISPOSITION", "MONITOR") in md
 
@@ -122,7 +122,7 @@ def test_case_outcome_summary_alert002_mixed_pending_none():
     """An alert REQUIRING review with none on file withholds the disposition and
     fabricates neither a review nor a verdict."""
     md = _open(REVIEW_REQUIRED_NO_REVIEW_ALERT)
-    assert _summary_pair("AI VERIFICATION", "MIXED") in md
+    assert _summary_pair("AI DRAFT ACCURACY", "MIXED") in md
     assert _summary_pair("RECORDED DISPOSITION", "NONE") in md
     assert REVIEW_MISSING_MSG not in md                       # review IS required here
     assert "HUMAN-REVIEW GATE: PASSED" not in md

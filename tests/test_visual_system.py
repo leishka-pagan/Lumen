@@ -39,7 +39,11 @@ TERRACOTTA = {"#F5E9E2", "#C58B6C", "#6A3D2A", "#9B5438"}
 
 # Semantic colors that must survive untouched (status, not decoration).
 SEMANTIC_RED = {"#7b0000", "#a01818", "#8b0000", "#a00000", "#650000", "#fde8e8",
-                "#dc7c7c", "#e9a0a0", "#fdeaea", "#fdecec", "#fff1f1"}
+                "#dc7c7c", "#e9a0a0", "#fdeaea", "#fdecec", "#fff1f1",
+                # UNSUPPORTED / CONTRADICTED text + border (the AI-accuracy palette).
+                # Same false-positive shape as the muted reds above: dark or desaturated
+                # red satisfies b >= g and r > g without being decorative purple.
+                "#8f1d1d", "#d98f8f"}
 # Completion/allowed-disposition states kept their original blue-teal on purpose:
 # "Do not change a semantic status color." They are status, not decoration.
 SEMANTIC_COMPLETE = {"#2e728f", "#e8f4f8", "#1a5276", "#8aaabf", "#9fc6d8"}
