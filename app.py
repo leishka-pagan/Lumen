@@ -1786,7 +1786,15 @@ def show_case_dialog(alert_id: str, source: dict) -> None:
     #    the rail markup is byte-identical to the lifecycle-only render.
     _enforce = bool(st.session_state.risk_settings.get("block_rubber_stamp", True))
     _session_disp = get_session_disposition(alert_id)
-    _eff_review = effective_review(alert_id, case["review"])
+    _stored_review = case["review"]
+    _eff_review = effective_review(alert_id, _stored_review)
+    # A COMPLETE stored review is authoritative and never editable from the UI. An alert
+    # whose completion came only from a session disposition stays editable, so the analyst
+    # can correct and re-submit it. This is the stored-complete / session-complete split.
+    _stored_complete = (_stored_review is not None
+                        and not evaluate_review(_stored_review, enforce=True).missing)
+    _show_disposition_form = (st.session_state.get("view_as") == "Analyst"
+                              and not _stored_complete)
     _rail_note = ""
     if _session_disp is not None:
         # AI DRAFT ACCURACY is deliberately NOT touched: a human disposition says
@@ -1951,13 +1959,17 @@ def show_case_dialog(alert_id: str, source: dict) -> None:
             unsafe_allow_html=True,
         )
 
-    if lc.processing_status is ProcessingStatus.NOT_PROCESSED:
+    # `_session_disp is None` guards keep every neutral empty state byte-identical until
+    # the analyst actually submits. A submitted session disposition means a review IS
+    # present for display, so the populated panels below take over — absence is never
+    # converted into a verdict merely because the form is on screen.
+    if _session_disp is None and lc.processing_status is ProcessingStatus.NOT_PROCESSED:
         _render_hr_empty(
             "Not evaluated. This alert has not been processed or routed for human review.",
             "HUMAN-REVIEW GATE: NOT EVALUATED",
             "No review gate was evaluated because this alert has not been processed.",
         )
-    elif lc.review_routing is ReviewRoutingStatus.NOT_REQUIRED:
+    elif _session_disp is None and lc.review_routing is ReviewRoutingStatus.NOT_REQUIRED:
         _gate_body = ("The routing policy authorized the recorded system disposition: "
                       f"{lc.final_action}.")
         if lc.override_status is OverrideStatus.PENDING:
@@ -1968,7 +1980,7 @@ def show_case_dialog(alert_id: str, source: dict) -> None:
             "HUMAN-REVIEW GATE: NOT APPLICABLE",
             _gate_body,
         )
-    elif lc.review_gate is ReviewGateStatus.PENDING:
+    elif _session_disp is None and lc.review_gate is ReviewGateStatus.PENDING:
         _render_hr_empty(
             "Human review is required and awaiting submission.",
             "HUMAN-REVIEW GATE: PENDING",
@@ -2050,11 +2062,13 @@ def show_case_dialog(alert_id: str, source: dict) -> None:
             )
         st.markdown(_gate_html, unsafe_allow_html=True)
 
-        # Session-only disposition affordance, offered ONLY where the STORED review is
-        # blocked. A case whose committed review is already COMPLETE renders exactly as
-        # before — no form, no change.
-        if lc.review_gate is ReviewGateStatus.BLOCKED:
-            render_disposition_form(alert_id)
+    # Analyst disposition affordance, rendered for EVERY Case File state the analyst can
+    # still act on: no stored review at all, a stored review that is incomplete, or one
+    # already completed this session (kept editable so it can be corrected and
+    # re-submitted). A COMPLETE stored review renders no form, and the Manager view never
+    # renders one — a manager reads the resulting overlay but gets no edit controls here.
+    if _show_disposition_form:
+        render_disposition_form(alert_id)
 
     if st.button("Close", key="close_case_dialog", type="primary"):
         st.session_state.open_case = None
