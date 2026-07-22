@@ -1793,7 +1793,12 @@ def show_case_dialog(alert_id: str, source: dict) -> None:
     # can correct and re-submit it. This is the stored-complete / session-complete split.
     _stored_complete = (_stored_review is not None
                         and not evaluate_review(_stored_review, enforce=True).missing)
+    # Routing decides whether a human review is wanted at all. Under NOT_REQUIRED the
+    # policy has already authorized a system disposition, so offering a review form
+    # would contradict the very routing decision the gate exists to enforce.
+    _review_required = lc.review_routing is ReviewRoutingStatus.REQUIRED
     _show_disposition_form = (st.session_state.get("view_as") == "Analyst"
+                              and _review_required
                               and not _stored_complete)
     _rail_note = ""
     if _session_disp is not None:
