@@ -1,103 +1,134 @@
-# Defensible AML Decision Workbench
+# Lumen Verify — Defensible AML Decision Workbench
 
-A working prototype that demonstrates how AI-generated AML (anti money
-laundering) case summaries can be deterministically verified against source
-data before a human approves them.
+A working prototype that demonstrates how AI-generated AML (anti money laundering)
+findings can be deterministically verified against source data before a human
+approves them.
+
+**The model drafts. Code verifies. Humans decide.**
 
 ## Build principle
 
 Structured claims first. Deterministic verification second. Human approval last.
 
-The AI does not get to write free text that a reviewer rubber-stamps. The AI
-emits structured claims drawn from a closed vocabulary. Each claim is checked
-against the underlying records by deterministic code. A human only approves
-after seeing which claims passed, failed, or need review.
+The AI does not get to write free text that a reviewer rubber-stamps. It emits
+structured claims drawn from a closed vocabulary. Each claim is checked against the
+underlying records by deterministic code. A human only approves after seeing which
+claims passed, failed, or need review, and the review itself is not accepted as
+complete unless it was actually performed.
 
-## Project status: Phase 2 (LLM drafter)
+## Status
 
-Phase 1 delivered the foundation: scaffolding, schema, synthetic data
-with planted hero cases, closed claim-type vocabulary, verifier dispatcher,
-and audit log.
+All six layers are built and the full workbench runs.
 
-Phase 2 delivers the LLM integration layer: src/llm_drafter.py calls the
-Anthropic API using tool use, forces structured claims from the closed
-vocabulary, validates every claim against schema gates, and logs the full
-draft lifecycle to the audit trail. The pipeline LLM step is now live.
+| Layer | State |
+|---|---|
+| Data layer, schema-validated | Live |
+| Triage, severity, and evidence completeness | Live |
+| AI claim drafting (`src/llm_drafter.py`) | Built. Captured from the live Anthropic API and replayed deterministically, so the demo is reproducible. |
+| Schema and vocabulary enforcement | Live |
+| Deterministic verification, nine functions | Live |
+| Human review gate (`src/review_gate.py`) | Live, unit-tested |
+| Audit trail | Live |
+| Streamlit workbench | Live |
 
-Not in this phase: the Streamlit UI and real verifier
-pattern-matching logic. Those arrive in later weeks.
+Two honest scope notes:
+
+- **Analyst dispositions are session-scoped.** The workbench accepts a complete
+  human review and flips the gate, but persistence to the review store was out of
+  scope for this build. The audit trail contains seeded history.
+- **The orchestration pipeline is not on the demo path.** `src/pipeline.py` is the
+  intended production wiring; the workbench calls the verifier directly.
 
 ## Layout
 
 ```
-data/        synthetic CSVs, one per table (generated, reproducible)
-src/         Python modules (schema, verifier, audit, pipeline, llm_drafter)
-docs/        specs and design docs (schema.md, claim_types.md)
-scripts/     data generation
-scripts/smoke_drafter.py   live API smoke test (manual only, not CI)
-tests/       pytest sanity checks for the planted hero cases
+data/        synthetic CSVs plus derived outputs and demo baselines (generated, reproducible)
+src/         Python modules (see the module map below)
+docs/        specs, design docs, and capstone deliverables
+scripts/     data generation and manual smoke tests
+tests/       pytest suite covering data integrity, verification, and the review gate
+app.py       the Streamlit workbench
 ```
 
 ## Quickstart
 
 ```bash
 pip install -r requirements.txt
-python scripts/generate_data.py   # (re)generate the synthetic CSVs
-python -m pytest                  # run the data-integrity tests
+py -m pytest          # run the full test suite
+py -m streamlit run app.py
 ```
 
-Data generation uses a fixed random seed, so the CSVs are byte-for-byte
-reproducible across runs.
+Two things worth knowing before you run anything:
 
-## Smoke test
+**Do not regenerate the data unless you mean it.** `py scripts/generate_data.py`
+rebuilds every CSV from a fixed seed. It is reproducible, but it also rewrites the
+seeded review records and captured AI outputs that the demo cases depend on.
 
-Requires an Anthropic API key in the environment.
+**The test suite requires a git checkout.** Several tests assert that the source
+tree is unchanged by comparing files against committed blobs, so they need a `.git`
+directory. Running the suite from a downloaded ZIP will fail those tests. This is a
+test-harness limitation, not an application failure.
 
-Set ANTHROPIC_API_KEY then run:
+## The nine claim types
 
-    python scripts/smoke_drafter.py
+The AI may only assert claims from a closed list of nine types. The list given to
+the model is generated at runtime from the same collection the verifier dispatches
+on, so a claim type cannot be offered to the model unless a verifier function
+exists for it. Adding a tenth type requires writing its check first.
 
-This calls the real API for ALERT001 and prints the returned claims.
-Never run this in CI. It is a manual verification tool only.
+`structuring`, `rapid_movement`, `unusual_transaction_volume`,
+`expected_activity_mismatch`, `high_risk_country`, `prior_sar_history`,
+`prior_alert_history`, `missing_kyc_data`, `stale_kyc_profile`
 
-## Hero cases
+Each type, its exact verification rule, and its source table are documented in
+[`docs/claim_types.md`](docs/claim_types.md).
 
-The synthetic data has planted demo moments. See `scripts/generate_data.py`
-(search for "HERO CASE") and the "Hero cases" section of `docs/schema.md` for
-exactly where each one lives and what it demonstrates.
+## Anti-rubber-stamp review gate
 
-## Anti-rubber-stamp review gate (Hero Case B)
+The gate is a shared, deterministic, pure rule in `src/review_gate.py`
+(`evaluate_review`). A human review counts as complete only when `evidence_reviewed`
+is true and `draft_disposition`, `decision_reason`, `final_note`, and `final_action`
+are all present and valid. Anything less is a rubber stamp and does not evaluate as
+complete.
 
-The anti-rubber-stamp gate is implemented as a shared, deterministic, pure rule in
-`src/review_gate.py` (`evaluate_review`). A human review is acceptable only when
-`evidence_reviewed` is true and `draft_disposition`, `decision_reason`, `final_note`,
-and `final_action` are all present and valid; otherwise it is a rubber stamp.
-
-- **Pipeline enforcement.** `src/pipeline.py` `process_alert()` Step 3 evaluates the
-  alert's human review through this gate. It fails closed: a blocked review yields no
-  final disposition and is never treated as finalized, and exactly one structured
-  `review_blocked` audit event is written (or `review_bypassed` when enforcement is
-  explicitly disabled). Enforcement state is passed explicitly and defaults to on.
-- **UI display.** The Case File evaluates a stored review with the *same* shared rule
-  to show a "HUMAN-REVIEW GATE" panel (e.g. BLOCKED for the seeded REV001 / ALERT007).
-  This is display only and writes no audit event.
-- **Honest scope.** The live Streamlit UI does not submit or finalize human
-  dispositions — there is no disposition-submission workflow. It evaluates and displays
-  stored/seeded reviews; the decision pipeline is the enforcement path.
+- **One rule, two consumers.** The workbench and the pipeline evaluate reviews
+  through the same function, so display and enforcement cannot diverge. A test
+  asserts the rule is not duplicated.
+- **Fails closed.** A blocked review yields no final disposition and is never
+  treated as finalized. The pipeline writes exactly one structured `review_blocked`
+  audit event, or `review_bypassed` when enforcement is explicitly disabled.
+  Enforcement is passed explicitly and defaults to on.
+- **Live in the UI.** The Case File shows a HUMAN-REVIEW GATE panel driven by that
+  rule, and an analyst can submit a disposition that flips it from BLOCKED to
+  COMPLETE. That disposition is session-scoped and writes nothing to disk.
 
 ## Module map
 
-| Module           | Status | Purpose                                          |
-|------------------|-------------------|--------------------------------------------------|
-| `src/schema.py`  | Complete          | Pydantic v2 models for all 9 tables              |
-| `src/audit.py`   | Complete          | Append-only audit log writer                     |
-| `src/verifier.py`| Complete          | Deterministic claim verification for all 9 claim types |
-| `src/pipeline.py`| Complete          | Orchestration; Step 3 invokes the anti-rubber-stamp review gate |
-| `src/review_gate.py`| Complete       | Pure deterministic human-review gate (Hero Case B) |
-| `src/llm_drafter.py`| Complete       | Calls Anthropic API via tool use to draft structured claims |
+| Module | Purpose |
+|---|---|
+| `src/schema.py` | Pydantic v2 models and validation for the documented tables |
+| `src/verifier.py` | Nine deterministic verification functions, one per claim type |
+| `src/review_gate.py` | Pure deterministic human-review completeness rule |
+| `src/review_routing.py` | Deterministic policy deciding whether human review is required |
+| `src/audit.py` | Audit trail writer using a controlled event vocabulary |
+| `src/pipeline.py` | Orchestration; the intended production wiring |
+| `src/llm_drafter.py` | Calls the Anthropic API via tool use to draft structured claims |
+| `src/live_capture.py` | Captures live API responses for deterministic replay |
+| `src/capture_guardrails.py` | Budget and authorization gates around live capture |
+| `src/case_lifecycle.py` | Frozen validated domain model for case state |
+| `src/lifecycle_projector.py` | Derives lifecycle state from source records |
+| `src/lifecycle_store.py` | Atomic CSV persistence for the lifecycle projection |
+| `src/demo_reset.py` | Restores demo state from baseline copies; fails closed |
 
 ## Documentation
 
-- `docs/schema.md`: the 9 tables, field descriptions, and relationships.
-- `docs/claim_types.md`: the closed claim-type vocabulary, written for
-  non-engineers.
+- [`docs/schema.md`](docs/schema.md) — the documented tables, fields, and
+  relationships.
+- [`docs/claim_types.md`](docs/claim_types.md) — the closed claim-type vocabulary,
+  written for non-engineers.
+- [`docs/AI_INNOVATION_MAP.md`](docs/AI_INNOVATION_MAP.md) — where AI is and is not
+  applied across the workflow, what was deliberately not automated, and what the
+  verification layer caught.
+- [`docs/PROMPT_LIBRARY.md`](docs/PROMPT_LIBRARY.md) — the exact runtime prompt, the
+  nine claim and verifier contracts, measured results, and the procedure for adding
+  a tenth claim type.

@@ -33,8 +33,7 @@ The AI claims the customer has previously had a suspicious activity report
   history but the count is zero, the claim fails.
 - **Classification**: field-based
 - **Example**: The AI says "this customer has filed SARs before," and the
-  verifier checks whether that is actually recorded. (This is HERO CASE A: the
-  AI says yes, the record says zero, the claim fails.)
+  verifier checks whether that is actually recorded.
 
 ## 2. rapid_movement
 
@@ -43,9 +42,9 @@ through rather than being held.
 
 - **Source data**: `transactions.amount`, `transactions.direction`,
   `transactions.timestamp`
-- **Verification rule**: The claim passes if the transactions show funds
-  arriving and leaving within a short window (for example, same day, similar
-  amounts). Otherwise it fails.
+- **Verification rule**: The claim passes if three or more transactions fall
+  inside a single 24-hour window, with at least one inbound and one outbound
+  among them, together totalling more than 10,000. Otherwise it fails.
 - **Classification**: pattern-based
 - **Example**: Four transactions of the same amount on the same day, money in
   then straight back out.
@@ -56,9 +55,9 @@ The AI claims the customer broke a large sum into several smaller deposits to
 stay under the reporting threshold (typically 10,000).
 
 - **Source data**: `transactions.amount`, `transactions.timestamp`
-- **Verification rule**: The claim passes if there are multiple deposits each
-  just under the threshold that together add up to a large total over a short
-  span of days. Otherwise it fails.
+- **Verification rule**: The claim passes if two or more inbound deposits, each
+  strictly between 9,000 and 9,999, fall inside a 72-hour window. Otherwise it
+  fails.
 - **Classification**: pattern-based
 - **Example**: Deposits of 9,500, then 9,200, 9,700, and 9,400 across three
   days, each one deliberately under 10,000.
@@ -69,8 +68,8 @@ The AI claims the customer's actual activity is far larger than what their
 profile says to expect.
 
 - **Source data**: `customers.expected_monthly_volume`, `transactions.amount`
-- **Verification rule**: The claim passes if observed transaction value is well
-  above the customer's declared expected monthly volume. Otherwise it fails.
+- **Verification rule**: The claim passes if the largest single transaction
+  exceeds the customer's expected monthly volume. Otherwise it fails.
 - **Classification**: pattern-based
 - **Example**: A student whose profile expects about 2,000 a month receives a
   single 45,000 wire.
@@ -80,7 +79,7 @@ profile says to expect.
 The AI claims required know-your-customer (KYC) paperwork is missing for this
 alert.
 
-- **Source data**: `evidence_items.item_type`, `evidence_items.available`
+- **Source data**: `evidence_items.available`
 - **Verification rule**: The claim passes if a required KYC evidence item is
   marked as not available. Otherwise it fails.
 - **Classification**: field-based
@@ -91,8 +90,7 @@ alert.
 
 The AI claims the customer's KYC profile is out of date (KYC drift).
 
-- **Source data**: `kyc_profile_status.current_within_12mo`,
-  `kyc_profile_status.last_updated`
+- **Source data**: `kyc_profile_status.current_within_12mo`
 - **Verification rule**: The claim passes if the profile was not refreshed
   within the last 12 months (`current_within_12mo` is false). Otherwise it fails.
 - **Classification**: field-based
@@ -115,8 +113,9 @@ The AI claims the customer transacted with a country on the high-risk list.
 The AI claims the customer's total transaction volume is abnormal for them.
 
 - **Source data**: `transactions.amount`, `customers.expected_monthly_volume`
-- **Verification rule**: The claim passes if the aggregate volume over the
-  period is well outside the customer's normal baseline. Otherwise it fails.
+- **Verification rule**: The claim passes if the largest single transaction
+  exceeds twice the customer's expected monthly volume, taken across the
+  customer's entire transaction history. Otherwise it fails.
 - **Classification**: pattern-based
 - **Example**: A long-dormant account suddenly moves 60,000 in a single day.
 
@@ -138,10 +137,10 @@ The AI claims this customer has triggered alerts before.
 |---|-----------------------------|----------------|----------------------------------------------|
 | 1 | prior_sar_history           | field-based    | prior_cases.prior_sar_count                  |
 | 2 | rapid_movement              | pattern-based  | transactions (amount, direction, timestamp)  |
-| 3 | structuring                 | pattern-based  | transactions (amount, timestamp)             |
+| 3 | structuring                 | pattern-based  | transactions (amount, direction, timestamp)  |
 | 4 | expected_activity_mismatch  | pattern-based  | customers.expected_monthly_volume, txn amount|
 | 5 | missing_kyc_data            | field-based    | evidence_items.available                     |
 | 6 | stale_kyc_profile           | field-based    | kyc_profile_status.current_within_12mo       |
 | 7 | high_risk_country           | field-based    | transactions.counterparty_country            |
-| 8 | unusual_transaction_volume  | pattern-based  | transactions.amount vs expected baseline     |
+| 8 | unusual_transaction_volume  | pattern-based  | customers.expected_monthly_volume, txn amount|
 | 9 | prior_alert_history         | field-based    | alerts.customer_id                           |
