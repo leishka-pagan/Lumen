@@ -6,6 +6,13 @@ approves them.
 
 **The model drafts. Code verifies. Humans decide.**
 
+## Live demo
+
+**[capstone-lumen.streamlit.app](https://capstone-lumen.streamlit.app/)**
+
+The full workbench, deployed on Streamlit Community Cloud. No install required — it
+runs the same seeded dataset and deterministic verifiers as a local checkout.
+
 ## Build principle
 
 Structured claims first. Deterministic verification second. Human approval last.
@@ -51,6 +58,9 @@ app.py       the Streamlit workbench
 ```
 
 ## Quickstart
+
+To run it locally instead of using the
+[live demo](https://capstone-lumen.streamlit.app/):
 
 ```bash
 pip install -r requirements.txt
