@@ -727,11 +727,10 @@ if "settings_cl"       not in st.session_state: st.session_state.settings_cl    
 # alert_id -> session-only disposition. Demo affordance; never written to disk.
 if "session_dispositions" not in st.session_state: st.session_state.session_dispositions = {}
 
-_qp_alert = st.query_params.get("alert")
-if _qp_alert and _qp_alert in alerts_df["alert_id"].values:
-    st.session_state.selected_alert = _qp_alert
-    _open_case_file(_qp_alert)          # clears conflicting modal state, then sets open_case
-    st.query_params.pop("alert", None)
+# Case opening is handled by the queue's JS-only click-capture component (see TAB 1),
+# which keeps the click inside this Streamlit session. There is deliberately no
+# "?alert=" query-parameter receiver: a URL parameter meant a full-page navigation that
+# started a new session and discarded session-only demo state.
 
 if "risk_settings" not in st.session_state:
     st.session_state.risk_settings = {
@@ -767,6 +766,11 @@ st.html("""
 header[data-testid="stHeader"]{display:none !important;}
 div[data-testid="stToolbar"]{display:none !important;}
 #MainMenu{display:none !important;}
+/* JS-only queue click-capture component: its JavaScript runs on mount, but its
+   zero-height wrapper must not occupy a flex slot (16px trailing gap under the table). */
+div.st-key-lumen_queue_click_capture{
+  display:none !important;
+}
 
 /* OBSIDIAN PLUM header — brand row (.id-bar), context row (.sub-nav), pending pill.
    Styling only; the accessible non-h1 brand, stColumn scoping and mobile structure
@@ -1471,8 +1475,9 @@ def _demo_reset_dialog():
     with st.container(key="demo_reset_dialog"):
         st.markdown(
             '<div class="drd-warn">This restores the three override requests to Pending and '
-            'removes manager decisions created during demo testing. Customer, alert, evidence, '
-            'claim, human-review, and readiness data will not change.</div>',
+            'removes manager decisions created during demo testing. It also clears session '
+            'analyst dispositions recorded this session. Customer, alert, evidence, claim, '
+            'human-review, and readiness data will not change.</div>',
             unsafe_allow_html=True,
         )
         _dc1, _dc2 = st.columns(2)
@@ -1489,6 +1494,13 @@ def _demo_reset_dialog():
                 st.session_state.selected_alert = None
                 st.session_state.open_case = None
                 for _k in [k for k in list(st.session_state.keys()) if str(k).startswith("override_rationale_")]:
+                    st.session_state.pop(_k, None)
+                # Also clear session analyst dispositions and their five form-widget
+                # families (nothing else in session_state is touched).
+                st.session_state.session_dispositions = {}
+                _disp_prefixes = ("disp_evidence_", "disp_draft_", "disp_reason_",
+                                  "disp_note_", "disp_action_")
+                for _k in [k for k in list(st.session_state.keys()) if str(k).startswith(_disp_prefixes)]:
                     st.session_state.pop(_k, None)
                 # Land back in Override Requests (the manager's role is left unchanged).
                 # Use the deferred flag consumed BEFORE the segmented control renders:
@@ -2079,13 +2091,31 @@ def show_case_dialog(alert_id: str, source: dict) -> None:
         st.session_state.open_case = None
         st.session_state.selected_alert = None
         st.session_state.case_search = None
-        st.query_params.pop("alert", None)
         st.rerun()
 
 
 # ═════════════════════════════════════════════════════════════════════════════
 # TAB 1 — ALERT QUEUE
 # ═════════════════════════════════════════════════════════════════════════════
+# Session-preserving case open. A JS-only st.components.v2 component (NOT sandboxed)
+# captures clicks on the queue's data-alert-id anchors and returns the clicked id as a
+# trigger value, so opening a case is an ordinary in-session rerun. An "?alert=" link
+# would instead perform a full-page navigation that starts a NEW Streamlit session and
+# discards session-only demo state. Registered once here; mounted after the table below.
+_QUEUE_CLICK_JS = """
+export default function(component) {
+    const { setTriggerValue } = component;
+    document.querySelectorAll('a[data-alert-id]').forEach((link) => {
+        link.onclick = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setTriggerValue('open_alert', link.getAttribute('data-alert-id'));
+        };
+    });
+}
+"""
+_queue_click = st.components.v2.component("lumen_queue_click", js=_QUEUE_CLICK_JS)
+
 with tab1:
     st.markdown('<div class="page-body">', unsafe_allow_html=True)
 
@@ -2231,7 +2261,7 @@ with tab1:
         def _cell(content, extra="", td_style="", interactive=False, aria=""):
             a_attrs = f'aria-label="{aria}"' if interactive else 'tabindex="-1" aria-hidden="true"'
             return (
-                f'<td style="{td_style}"><a href="?alert={aid}" target="_self" {a_attrs} '
+                f'<td style="{td_style}"><a href="#" data-alert-id="{aid}" {a_attrs} '
                 f'style="display:block;padding:9px 14px;text-decoration:none;'
                 f'color:inherit;{extra}">{content}</a></td>'
             )
@@ -2286,6 +2316,21 @@ with tab1:
 </table>"""
 
     st.markdown(table_html, unsafe_allow_html=True)
+
+    # Mount the JS-only click-capture component (registered above). It renders no visible
+    # HTML; its JavaScript attaches to the data-alert-id anchors in the table just
+    # rendered and returns the clicked id as the "open_alert" trigger.
+    _qclick = _queue_click(key="lumen_queue_click_capture", on_open_alert_change=lambda: None)
+    # SERVER-SIDE VALIDATION: the id comes from the browser and is NOT trusted. Only a
+    # value that is a real alert_id in the canonical alerts_df may change state; an
+    # unknown/empty/malformed value opens nothing and mutates neither selected_alert nor
+    # open_case. On a valid click, reproduce the deleted ?alert= receiver: select the row,
+    # route through the existing _open_case_file, and rerun so the dialog opens.
+    _clicked_alert = getattr(_qclick, "open_alert", None)
+    if _clicked_alert and _clicked_alert in alerts_df["alert_id"].values:
+        st.session_state.selected_alert = _clicked_alert
+        _open_case_file(_clicked_alert)
+        st.rerun()
 
     # Case File is opened by the single dialog coordinator at the end of the file,
     # not here, so it can never coincide with the override or reset dialog.
