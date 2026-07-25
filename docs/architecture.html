@@ -1,0 +1,998 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lumen Verify — Interactive Architecture</title>
+<style>
+  :root {
+    --bg: #0D0D14;
+    --panel: #1A1A2E;
+    --panel-2: #22223D;
+    --border: #2A2A45;
+    --border-strong: #3A3A5A;
+    --text: #F1F5F9;
+    --text-sub: #CBD5E1;
+    --text-muted: #94A3B8;
+    --green: #84CC16;
+    --green-glow: rgba(132, 204, 22, 0.35);
+    --purple: #A855F7;
+    --purple-glow: rgba(168, 85, 247, 0.35);
+    --teal: #06B6D4;
+    --teal-glow: rgba(6, 182, 212, 0.35);
+    --amber: #F59E0B;
+    --amber-glow: rgba(245, 158, 11, 0.35);
+    --rose: #F43F5E;
+    --rose-glow: rgba(244, 63, 94, 0.35);
+    --blue: #3B82F6;
+    --blue-glow: rgba(59, 130, 246, 0.35);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.55;
+    scroll-behavior: smooth;
+  }
+  body {
+    background:
+      radial-gradient(circle at 15% 20%, rgba(168, 85, 247, 0.10) 0%, transparent 45%),
+      radial-gradient(circle at 85% 30%, rgba(132, 204, 22, 0.08) 0%, transparent 45%),
+      radial-gradient(circle at 50% 90%, rgba(6, 182, 212, 0.06) 0%, transparent 50%),
+      var(--bg);
+    min-height: 100vh;
+  }
+  .container { max-width: 1280px; margin: 0 auto; padding: 0 32px; }
+
+  /* HEADER */
+  header {
+    padding: 64px 0 32px;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+  }
+  .brand {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .brand-mark {
+    width: 44px; height: 44px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, var(--green) 0%, var(--purple) 100%);
+    display: inline-block;
+    box-shadow: 0 8px 32px var(--green-glow), 0 8px 32px var(--purple-glow);
+    position: relative;
+    top: 6px;
+  }
+  h1 {
+    font-size: 3.4rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    background: linear-gradient(135deg, #FFFFFF 0%, #C9D0E1 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .subtitle {
+    font-size: 1.25rem;
+    color: var(--text-sub);
+    max-width: 720px;
+    margin: 12px auto 0;
+    font-weight: 400;
+  }
+  .tagline {
+    display: inline-block;
+    margin-top: 24px;
+    padding: 10px 24px;
+    border-radius: 999px;
+    background: rgba(132, 204, 22, 0.08);
+    border: 1px solid rgba(132, 204, 22, 0.35);
+    color: var(--green);
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.95rem;
+    letter-spacing: 0.02em;
+  }
+  .hint {
+    display: block;
+    margin-top: 32px;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+  }
+  nav {
+    margin-top: 24px;
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    font-size: 0.9rem;
+    flex-wrap: wrap;
+  }
+  nav a {
+    color: var(--text-muted);
+    text-decoration: none;
+    padding: 6px 14px;
+    border-radius: 8px;
+    transition: all 0.2s;
+  }
+  nav a:hover { color: var(--text); background: rgba(255,255,255,0.05); }
+  nav a.active { color: var(--green); background: rgba(132, 204, 22, 0.1); }
+
+  /* SECTION */
+  section { padding: 80px 0 40px; }
+  .section-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin-bottom: 12px;
+  }
+  .section-sub {
+    color: var(--text-muted);
+    margin-bottom: 40px;
+    font-size: 1.05rem;
+    max-width: 720px;
+  }
+  .section-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 6px;
+    background: rgba(168, 85, 247, 0.12);
+    color: var(--purple);
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-weight: 600;
+    margin-bottom: 12px;
+  }
+  .section-badge.green { background: rgba(132, 204, 22, 0.12); color: var(--green); }
+  .section-badge.teal { background: rgba(6, 182, 212, 0.12); color: var(--teal); }
+
+  /* THE FLOW: architecture layers */
+  .flow-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    margin-bottom: 12px;
+  }
+  @media (max-width: 900px) {
+    .flow-grid { grid-template-columns: 1fr; }
+  }
+  .layer {
+    background: linear-gradient(180deg, var(--panel) 0%, var(--panel-2) 100%);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  .layer::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--layer-color, var(--green));
+    opacity: 0.9;
+  }
+  .layer::after {
+    content: '';
+    position: absolute;
+    top: 20px; right: 20px;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--layer-color, var(--green));
+    box-shadow: 0 0 12px var(--layer-glow, var(--green-glow));
+  }
+  .layer:hover {
+    transform: translateY(-4px);
+    border-color: var(--layer-color, var(--green));
+    box-shadow: 0 12px 40px rgba(0,0,0,0.35), 0 0 24px var(--layer-glow, var(--green-glow));
+  }
+  .layer[data-active="true"] {
+    border-color: var(--layer-color, var(--green));
+    box-shadow: 0 0 32px var(--layer-glow, var(--green-glow));
+  }
+  .layer-num {
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.85rem;
+    color: var(--layer-color, var(--green));
+    letter-spacing: 0.1em;
+    font-weight: 600;
+  }
+  .layer-name {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin: 8px 0 12px;
+  }
+  .layer-file {
+    display: inline-block;
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    background: rgba(255,255,255,0.04);
+    padding: 3px 10px;
+    border-radius: 6px;
+    margin-bottom: 14px;
+  }
+  .layer-desc {
+    color: var(--text-sub);
+    font-size: 0.95rem;
+  }
+  .layer-mode {
+    display: inline-block;
+    margin-top: 14px;
+    padding: 3px 10px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+  .layer-mode.live {
+    background: rgba(132, 204, 22, 0.15);
+    color: var(--green);
+    border: 1px solid rgba(132, 204, 22, 0.35);
+  }
+  .layer-mode.replayed {
+    background: rgba(168, 85, 247, 0.15);
+    color: var(--purple);
+    border: 1px solid rgba(168, 85, 247, 0.35);
+  }
+
+  /* Layer colors */
+  .layer[data-color="teal"] { --layer-color: var(--teal); --layer-glow: var(--teal-glow); }
+  .layer[data-color="blue"] { --layer-color: var(--blue); --layer-glow: var(--blue-glow); }
+  .layer[data-color="purple"] { --layer-color: var(--purple); --layer-glow: var(--purple-glow); }
+  .layer[data-color="amber"] { --layer-color: var(--amber); --layer-glow: var(--amber-glow); }
+  .layer[data-color="rose"] { --layer-color: var(--rose); --layer-glow: var(--rose-glow); }
+  .layer[data-color="green"] { --layer-color: var(--green); --layer-glow: var(--green-glow); }
+
+  /* DETAIL PANEL: appears below the grid when a layer is clicked */
+  .detail {
+    background: linear-gradient(180deg, rgba(26, 26, 46, 0.7) 0%, rgba(34, 34, 61, 0.7) 100%);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--border-strong);
+    border-radius: 20px;
+    padding: 32px;
+    margin-top: 24px;
+    display: none;
+    animation: slideIn 0.3s ease;
+  }
+  .detail[data-open="true"] { display: block; }
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .detail-close {
+    float: right;
+    background: none;
+    border: 1px solid var(--border-strong);
+    color: var(--text-muted);
+    border-radius: 8px;
+    padding: 6px 12px;
+    cursor: pointer;
+    font-size: 0.85rem;
+  }
+  .detail-close:hover { color: var(--text); border-color: var(--text-muted); }
+  .detail-name {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--detail-color, var(--green));
+    margin-bottom: 8px;
+  }
+  .detail-what {
+    color: var(--text-sub);
+    font-size: 1.05rem;
+    margin-bottom: 24px;
+  }
+  .detail-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+    margin-bottom: 8px;
+  }
+  @media (max-width: 800px) {
+    .detail-grid { grid-template-columns: 1fr; }
+  }
+  .detail-block h4 {
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+    font-weight: 600;
+  }
+  .detail-block ul {
+    list-style: none;
+    padding: 0;
+  }
+  .detail-block li {
+    color: var(--text-sub);
+    padding: 6px 0 6px 20px;
+    position: relative;
+    font-size: 0.95rem;
+  }
+  .detail-block li::before {
+    content: '→';
+    position: absolute;
+    left: 0;
+    color: var(--detail-color, var(--green));
+    font-weight: bold;
+  }
+  .detail-code {
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.85rem;
+    color: var(--text-sub);
+    overflow-x: auto;
+    line-height: 1.6;
+  }
+  .code-comment { color: var(--text-muted); }
+  .code-keyword { color: var(--purple); }
+  .code-string { color: var(--green); }
+  .code-number { color: var(--amber); }
+
+  /* THE FLOW: horizontal arrows */
+  .flow-arrows {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 24px 0;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .flow-arrow-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    font-size: 0.85rem;
+    color: var(--text-sub);
+  }
+  .arrow-connector {
+    color: var(--text-muted);
+    font-size: 1.2rem;
+  }
+
+  /* CLAIM TYPES GRID */
+  .claims-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 16px;
+    margin-top: 24px;
+  }
+  .claim {
+    background: rgba(26, 26, 46, 0.6);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+  }
+  .claim:hover {
+    border-color: var(--purple);
+    background: rgba(168, 85, 247, 0.08);
+    transform: translateY(-2px);
+  }
+  .claim[data-active="true"] {
+    border-color: var(--purple);
+    background: rgba(168, 85, 247, 0.12);
+    box-shadow: 0 0 20px var(--purple-glow);
+  }
+  .claim-name {
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.9rem;
+    color: var(--green);
+    margin-bottom: 8px;
+    font-weight: 600;
+  }
+  .claim-plain {
+    color: var(--text);
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+  .claim-rule {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    display: none;
+    padding-top: 12px;
+    margin-top: 12px;
+    border-top: 1px solid var(--border);
+  }
+  .claim[data-active="true"] .claim-rule {
+    display: block;
+    animation: fadeIn 0.2s ease;
+  }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+  /* CONTROLS SECTION */
+  .controls-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 12px;
+    margin-top: 24px;
+  }
+  .control {
+    background: rgba(26, 26, 46, 0.5);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    transition: all 0.2s ease;
+    cursor: default;
+  }
+  .control:hover {
+    border-color: var(--green);
+    background: rgba(132, 204, 22, 0.05);
+  }
+  .control-num {
+    display: inline-flex;
+    width: 28px; height: 28px;
+    background: linear-gradient(135deg, var(--green), var(--purple));
+    color: white;
+    border-radius: 8px;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.85rem;
+    margin-bottom: 12px;
+  }
+  .control-name {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+  .control-desc {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    line-height: 1.5;
+  }
+
+  /* NUMBERS SECTION */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-top: 24px;
+  }
+  .stat {
+    text-align: center;
+    padding: 32px 20px;
+    background: linear-gradient(180deg, rgba(26, 26, 46, 0.8) 0%, rgba(26, 26, 46, 0.4) 100%);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+  .stat::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, transparent 60%, var(--stat-color, var(--green)) 200%);
+    opacity: 0.12;
+    pointer-events: none;
+  }
+  .stat-value {
+    font-size: 2.75rem;
+    font-weight: 800;
+    color: var(--stat-color, var(--green));
+    letter-spacing: -0.02em;
+    line-height: 1;
+    margin-bottom: 8px;
+  }
+  .stat-label {
+    color: var(--text-sub);
+    font-size: 0.95rem;
+  }
+  .stat[data-color="purple"] { --stat-color: var(--purple); }
+  .stat[data-color="amber"] { --stat-color: var(--amber); }
+  .stat[data-color="teal"] { --stat-color: var(--teal); }
+  .stat[data-color="rose"] { --stat-color: var(--rose); }
+
+  /* FOOTER */
+  footer {
+    padding: 60px 0 40px;
+    border-top: 1px solid var(--border);
+    text-align: center;
+    color: var(--text-muted);
+    margin-top: 60px;
+    font-size: 0.9rem;
+  }
+  footer a {
+    color: var(--green);
+    text-decoration: none;
+    margin: 0 12px;
+    transition: color 0.2s;
+  }
+  footer a:hover { color: var(--purple); }
+
+  .repo-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 16px;
+    padding: 10px 20px;
+    background: rgba(132, 204, 22, 0.08);
+    border: 1px solid rgba(132, 204, 22, 0.3);
+    color: var(--green);
+    border-radius: 999px;
+    text-decoration: none;
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+  }
+  .repo-link:hover {
+    background: rgba(132, 204, 22, 0.15);
+    transform: translateY(-1px);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="container">
+    <div class="brand">
+      <span class="brand-mark"></span>
+      <h1>Lumen Verify</h1>
+    </div>
+    <p class="subtitle">A defensible AML decision workbench where the model drafts, code verifies, and humans decide.</p>
+    <div class="tagline">Interactive Architecture Explorer</div>
+    <span class="hint">Click any layer to see how it works.</span>
+    <nav>
+      <a href="architecture.html" class="active">Architecture</a>
+      <a href="playground.html">Playground</a>
+      <a href="finding.html">The Finding</a>
+      <a href="scaling.html">Scaling</a>
+      <a href="https://github.com/leishka-pagan/Lumen" target="_blank">GitHub ↗</a>
+    </nav>
+  </div>
+</header>
+
+<section>
+  <div class="container">
+    <span class="section-badge">SIX LAYERS · ONE FLOW</span>
+    <h2 class="section-title">The Architecture</h2>
+    <p class="section-sub">Data enters at the top left and moves through six layers to a human decision and an examinable audit trail. Every layer has one job and one place to look in the code.</p>
+
+    <div class="flow-arrows">
+      <div class="flow-arrow-item"><span style="color: var(--teal)">●</span>Data</div>
+      <span class="arrow-connector">→</span>
+      <div class="flow-arrow-item"><span style="color: var(--blue)">●</span>Triage</div>
+      <span class="arrow-connector">→</span>
+      <div class="flow-arrow-item"><span style="color: var(--purple)">●</span>AI Draft</div>
+      <span class="arrow-connector">→</span>
+      <div class="flow-arrow-item"><span style="color: var(--amber)">●</span>Verification</div>
+      <span class="arrow-connector">→</span>
+      <div class="flow-arrow-item"><span style="color: var(--rose)">●</span>Human Gate</div>
+      <span class="arrow-connector">→</span>
+      <div class="flow-arrow-item"><span style="color: var(--green)">●</span>Audit</div>
+    </div>
+
+    <div class="flow-grid" id="layerGrid">
+
+      <div class="layer" data-color="teal" data-layer="0">
+        <div class="layer-num">LAYER 0</div>
+        <h3 class="layer-name">Data Layer</h3>
+        <div class="layer-file">data/</div>
+        <p class="layer-desc">The synthetic AML dataset. Customers, transactions, alerts, KYC records, and review history.</p>
+        <span class="layer-mode live">Live</span>
+      </div>
+
+      <div class="layer" data-color="blue" data-layer="1">
+        <div class="layer-num">LAYER 1</div>
+        <h3 class="layer-name">Triage &amp; Readiness</h3>
+        <div class="layer-file">Severity matrix</div>
+        <p class="layer-desc">Scores every alert for evidence completeness and severity before an analyst opens it.</p>
+        <span class="layer-mode live">Live</span>
+      </div>
+
+      <div class="layer" data-color="purple" data-layer="2">
+        <div class="layer-num">LAYER 2</div>
+        <h3 class="layer-name">AI Draft</h3>
+        <div class="layer-file">src/llm_drafter.py</div>
+        <p class="layer-desc">Calls the Anthropic API to produce structured claims. Forced JSON output. No prose allowed.</p>
+        <span class="layer-mode replayed">Replayed</span>
+      </div>
+
+      <div class="layer" data-color="amber" data-layer="3">
+        <div class="layer-num">LAYER 3</div>
+        <h3 class="layer-name">Verification</h3>
+        <div class="layer-file">src/verifier.py</div>
+        <p class="layer-desc">Nine deterministic Python functions check every AI claim against the source records. No AI involved.</p>
+        <span class="layer-mode live">Live</span>
+      </div>
+
+      <div class="layer" data-color="rose" data-layer="4">
+        <div class="layer-num">LAYER 4</div>
+        <h3 class="layer-name">Human Gate</h3>
+        <div class="layer-file">Anti-rubber-stamp</div>
+        <p class="layer-desc">Blocks sign-off until the analyst confirms the evidence, records the decision, and takes an action.</p>
+        <span class="layer-mode live">Live</span>
+      </div>
+
+      <div class="layer" data-color="green" data-layer="5">
+        <div class="layer-num">LAYER 5</div>
+        <h3 class="layer-name">Audit Trail</h3>
+        <div class="layer-file">src/audit.py</div>
+        <p class="layer-desc">Every review and override writes to an examinable log with a controlled event vocabulary.</p>
+        <span class="layer-mode live">Live</span>
+      </div>
+
+    </div>
+
+    <div class="detail" id="detailPanel">
+      <button class="detail-close" onclick="closeDetail()">Close ✕</button>
+      <div id="detailContent"></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="container">
+    <span class="section-badge green">CLOSED VOCABULARY</span>
+    <h2 class="section-title">The Nine Claim Types</h2>
+    <p class="section-sub">The AI may only assert claims from this fixed list. It cannot invent a tenth. The list itself is generated from the verifier code, so no claim type can be offered unless a check exists for it. Click any card to see the rule.</p>
+
+    <div class="claims-grid" id="claimsGrid">
+      <div class="claim" data-claim="structuring">
+        <div class="claim-name">structuring</div>
+        <div class="claim-plain">Splitting deposits to avoid reporting</div>
+        <div class="claim-rule">Two or more inbound deposits, each between $9,000 and $9,999, inside a 72-hour window.</div>
+      </div>
+      <div class="claim" data-claim="rapid_movement">
+        <div class="claim-name">rapid_movement</div>
+        <div class="claim-plain">Money in and out fast</div>
+        <div class="claim-rule">Three or more transactions inside 24 hours, with at least one inbound and one outbound, totalling over $10,000.</div>
+      </div>
+      <div class="claim" data-claim="unusual_transaction_volume">
+        <div class="claim-name">unusual_transaction_volume</div>
+        <div class="claim-plain">Transaction exceeds expected activity</div>
+        <div class="claim-rule">The largest single transaction exceeds twice the customer's stated expected monthly volume.</div>
+      </div>
+      <div class="claim" data-claim="expected_activity_mismatch">
+        <div class="claim-name">expected_activity_mismatch</div>
+        <div class="claim-plain">Above the customer's own baseline</div>
+        <div class="claim-rule">The largest single transaction exceeds the customer's stated expected monthly volume.</div>
+      </div>
+      <div class="claim" data-claim="high_risk_country">
+        <div class="claim-name">high_risk_country</div>
+        <div class="claim-plain">Counterparty in a sanctioned jurisdiction</div>
+        <div class="claim-rule">A transaction counterparty country is one of: IR, KP, SY, MM, CU, VE, RU.</div>
+      </div>
+      <div class="claim" data-claim="prior_sar_history">
+        <div class="claim-name">prior_sar_history</div>
+        <div class="claim-plain">Prior SAR on record</div>
+        <div class="claim-rule">The customer has one or more Suspicious Activity Reports filed previously.</div>
+      </div>
+      <div class="claim" data-claim="prior_alert_history">
+        <div class="claim-name">prior_alert_history</div>
+        <div class="claim-plain">Customer has prior alerts on record</div>
+        <div class="claim-rule">The customer has more than one alert on record. Note: the current alert counts, so exactly one alert (the one under review) fails; two or more passes.</div>
+      </div>
+      <div class="claim" data-claim="missing_kyc_data">
+        <div class="claim-name">missing_kyc_data</div>
+        <div class="claim-plain">Required KYC record missing</div>
+        <div class="claim-rule">One or more required KYC evidence items are marked unavailable.</div>
+      </div>
+      <div class="claim" data-claim="stale_kyc_profile">
+        <div class="claim-name">stale_kyc_profile</div>
+        <div class="claim-plain">KYC profile not refreshed in 12 months</div>
+        <div class="claim-rule">The customer's KYC record is not current within the last 12 months.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="container">
+    <span class="section-badge teal">DEFENSE IN DEPTH</span>
+    <h2 class="section-title">The Seven Controls</h2>
+    <p class="section-sub">Seven independent safeguards wrap the one AI step. Each catches a different kind of failure before it can reach the human reviewer.</p>
+
+    <div class="controls-grid">
+      <div class="control">
+        <span class="control-num">1</span>
+        <div class="control-name">Closed Claim Vocabulary</div>
+        <div class="control-desc">Nine claim types, generated from the verifier code. A type cannot be offered unless its check exists.</div>
+      </div>
+      <div class="control">
+        <span class="control-num">2</span>
+        <div class="control-name">Structured JSON Output</div>
+        <div class="control-desc">The AI must respond in a fixed schema. No free-text prose that an analyst has to interpret.</div>
+      </div>
+      <div class="control">
+        <span class="control-num">3</span>
+        <div class="control-name">Schema Enforcement</div>
+        <div class="control-desc">Pydantic v2 rejects malformed AI output before it ever reaches a verifier.</div>
+      </div>
+      <div class="control">
+        <span class="control-num">4</span>
+        <div class="control-name">Deterministic Verifier</div>
+        <div class="control-desc">Nine Python functions return PASS, FAIL, or NEEDS_REVIEW. No AI judging AI.</div>
+      </div>
+      <div class="control">
+        <span class="control-num">5</span>
+        <div class="control-name">Human Approval Gate</div>
+        <div class="control-desc">Enforced in code, not policy. A review is not complete without evidence confirmed, rationale written, and action taken.</div>
+      </div>
+      <div class="control">
+        <span class="control-num">6</span>
+        <div class="control-name">Controlled Audit Vocabulary</div>
+        <div class="control-desc">Audit events use a fixed enum of action names. Unknown event names are rejected.</div>
+      </div>
+      <div class="control">
+        <span class="control-num">7</span>
+        <div class="control-name">Examiner Replay</div>
+        <div class="control-desc">Every decision can be reconstructed from the audit trail years later, with the actor, action, and rationale on file.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="container">
+    <span class="section-badge">THE NUMBERS</span>
+    <h2 class="section-title">What Lumen Delivers</h2>
+    <p class="section-sub">Every number below is measured from the code and data, not chosen as a target.</p>
+
+    <div class="stats-grid">
+      <div class="stat">
+        <div class="stat-value">91.1%</div>
+        <div class="stat-label">Evidence completeness across all alerts, computed per case at load</div>
+      </div>
+      <div class="stat" data-color="purple">
+        <div class="stat-value">765</div>
+        <div class="stat-label">Automated tests confirm every control still behaves as designed</div>
+      </div>
+      <div class="stat" data-color="amber">
+        <div class="stat-value">1 in 3</div>
+        <div class="stat-label">AI claims contradicted by source records. Every one caught before an analyst</div>
+      </div>
+      <div class="stat" data-color="rose">
+        <div class="stat-value">9</div>
+        <div class="stat-label">Claim types the AI is locked to. Cannot invent a tenth</div>
+      </div>
+      <div class="stat" data-color="teal">
+        <div class="stat-value">7</div>
+        <div class="stat-label">Independent controls wrapped around the one AI step</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    <p>Lumen Verify · WIC AI Innovator Capstone · Banking &amp; Financial Crime Compliance Intelligence Challenge</p>
+    <a href="https://github.com/leishka-pagan/Lumen" class="repo-link" target="_blank">
+      github.com/leishka-pagan/Lumen →
+    </a>
+    <p style="margin-top: 24px; font-size: 0.85rem;">The model drafts. Code verifies. Humans decide.</p>
+    <p style="margin-top: 32px; padding-top: 20px; border-top: 1px solid var(--border); font-size: 0.9rem; color: var(--text-muted);">
+      Designed and built by <a href="https://www.linkedin.com/in/leishka-pagan/" target="_blank" style="color: var(--green); text-decoration: none; font-weight: 600;">Leishka Pagan</a> · <a href="https://www.linkedin.com/in/leishka-pagan/" target="_blank" style="color: var(--green); text-decoration: none;">LinkedIn ↗</a>
+    </p>
+  </div>
+</footer><script>
+  // Layer detail content
+  const layers = {
+    0: {
+      name: 'Data Layer',
+      color: 'var(--teal)',
+      what: 'The source of truth. Every verifier check reads from these tables, and every audit event references them by ID.',
+      inputs: [
+        '30 synthetic customers with KYC profiles',
+        '187 transactions across nine documented tables',
+        '39 alerts with severity, status, and evidence records',
+        'Seeded review history and override records'
+      ],
+      outputs: [
+        'Read by the verifier at check time',
+        'Read by the triage layer for readiness scoring',
+        'Never mutated by the AI'
+      ],
+      code: `<span class="code-comment"># Loaded once, validated with Pydantic v2</span>
+<span class="code-keyword">from</span> src.schema <span class="code-keyword">import</span> load_tables
+
+tables = load_tables(<span class="code-string">"data/"</span>)
+<span class="code-comment"># tables.customers, tables.transactions,
+# tables.alerts, tables.kyc_evidence,
+# tables.prior_sar, tables.high_risk_countries...</span>`
+    },
+    1: {
+      name: 'Triage & Readiness',
+      color: 'var(--blue)',
+      what: 'Runs before the AI. Computes how ready each case is to review, so analysts see review-readiness on every row of the queue.',
+      inputs: [
+        'The evidence table for each alert',
+        'Required evidence items by claim type',
+        'Alert severity from the source data'
+      ],
+      outputs: [
+        'Evidence completeness percentage per alert',
+        'Blocked flag if required items are missing',
+        'Sort order for the analyst queue'
+      ],
+      code: `<span class="code-comment"># For each alert, count what's on file</span>
+<span class="code-keyword">def</span> readiness(alert):
+    required = evidence_needed(alert.type)
+    present = count_available(alert.evidence)
+    <span class="code-keyword">return</span> present / required`
+    },
+    2: {
+      name: 'AI Draft',
+      color: 'var(--purple)',
+      what: 'The one place AI is used in this system. Calls the Anthropic API and forces it to produce structured claims via tool use.',
+      inputs: [
+        'A case summary and its evidence',
+        'The nine allowed claim types, generated from verifier code',
+        'A schema that rejects malformed responses'
+      ],
+      outputs: [
+        'Zero or more structured claims',
+        'Each claim: type, value, source evidence reference',
+        'No prose, no explanation, no free text'
+      ],
+      code: `<span class="code-comment"># Forced JSON output via Anthropic tool use</span>
+<span class="code-keyword">from</span> anthropic <span class="code-keyword">import</span> Anthropic
+
+response = client.messages.create(
+    model=<span class="code-string">"claude-haiku-4-5"</span>,
+    tools=[claim_schema],
+    tool_choice={<span class="code-string">"type"</span>: <span class="code-string">"tool"</span>}
+)
+<span class="code-comment"># Cannot return free-text; must fill the schema</span>`
+    },
+    3: {
+      name: 'Verification',
+      color: 'var(--amber)',
+      what: 'Nine deterministic Python functions. Each one reads the relevant source table and returns PASS, FAIL, or NEEDS_REVIEW. This is where AI claims are actually checked.',
+      inputs: [
+        'A single structured claim from the AI',
+        'Access to the source tables',
+        'The exact rule for that claim type'
+      ],
+      outputs: [
+        'A verdict: PASS, FAIL, or NEEDS_REVIEW',
+        'The source rows that produced the verdict',
+        'A machine-readable reason string'
+      ],
+      code: `<span class="code-keyword">def</span> verify_structuring(claim, tables):
+    txns = tables.transactions.filter(
+        customer=claim.customer,
+        direction=<span class="code-string">"in"</span>,
+        amount=(<span class="code-number">9000</span>, <span class="code-number">9999</span>)
+    )
+    <span class="code-keyword">if</span> count_within_72h(txns) &gt;= <span class="code-number">2</span>:
+        <span class="code-keyword">return</span> PASS
+    <span class="code-keyword">return</span> FAIL`
+    },
+    4: {
+      name: 'Human Gate',
+      color: 'var(--rose)',
+      what: 'The anti-rubber-stamp control. A review record is only accepted as complete if every required field is present. This is enforced in code, not in policy.',
+      inputs: [
+        'A submitted review record',
+        'Whether evidence_reviewed is true',
+        'Whether the disposition, reason, note, and action are all present'
+      ],
+      outputs: [
+        'Gate status: COMPLETE, BLOCKED, or BYPASSED',
+        'A structured audit event on state change',
+        'The final disposition, only if COMPLETE'
+      ],
+      code: `<span class="code-keyword">def</span> evaluate_review(review):
+    <span class="code-keyword">if not</span> review.evidence_reviewed:
+        <span class="code-keyword">return</span> BLOCKED
+    <span class="code-keyword">if not</span> all([
+        review.draft_disposition,
+        review.decision_reason,
+        review.final_note,
+        review.final_action,
+    ]):
+        <span class="code-keyword">return</span> BLOCKED
+    <span class="code-keyword">return</span> COMPLETE`
+    },
+    5: {
+      name: 'Audit Trail',
+      color: 'var(--green)',
+      what: 'The examinable record. Every review decision, override, and gate transition writes an event with actor, action, alert, and timestamp, using a controlled vocabulary of event names.',
+      inputs: [
+        'A gate state change from Layer 4',
+        'Any override or admin action',
+        'A pipeline event (draft_started, claim_verified, etc.)'
+      ],
+      outputs: [
+        'An append-safe log entry',
+        'Queryable by actor, action, alert, or time',
+        'The answer to "why did this case close?" years later'
+      ],
+      code: `<span class="code-comment"># Only pre-approved event names are accepted</span>
+<span class="code-keyword">from</span> src.audit <span class="code-keyword">import</span> record
+
+record(
+    actor=<span class="code-string">"ui:EMP-108"</span>,
+    action=<span class="code-string">"review_completed"</span>,
+    alert=<span class="code-string">"ALERT007"</span>,
+    details={<span class="code-string">"disposition"</span>: <span class="code-string">"escalate"</span>}
+)
+<span class="code-comment"># Unknown action names raise ValueError</span>`
+    }
+  };
+
+  const detailPanel = document.getElementById('detailPanel');
+  const detailContent = document.getElementById('detailContent');
+
+  document.querySelectorAll('.layer').forEach(layer => {
+    layer.addEventListener('click', () => {
+      const num = layer.dataset.layer;
+      const data = layers[num];
+
+      document.querySelectorAll('.layer').forEach(l => l.dataset.active = 'false');
+      layer.dataset.active = 'true';
+
+      detailContent.innerHTML = `
+        <h3 class="detail-name" style="color: ${data.color}">${data.name}</h3>
+        <p class="detail-what">${data.what}</p>
+        <div class="detail-grid">
+          <div class="detail-block">
+            <h4>Inputs</h4>
+            <ul style="--detail-color: ${data.color}">
+              ${data.inputs.map(i => `<li>${i}</li>`).join('')}
+            </ul>
+          </div>
+          <div class="detail-block">
+            <h4>Outputs</h4>
+            <ul style="--detail-color: ${data.color}">
+              ${data.outputs.map(o => `<li>${o}</li>`).join('')}
+            </ul>
+          </div>
+        </div>
+        <div class="detail-block" style="margin-top: 24px">
+          <h4>In the code</h4>
+          <pre class="detail-code">${data.code}</pre>
+        </div>
+      `;
+      detailContent.querySelectorAll('.detail-block ul li').forEach(li => {
+        li.style.setProperty('--detail-color', data.color);
+      });
+      detailContent.querySelectorAll('.detail-block li::before, .detail-block li').forEach(li => {});
+      // set color on ::before via CSS variable on ul
+      detailContent.querySelectorAll('ul').forEach(ul => {
+        ul.style.setProperty('--detail-color', data.color);
+      });
+      detailPanel.dataset.open = 'true';
+      detailPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+  });
+
+  function closeDetail() {
+    detailPanel.dataset.open = 'false';
+    document.querySelectorAll('.layer').forEach(l => l.dataset.active = 'false');
+  }
+
+  // Claim types: toggle rule reveal
+  document.querySelectorAll('.claim').forEach(claim => {
+    claim.addEventListener('click', () => {
+      const wasActive = claim.dataset.active === 'true';
+      document.querySelectorAll('.claim').forEach(c => c.dataset.active = 'false');
+      if (!wasActive) claim.dataset.active = 'true';
+    });
+  });
+
+  // Style the ::before arrows in the detail panel dynamically via a stylesheet insert
+  const style = document.createElement('style');
+  style.textContent = `
+    .detail-block li::before { color: var(--detail-color) !important; }
+    .detail-name { text-shadow: 0 0 20px currentColor; opacity: 0.95; }
+  `;
+  document.head.appendChild(style);
+</script>
+
+</body>
+</html>

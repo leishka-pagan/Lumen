@@ -13,6 +13,24 @@ approves them.
 The full workbench, deployed on Streamlit Community Cloud. No install required — it
 runs the same seeded dataset and deterministic verifiers as a local checkout.
 
+## Interactive site
+
+Four self-contained interactive pages are published from `docs/` via GitHub Pages:
+
+**[leishka-pagan.github.io/Lumen](https://leishka-pagan.github.io/Lumen/)**
+
+| Page | What it shows |
+|---|---|
+| [Architecture](https://leishka-pagan.github.io/Lumen/architecture.html) | The six-layer flow from data to audit trail. Click any layer for its inputs, outputs, and the code it maps to, plus the nine claim types, the seven controls, and the headline numbers. The site root lands here. |
+| [Playground](https://leishka-pagan.github.io/Lumen/playground.html) | Run the deterministic verifier in your browser. Pick a claim type and a PASS or FAIL case, then watch the same logic as `src/verifier.py` produce a trace and a verdict. No AI involved. |
+| [The Finding](https://leishka-pagan.github.io/Lumen/finding.html) | The alignment result: AI accuracy split by whether the enforced rule was stated in the prompt, with a prompt-versus-verifier comparison across all nine claim types. |
+| [Scaling](https://leishka-pagan.github.io/Lumen/scaling.html) | The cost model. One AI call per alert, verification in free Python code, and an interactive slider from ten thousand to one hundred thousand alerts a month. |
+
+Each page is a single HTML file with no build step and no external dependencies.
+The site root (`index.html`) is a copy of the architecture page, so the repository
+URL lands there. Enabling Pages is a one-time repository setting: **Settings →
+Pages → Deploy from a branch → `main` / `/docs`**.
+
 ## Build principle
 
 Structured claims first. Deterministic verification second. Human approval last.

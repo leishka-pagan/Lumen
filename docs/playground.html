@@ -1,0 +1,1186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lumen Verify — Verification Playground</title>
+<style>
+  :root {
+    --bg: #0D0D14;
+    --panel: #1A1A2E;
+    --panel-2: #22223D;
+    --border: #2A2A45;
+    --border-strong: #3A3A5A;
+    --text: #F1F5F9;
+    --text-sub: #CBD5E1;
+    --text-muted: #94A3B8;
+    --green: #84CC16;
+    --green-glow: rgba(132, 204, 22, 0.35);
+    --purple: #A855F7;
+    --purple-glow: rgba(168, 85, 247, 0.35);
+    --teal: #06B6D4;
+    --amber: #F59E0B;
+    --rose: #F43F5E;
+    --rose-glow: rgba(244, 63, 94, 0.35);
+    --blue: #3B82F6;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.55;
+  }
+  body {
+    background:
+      radial-gradient(circle at 15% 20%, rgba(168, 85, 247, 0.10) 0%, transparent 45%),
+      radial-gradient(circle at 85% 30%, rgba(132, 204, 22, 0.08) 0%, transparent 45%),
+      radial-gradient(circle at 50% 90%, rgba(6, 182, 212, 0.06) 0%, transparent 50%),
+      var(--bg);
+    min-height: 100vh;
+  }
+  .container { max-width: 1400px; margin: 0 auto; padding: 0 32px; }
+
+  header {
+    padding: 48px 0 24px;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+  }
+  .brand {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .brand-mark {
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--green) 0%, var(--purple) 100%);
+    display: inline-block;
+    box-shadow: 0 8px 32px var(--green-glow), 0 8px 32px var(--purple-glow);
+    position: relative;
+    top: 6px;
+  }
+  h1 {
+    font-size: 2.8rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    background: linear-gradient(135deg, #FFFFFF 0%, #C9D0E1 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .subtitle {
+    font-size: 1.1rem;
+    color: var(--text-sub);
+    max-width: 720px;
+    margin: 8px auto 0;
+  }
+  .tagline {
+    display: inline-block;
+    margin-top: 20px;
+    padding: 8px 20px;
+    border-radius: 999px;
+    background: rgba(132, 204, 22, 0.08);
+    border: 1px solid rgba(132, 204, 22, 0.35);
+    color: var(--green);
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.9rem;
+  }
+  nav {
+    margin-top: 24px;
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    font-size: 0.9rem;
+  }
+  nav a {
+    color: var(--text-muted);
+    text-decoration: none;
+    padding: 6px 14px;
+    border-radius: 8px;
+    transition: all 0.2s;
+  }
+  nav a:hover { color: var(--text); background: rgba(255,255,255,0.05); }
+  nav a.active { color: var(--green); background: rgba(132, 204, 22, 0.1); }
+
+  .playground {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 24px;
+    padding: 40px 0;
+    align-items: start;
+  }
+  @media (max-width: 900px) {
+    .playground { grid-template-columns: 1fr; }
+  }
+
+  /* Left rail: claim + case picker */
+  .picker {
+    position: sticky;
+    top: 24px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px;
+  }
+  .picker h3 {
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+    font-weight: 600;
+  }
+  .claim-btn {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 12px 14px;
+    margin-bottom: 6px;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    color: var(--text-sub);
+    cursor: pointer;
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.85rem;
+    transition: all 0.15s;
+  }
+  .claim-btn:hover {
+    background: rgba(255,255,255,0.04);
+    color: var(--text);
+  }
+  .claim-btn.active {
+    background: rgba(168, 85, 247, 0.1);
+    border-color: rgba(168, 85, 247, 0.4);
+    color: var(--purple);
+  }
+  .picker-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 20px 0;
+  }
+  .case-btn {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 12px 14px;
+    margin-bottom: 8px;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text-sub);
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.15s;
+  }
+  .case-btn:hover {
+    border-color: var(--border-strong);
+    background: rgba(255,255,255,0.03);
+    color: var(--text);
+  }
+  .case-btn.active {
+    border-color: var(--green);
+    background: rgba(132, 204, 22, 0.08);
+    color: var(--text);
+  }
+  .case-btn .label { font-size: 0.9rem; font-weight: 500; }
+  .case-btn .expected {
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.7rem;
+    padding: 3px 8px;
+    border-radius: 6px;
+    letter-spacing: 0.05em;
+  }
+  .expected.pass { background: rgba(132, 204, 22, 0.15); color: var(--green); }
+  .expected.fail { background: rgba(244, 63, 94, 0.15); color: var(--rose); }
+  .expected.review { background: rgba(245, 158, 11, 0.15); color: var(--amber); }
+
+  /* Right area */
+  .stage {
+    min-height: 400px;
+  }
+  .rule-card {
+    background: linear-gradient(180deg, rgba(168, 85, 247, 0.08) 0%, rgba(168, 85, 247, 0.02) 100%);
+    border: 1px solid rgba(168, 85, 247, 0.3);
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 24px;
+  }
+  .rule-card h2 {
+    color: var(--purple);
+    font-size: 1.6rem;
+    margin-bottom: 6px;
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-weight: 600;
+  }
+  .rule-card .plain {
+    color: var(--text);
+    font-size: 1.1rem;
+    margin-bottom: 16px;
+    font-weight: 500;
+  }
+  .rule-card .rule {
+    color: var(--text-sub);
+    padding-top: 16px;
+    border-top: 1px solid rgba(168, 85, 247, 0.15);
+    font-size: 0.95rem;
+  }
+  .rule-card .rule strong {
+    color: var(--purple);
+    font-weight: 600;
+  }
+
+  .data-panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 20px;
+  }
+  .data-panel h4 {
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 16px;
+    font-weight: 600;
+  }
+  .profile-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+  }
+  .profile-item {
+    padding: 12px 16px;
+    background: rgba(0,0,0,0.15);
+    border-radius: 8px;
+  }
+  .profile-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .profile-value {
+    color: var(--text);
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.95rem;
+    font-weight: 500;
+  }
+  .profile-value.hot { color: var(--rose); }
+  .profile-value.good { color: var(--green); }
+
+  table.data {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.85rem;
+  }
+  table.data th {
+    text-align: left;
+    padding: 10px 12px;
+    color: var(--text-muted);
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    border-bottom: 1px solid var(--border);
+  }
+  table.data td {
+    padding: 12px;
+    color: var(--text-sub);
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+    transition: all 0.4s;
+  }
+  table.data tr.matched {
+    background: rgba(132, 204, 22, 0.06);
+  }
+  table.data tr.matched td { color: var(--text); }
+  table.data tr.matched td:first-child {
+    border-left: 3px solid var(--green);
+    padding-left: 9px;
+  }
+  table.data tr.evaluating {
+    background: rgba(168, 85, 247, 0.08);
+  }
+  table.data tr.evaluating td:first-child {
+    border-left: 3px solid var(--purple);
+    padding-left: 9px;
+  }
+  .in { color: var(--green); }
+  .out { color: var(--amber); }
+  .flag-hot { color: var(--rose); }
+
+  .action-bar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 20px;
+    padding: 20px;
+    background: linear-gradient(180deg, var(--panel) 0%, var(--panel-2) 100%);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+  }
+  .verify-btn {
+    background: linear-gradient(135deg, var(--green), var(--purple));
+    color: white;
+    border: none;
+    padding: 14px 32px;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 4px 20px var(--green-glow);
+    font-family: inherit;
+  }
+  .verify-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 28px var(--green-glow), 0 6px 28px var(--purple-glow);
+  }
+  .verify-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  .action-hint {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+  }
+
+  .trace {
+    background: rgba(0,0,0,0.35);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.85rem;
+    color: var(--text-sub);
+    line-height: 1.7;
+    margin-top: 16px;
+    display: none;
+  }
+  .trace.visible { display: block; animation: slideIn 0.3s ease; }
+  @keyframes slideIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+  .trace-line {
+    padding: 4px 0;
+    opacity: 0;
+    animation: traceIn 0.3s forwards;
+  }
+  @keyframes traceIn { to { opacity: 1; } }
+  .trace-comment { color: var(--text-muted); }
+  .trace-fn { color: var(--purple); font-weight: 600; }
+  .trace-val { color: var(--green); }
+  .trace-check-pass { color: var(--green); }
+  .trace-check-fail { color: var(--rose); }
+  .trace-arrow { color: var(--text-muted); margin: 0 6px; }
+
+  .verdict {
+    display: none;
+    margin-top: 24px;
+    padding: 32px;
+    border-radius: 16px;
+    text-align: center;
+    animation: verdictIn 0.5s ease;
+  }
+  .verdict.visible { display: block; }
+  @keyframes verdictIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  .verdict.pass {
+    background: linear-gradient(135deg, rgba(132, 204, 22, 0.15) 0%, rgba(132, 204, 22, 0.05) 100%);
+    border: 2px solid var(--green);
+    box-shadow: 0 0 40px var(--green-glow);
+  }
+  .verdict.fail {
+    background: linear-gradient(135deg, rgba(244, 63, 94, 0.15) 0%, rgba(244, 63, 94, 0.05) 100%);
+    border: 2px solid var(--rose);
+    box-shadow: 0 0 40px var(--rose-glow);
+  }
+  .verdict.review {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(245, 158, 11, 0.05) 100%);
+    border: 2px solid var(--amber);
+  }
+  .verdict-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .verdict-badge {
+    font-size: 2.75rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    margin-bottom: 12px;
+  }
+  .verdict.pass .verdict-badge { color: var(--green); }
+  .verdict.fail .verdict-badge { color: var(--rose); }
+  .verdict.review .verdict-badge { color: var(--amber); }
+  .verdict-reason {
+    color: var(--text-sub);
+    font-size: 1.05rem;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+
+  .empty {
+    text-align: center;
+    padding: 80px 20px;
+    color: var(--text-muted);
+  }
+  .empty h2 { color: var(--text-sub); margin-bottom: 12px; }
+
+  .instructions {
+    background: linear-gradient(180deg, rgba(6, 182, 212, 0.06) 0%, rgba(6, 182, 212, 0.01) 100%);
+    border: 1px solid rgba(6, 182, 212, 0.25);
+    border-radius: 16px;
+    padding: 24px;
+    margin: 32px auto 0;
+    max-width: 900px;
+  }
+  .instructions h3 {
+    color: var(--teal);
+    font-size: 1rem;
+    margin-bottom: 12px;
+  }
+  .instructions ol {
+    padding-left: 20px;
+    color: var(--text-sub);
+    font-size: 0.95rem;
+  }
+  .instructions li { padding: 4px 0; }
+  .verdict-legend {
+    margin-top: 18px;
+    padding: 14px 16px;
+    background: rgba(0,0,0,0.25);
+    border-radius: 10px;
+    color: var(--text-sub);
+    font-size: 0.9rem;
+    line-height: 1.7;
+  }
+  .verdict-legend strong { color: var(--teal); margin-right: 4px; }
+  .pill {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 6px;
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    margin: 0 2px;
+  }
+  .pill-pass { background: rgba(132, 204, 22, 0.15); color: var(--green); border: 1px solid rgba(132, 204, 22, 0.35); }
+  .pill-fail { background: rgba(244, 63, 94, 0.15); color: var(--rose); border: 1px solid rgba(244, 63, 94, 0.35); }
+  .verdict-subtitle {
+    color: var(--text);
+    font-size: 1.05rem;
+    font-weight: 500;
+    margin-bottom: 12px;
+    opacity: 0.85;
+  }
+
+  footer {
+    padding: 60px 0 40px;
+    border-top: 1px solid var(--border);
+    text-align: center;
+    color: var(--text-muted);
+    margin-top: 60px;
+    font-size: 0.9rem;
+  }
+  footer a {
+    color: var(--green);
+    text-decoration: none;
+    margin: 0 12px;
+  }
+  footer a:hover { color: var(--purple); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="container">
+    <div class="brand">
+      <span class="brand-mark"></span>
+      <h1>Verification Playground</h1>
+    </div>
+    <p class="subtitle">Run Lumen's deterministic verifier against real cases. Pick a claim type, pick a case, watch the check run.</p>
+    <div class="tagline">The model drafts. Code verifies. Humans decide.</div>
+    <nav>
+      <a href="architecture.html">Architecture</a>
+      <a href="playground.html" class="active">Playground</a>
+      <a href="finding.html">The Finding</a>
+      <a href="scaling.html">Scaling</a>
+      <a href="https://github.com/leishka-pagan/Lumen" target="_blank">GitHub ↗</a>
+    </nav>
+  </div>
+</header>
+
+<div class="container">
+  <div class="instructions">
+    <h3>How this works</h3>
+    <ol>
+      <li>Pick one of the nine claim types on the left. This is a claim the AI might make about a customer.</li>
+      <li>Pick a case from the list below. Each claim type has one PASS example and one FAIL example.</li>
+      <li>Read the customer profile and the transactions.</li>
+      <li>Hit Verify. The deterministic Python check runs in the browser, exactly as it runs in the real system.</li>
+      <li>Read the verdict and the trace. This is the verifier's actual logic, not an AI's opinion.</li>
+    </ol>
+    <div class="verdict-legend">
+      <strong>Reading the verdict:</strong> the verdict is about the AI's claim, not the customer.
+      <span class="pill pill-pass">SUPPORTED</span> means the records back up what the AI said.
+      <span class="pill pill-fail">CONTRADICTED</span> means the records do not back up what the AI said, so the AI's suspicion was wrong.
+    </div>
+  </div>
+</div>
+
+<main class="container">
+  <div class="playground">
+
+    <aside class="picker">
+      <h3>Claim Type</h3>
+      <div id="claimList"></div>
+      <div class="picker-divider"></div>
+      <h3>Sample Case</h3>
+      <div id="caseList">
+        <p style="color: var(--text-muted); font-size: 0.85rem; padding: 8px 0;">Pick a claim type above.</p>
+      </div>
+    </aside>
+
+    <div class="stage" id="stage">
+      <div class="empty">
+        <h2>Pick a claim type on the left to begin.</h2>
+        <p>You will see the rule, a real case, and a Verify button.</p>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<footer>
+  <div class="container">
+    <p>Lumen Verify · <a href="architecture.html">Architecture Explorer</a> · <a href="https://github.com/leishka-pagan/Lumen">github.com/leishka-pagan/Lumen</a></p>
+    <p style="margin-top: 16px; font-size: 0.85rem;">Every verifier here runs in your browser. Same logic as <code style="color: var(--green)">src/verifier.py</code>.</p>
+    <p style="margin-top: 32px; padding-top: 20px; border-top: 1px solid var(--border); font-size: 0.9rem; color: var(--text-muted);">
+      Designed and built by <a href="https://www.linkedin.com/in/leishka-pagan/" target="_blank" style="color: var(--green); text-decoration: none; font-weight: 600;">Leishka Pagan</a> · <a href="https://www.linkedin.com/in/leishka-pagan/" target="_blank" style="color: var(--green); text-decoration: none;">LinkedIn ↗</a>
+    </p>
+  </div>
+</footer><script>
+// ============================================================
+// SAMPLE DATASET — coherent slice that maps to demo cases
+// ============================================================
+
+const CUSTOMERS = {
+  CUST0004: { name: "Tomas Herrera", country: "US", occupation: "Driver",
+              kyc_status: "verified", kyc_current_12mo: true, expected_monthly_volume: 8000,
+              prior_sar_count: 0, prior_alert_count: 1 },
+  CUST0007: { name: "Marisol Beckman", country: "US", occupation: "Business Owner",
+              kyc_status: "verified", kyc_current_12mo: true, expected_monthly_volume: 15000,
+              prior_sar_count: 2, prior_alert_count: 3 },
+  CUST0027: { name: "Sylvie Marchand", country: "FR", occupation: "Retired",
+              kyc_status: "verified", kyc_current_12mo: true, expected_monthly_volume: 5000,
+              prior_sar_count: 0, prior_alert_count: 0 },
+  CUST0015: { name: "Amir Rezaei", country: "US", occupation: "Contractor",
+              kyc_status: "verified", kyc_current_12mo: true, expected_monthly_volume: 6000,
+              prior_sar_count: 0, prior_alert_count: 0 },
+  CUST0022: { name: "Zoe Whitfield", country: "US", occupation: "Consultant",
+              kyc_status: "pending", kyc_current_12mo: false, expected_monthly_volume: 10000,
+              prior_sar_count: 0, prior_alert_count: 0 },
+  CUST0031: { name: "Jonas Berger", country: "DE", occupation: "Retiree",
+              kyc_status: "verified", kyc_current_12mo: true, expected_monthly_volume: 4000,
+              prior_sar_count: 0, prior_alert_count: 0 },
+};
+
+const TRANSACTIONS = {
+  // ALERT004 profile — 4 sub-threshold deposits within 72h
+  CUST0004: [
+    { id: "TXN00007", timestamp: "2026-05-14T12:00:00", direction: "in",  amount: 9500, cp_country: "US" },
+    { id: "TXN00008", timestamp: "2026-05-15T12:00:00", direction: "in",  amount: 9200, cp_country: "US" },
+    { id: "TXN00009", timestamp: "2026-05-15T14:00:00", direction: "in",  amount: 9700, cp_country: "US" },
+    { id: "TXN00010", timestamp: "2026-05-16T12:00:00", direction: "in",  amount: 9400, cp_country: "US" },
+  ],
+  // ALERT007 profile — three legit business transactions, high-risk country involvement
+  CUST0007: [
+    { id: "TXN00040", timestamp: "2026-05-10T09:00:00", direction: "in",  amount: 12000, cp_country: "US" },
+    { id: "TXN00041", timestamp: "2026-05-11T11:00:00", direction: "out", amount: 8500,  cp_country: "IR" },
+    { id: "TXN00042", timestamp: "2026-05-12T14:00:00", direction: "in",  amount: 14200, cp_country: "US" },
+  ],
+  // ALERT033 profile — only 2 transactions, well under thresholds
+  CUST0027: [
+    { id: "TXN00155", timestamp: "2026-05-25T15:45:00", direction: "in",  amount: 3415, cp_country: "CA" },
+    { id: "TXN00156", timestamp: "2026-05-26T18:09:00", direction: "out", amount: 3173, cp_country: "JP" },
+    { id: "TXN00157", timestamp: "2026-05-16T17:21:00", direction: "in",  amount:  353, cp_country: "FR" },
+    { id: "TXN00158", timestamp: "2026-05-04T15:00:00", direction: "in",  amount: 3656, cp_country: "FR" },
+    { id: "TXN00159", timestamp: "2026-05-24T18:09:00", direction: "out", amount: 1230, cp_country: "AU" },
+    { id: "TXN00160", timestamp: "2026-05-03T17:44:00", direction: "out", amount: 3896, cp_country: "CA" },
+  ],
+  // Rapid movement PASS case
+  CUST0015: [
+    { id: "TXN00080", timestamp: "2026-05-20T09:00:00", direction: "in",  amount: 6500,  cp_country: "US" },
+    { id: "TXN00081", timestamp: "2026-05-20T14:00:00", direction: "out", amount: 6300,  cp_country: "IR" },
+    { id: "TXN00082", timestamp: "2026-05-20T18:00:00", direction: "in",  amount: 5200,  cp_country: "US" },
+    { id: "TXN00083", timestamp: "2026-05-21T08:00:00", direction: "out", amount: 5100,  cp_country: "IR" },
+  ],
+  // Unusual volume PASS case
+  CUST0022: [
+    { id: "TXN00110", timestamp: "2026-05-18T10:00:00", direction: "in", amount: 28000, cp_country: "US" },
+    { id: "TXN00111", timestamp: "2026-05-19T10:00:00", direction: "in", amount: 5000,  cp_country: "US" },
+  ],
+  // Stable retiree profile — everything checks out
+  CUST0031: [
+    { id: "TXN00190", timestamp: "2026-05-05T10:00:00", direction: "in",  amount: 1800, cp_country: "DE" },
+    { id: "TXN00191", timestamp: "2026-05-12T10:00:00", direction: "out", amount:  650, cp_country: "DE" },
+    { id: "TXN00192", timestamp: "2026-05-19T10:00:00", direction: "out", amount:  400, cp_country: "DE" },
+  ],
+};
+
+const KYC_EVIDENCE = {
+  CUST0004: [
+    { item_type: "government_id", available: true },
+    { item_type: "proof_of_address", available: true },
+    { item_type: "source_of_funds", available: true },
+  ],
+  CUST0007: [
+    { item_type: "government_id", available: true },
+    { item_type: "proof_of_address", available: true },
+    { item_type: "source_of_funds", available: true },
+    { item_type: "business_registration", available: true },
+  ],
+  CUST0027: [
+    { item_type: "government_id", available: true },
+    { item_type: "proof_of_address", available: true },
+    { item_type: "source_of_funds", available: true },
+  ],
+  CUST0015: [
+    { item_type: "government_id", available: true },
+    { item_type: "proof_of_address", available: true },
+    { item_type: "source_of_funds", available: true },
+  ],
+  CUST0022: [
+    { item_type: "government_id", available: true },
+    { item_type: "proof_of_address", available: false },
+    { item_type: "source_of_funds", available: false },
+  ],
+  CUST0031: [
+    { item_type: "government_id", available: true },
+    { item_type: "proof_of_address", available: true },
+    { item_type: "source_of_funds", available: true },
+  ],
+};
+
+const HIGH_RISK_COUNTRIES = ["IR", "KP", "SY", "MM", "CU", "VE", "RU"];
+
+// ============================================================
+// VERIFIERS — ported from src/verifier.py
+// Each returns { verdict, reason, matched: [txn_ids or evidence keys] }
+// ============================================================
+
+function verify_structuring(customer_id) {
+  const txns = TRANSACTIONS[customer_id] || [];
+  const eligible = txns.filter(t => t.direction === "in" && t.amount >= 9000 && t.amount <= 9999);
+  // Check any 72h window with 2+ eligible deposits
+  for (let i = 0; i < eligible.length; i++) {
+    const anchor = new Date(eligible[i].timestamp).getTime();
+    const window_end = anchor + 72 * 3600 * 1000;
+    const in_window = eligible.filter(t => {
+      const ts = new Date(t.timestamp).getTime();
+      return ts >= anchor && ts <= window_end;
+    });
+    if (in_window.length >= 2) {
+      return { verdict: "PASS", reason: `${in_window.length} sub-threshold deposits within 72h consistent with structuring`, matched: in_window.map(t => t.id) };
+    }
+  }
+  return { verdict: "FAIL", reason: `Only ${eligible.length} inbound deposit(s) in the $9000-$9999 range; rule requires 2+ inside 72h`, matched: eligible.map(t => t.id) };
+}
+
+function verify_rapid_movement(customer_id) {
+  const txns = TRANSACTIONS[customer_id] || [];
+  // Any 24h window with 3+ txns, at least 1 in and 1 out, total > 10000
+  const sorted = [...txns].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+  for (let i = 0; i < sorted.length; i++) {
+    const anchor = new Date(sorted[i].timestamp).getTime();
+    const window_end = anchor + 24 * 3600 * 1000;
+    const in_window = sorted.filter(t => {
+      const ts = new Date(t.timestamp).getTime();
+      return ts >= anchor && ts <= window_end;
+    });
+    if (in_window.length >= 3) {
+      const has_in = in_window.some(t => t.direction === "in");
+      const has_out = in_window.some(t => t.direction === "out");
+      const total = in_window.reduce((s, t) => s + t.amount, 0);
+      if (has_in && has_out && total > 10000) {
+        return { verdict: "PASS", reason: `${in_window.length} transactions in 24h window, both directions, total $${total.toLocaleString()}`, matched: in_window.map(t => t.id) };
+      }
+    }
+  }
+  return { verdict: "FAIL", reason: `No 24h window contains 3+ transactions in both directions summing over $10,000`, matched: [] };
+}
+
+function verify_unusual_transaction_volume(customer_id) {
+  const cust = CUSTOMERS[customer_id];
+  const txns = TRANSACTIONS[customer_id] || [];
+  if (!cust || txns.length === 0) return { verdict: "NEEDS_REVIEW", reason: "Missing customer or transactions", matched: [] };
+  const largest = txns.reduce((a, b) => a.amount > b.amount ? a : b);
+  const threshold = 2 * cust.expected_monthly_volume;
+  if (largest.amount > threshold) {
+    return { verdict: "PASS", reason: `Largest transaction $${largest.amount.toLocaleString()} exceeds 2x expected_monthly_volume ($${threshold.toLocaleString()})`, matched: [largest.id] };
+  }
+  return { verdict: "FAIL", reason: `Largest transaction $${largest.amount.toLocaleString()} does not exceed 2x expected_monthly_volume ($${threshold.toLocaleString()})`, matched: [largest.id] };
+}
+
+function verify_expected_activity_mismatch(customer_id) {
+  const cust = CUSTOMERS[customer_id];
+  const txns = TRANSACTIONS[customer_id] || [];
+  if (!cust || txns.length === 0) return { verdict: "NEEDS_REVIEW", reason: "Missing customer or transactions", matched: [] };
+  const largest = txns.reduce((a, b) => a.amount > b.amount ? a : b);
+  if (largest.amount > cust.expected_monthly_volume) {
+    return { verdict: "PASS", reason: `Largest transaction $${largest.amount.toLocaleString()} exceeds expected_monthly_volume ($${cust.expected_monthly_volume.toLocaleString()})`, matched: [largest.id] };
+  }
+  return { verdict: "FAIL", reason: `Largest transaction $${largest.amount.toLocaleString()} does not exceed expected_monthly_volume ($${cust.expected_monthly_volume.toLocaleString()})`, matched: [largest.id] };
+}
+
+function verify_high_risk_country(customer_id) {
+  const txns = TRANSACTIONS[customer_id] || [];
+  const matches = txns.filter(t => HIGH_RISK_COUNTRIES.includes(t.cp_country));
+  if (matches.length > 0) {
+    const countries = [...new Set(matches.map(t => t.cp_country))];
+    return { verdict: "PASS", reason: `${matches.length} transaction(s) with counterparties in high-risk jurisdiction(s): ${countries.join(", ")}`, matched: matches.map(t => t.id) };
+  }
+  return { verdict: "FAIL", reason: `No transactions with counterparties in high-risk jurisdictions`, matched: [] };
+}
+
+function verify_prior_sar_history(customer_id) {
+  const cust = CUSTOMERS[customer_id];
+  if (!cust) return { verdict: "NEEDS_REVIEW", reason: "Missing customer record", matched: [] };
+  if (cust.prior_sar_count > 0) {
+    return { verdict: "PASS", reason: `Customer has ${cust.prior_sar_count} prior SAR filing(s) on record`, matched: ["prior_sar_count"] };
+  }
+  return { verdict: "FAIL", reason: `prior_sar_count=0 contradicts asserted prior SAR history`, matched: ["prior_sar_count"] };
+}
+
+function verify_prior_alert_history(customer_id) {
+  const cust = CUSTOMERS[customer_id];
+  if (!cust) return { verdict: "NEEDS_REVIEW", reason: "Missing customer record", matched: [] };
+  if (cust.prior_alert_count > 0) {
+    return { verdict: "PASS", reason: `Customer has ${cust.prior_alert_count} prior alert(s) on record`, matched: ["prior_alert_count"] };
+  }
+  return { verdict: "FAIL", reason: `prior_alert_count=0 contradicts asserted prior alert history`, matched: ["prior_alert_count"] };
+}
+
+function verify_missing_kyc_data(customer_id) {
+  const evidence = KYC_EVIDENCE[customer_id] || [];
+  const missing = evidence.filter(e => !e.available);
+  if (missing.length > 0) {
+    return { verdict: "PASS", reason: `${missing.length} required KYC item(s) unavailable: ${missing.map(e => e.item_type).join(", ")}`, matched: missing.map(e => e.item_type) };
+  }
+  return { verdict: "FAIL", reason: `All required KYC evidence is on file`, matched: [] };
+}
+
+function verify_stale_kyc_profile(customer_id) {
+  const cust = CUSTOMERS[customer_id];
+  if (!cust) return { verdict: "NEEDS_REVIEW", reason: "Missing customer record", matched: [] };
+  if (!cust.kyc_current_12mo) {
+    return { verdict: "PASS", reason: `KYC profile is not current within 12 months`, matched: ["kyc_current_12mo"] };
+  }
+  return { verdict: "FAIL", reason: `KYC profile is current within 12 months`, matched: ["kyc_current_12mo"] };
+}
+
+// ============================================================
+// CLAIM CATALOG — rule text + cases per claim type
+// ============================================================
+
+const CLAIMS = [
+  {
+    id: "structuring",
+    plain: "Splitting deposits to avoid reporting",
+    rule: "Two or more inbound deposits, each between <strong>$9,000 and $9,999</strong>, inside a <strong>72-hour window</strong>.",
+    fn: verify_structuring,
+    cases: [
+      { label: "ALERT004 — Tomas Herrera", customer: "CUST0004", expected: "PASS" },
+      { label: "ALERT033 — Sylvie Marchand", customer: "CUST0027", expected: "FAIL" },
+    ]
+  },
+  {
+    id: "rapid_movement",
+    plain: "Money moving in and out fast",
+    rule: "Three or more transactions inside <strong>24 hours</strong>, with at least one inbound and one outbound, together totalling more than <strong>$10,000</strong>.",
+    fn: verify_rapid_movement,
+    cases: [
+      { label: "Amir Rezaei — pass-through pattern", customer: "CUST0015", expected: "PASS" },
+      { label: "ALERT033 — Sylvie Marchand", customer: "CUST0027", expected: "FAIL" },
+    ]
+  },
+  {
+    id: "unusual_transaction_volume",
+    plain: "Single transaction exceeds 2x expected activity",
+    rule: "The largest single transaction exceeds <strong>twice</strong> the customer's stated expected monthly volume.",
+    fn: verify_unusual_transaction_volume,
+    cases: [
+      { label: "Zoe Whitfield — 28k on 10k baseline", customer: "CUST0022", expected: "PASS" },
+      { label: "ALERT033 — Sylvie Marchand", customer: "CUST0027", expected: "FAIL" },
+    ]
+  },
+  {
+    id: "expected_activity_mismatch",
+    plain: "Above the customer's own baseline",
+    rule: "The largest single transaction exceeds the customer's stated expected monthly volume.",
+    fn: verify_expected_activity_mismatch,
+    cases: [
+      { label: "ALERT004 — Tomas Herrera", customer: "CUST0004", expected: "PASS" },
+      { label: "Jonas Berger — retiree", customer: "CUST0031", expected: "FAIL" },
+    ]
+  },
+  {
+    id: "high_risk_country",
+    plain: "Counterparty in a sanctioned jurisdiction",
+    rule: "One or more transaction counterparties are located in a flagged jurisdiction (IR, KP, SY, MM, CU, VE, RU).",
+    fn: verify_high_risk_country,
+    cases: [
+      { label: "Amir Rezaei — outbound to IR", customer: "CUST0015", expected: "PASS" },
+      { label: "ALERT004 — Tomas Herrera", customer: "CUST0004", expected: "FAIL" },
+    ]
+  },
+  {
+    id: "prior_sar_history",
+    plain: "Prior SAR on record",
+    rule: "The customer has one or more Suspicious Activity Reports filed previously.",
+    fn: verify_prior_sar_history,
+    cases: [
+      { label: "ALERT007 — Marisol Beckman", customer: "CUST0007", expected: "PASS" },
+      { label: "ALERT033 — Sylvie Marchand", customer: "CUST0027", expected: "FAIL" },
+    ]
+  },
+  {
+    id: "prior_alert_history",
+    plain: "Prior alerts on record",
+    rule: "The customer has one or more prior alerts on record.",
+    fn: verify_prior_alert_history,
+    cases: [
+      { label: "ALERT007 — Marisol Beckman", customer: "CUST0007", expected: "PASS" },
+      { label: "Jonas Berger — no history", customer: "CUST0031", expected: "FAIL" },
+    ]
+  },
+  {
+    id: "missing_kyc_data",
+    plain: "Required KYC evidence missing",
+    rule: "One or more required KYC evidence items are marked <strong>unavailable</strong>.",
+    fn: verify_missing_kyc_data,
+    cases: [
+      { label: "Zoe Whitfield — incomplete onboarding", customer: "CUST0022", expected: "PASS" },
+      { label: "ALERT004 — Tomas Herrera", customer: "CUST0004", expected: "FAIL" },
+    ]
+  },
+  {
+    id: "stale_kyc_profile",
+    plain: "KYC profile not refreshed in 12 months",
+    rule: "The customer's KYC record is not current within the last 12 months.",
+    fn: verify_stale_kyc_profile,
+    cases: [
+      { label: "Zoe Whitfield — stale profile", customer: "CUST0022", expected: "PASS" },
+      { label: "ALERT004 — Tomas Herrera", customer: "CUST0004", expected: "FAIL" },
+    ]
+  },
+];
+
+// ============================================================
+// UI RENDERING
+// ============================================================
+
+let currentClaim = null;
+let currentCase = null;
+
+const claimListEl = document.getElementById('claimList');
+const caseListEl = document.getElementById('caseList');
+const stageEl = document.getElementById('stage');
+
+// Render claim list
+CLAIMS.forEach(claim => {
+  const btn = document.createElement('button');
+  btn.className = 'claim-btn';
+  btn.textContent = claim.id;
+  btn.dataset.claim = claim.id;
+  btn.addEventListener('click', () => selectClaim(claim.id));
+  claimListEl.appendChild(btn);
+});
+
+function selectClaim(claimId) {
+  currentClaim = CLAIMS.find(c => c.id === claimId);
+  currentCase = null;
+  document.querySelectorAll('.claim-btn').forEach(b => b.classList.toggle('active', b.dataset.claim === claimId));
+  renderCaseList();
+  renderStagePrompt();
+}
+
+function renderCaseList() {
+  caseListEl.innerHTML = '';
+  currentClaim.cases.forEach((c, idx) => {
+    const btn = document.createElement('button');
+    btn.className = 'case-btn';
+    const badge = `<span class="expected ${c.expected.toLowerCase()}">${c.expected}</span>`;
+    btn.innerHTML = `<span class="label">${c.label}</span>${badge}`;
+    btn.addEventListener('click', () => selectCase(idx));
+    btn.dataset.idx = idx;
+    caseListEl.appendChild(btn);
+  });
+}
+
+function selectCase(idx) {
+  currentCase = currentClaim.cases[idx];
+  document.querySelectorAll('.case-btn').forEach((b, i) => b.classList.toggle('active', i === idx));
+  renderStage();
+}
+
+function renderStagePrompt() {
+  stageEl.innerHTML = `
+    <div class="rule-card">
+      <h2>${currentClaim.id}</h2>
+      <div class="plain">${currentClaim.plain}</div>
+      <div class="rule"><strong>Rule:</strong> ${currentClaim.rule}</div>
+    </div>
+    <div class="empty" style="padding: 40px 20px;">
+      <h2>Now pick a case on the left.</h2>
+      <p>Each claim has one PASS and one FAIL example.</p>
+    </div>
+  `;
+}
+
+function renderStage() {
+  const cust = CUSTOMERS[currentCase.customer];
+  const txns = TRANSACTIONS[currentCase.customer] || [];
+  const kyc = KYC_EVIDENCE[currentCase.customer] || [];
+
+  const sarClass = cust.prior_sar_count > 0 ? "hot" : "";
+  const alertClass = cust.prior_alert_count > 0 ? "hot" : "";
+  const kycStaleClass = cust.kyc_current_12mo ? "good" : "hot";
+
+  const txnRows = txns.map(t => `
+    <tr data-txn="${t.id}">
+      <td><strong>${t.id}</strong></td>
+      <td>${t.timestamp.replace('T', ' ')}</td>
+      <td class="${t.direction === 'in' ? 'in' : 'out'}">${t.direction}</td>
+      <td>$${t.amount.toLocaleString()}</td>
+      <td class="${HIGH_RISK_COUNTRIES.includes(t.cp_country) ? 'flag-hot' : ''}">${t.cp_country}${HIGH_RISK_COUNTRIES.includes(t.cp_country) ? ' ⚠' : ''}</td>
+    </tr>
+  `).join('');
+
+  const kycRows = kyc.map(e => `
+    <tr>
+      <td><strong>${e.item_type}</strong></td>
+      <td class="${e.available ? 'in' : 'flag-hot'}">${e.available ? 'AVAILABLE' : 'MISSING'}</td>
+    </tr>
+  `).join('');
+
+  stageEl.innerHTML = `
+    <div class="rule-card">
+      <h2>${currentClaim.id}</h2>
+      <div class="plain">${currentClaim.plain}</div>
+      <div class="rule"><strong>Rule:</strong> ${currentClaim.rule}</div>
+    </div>
+
+    <div class="data-panel">
+      <h4>Customer Profile · ${currentCase.customer}</h4>
+      <div class="profile-grid">
+        <div class="profile-item"><div class="profile-label">Name</div><div class="profile-value">${cust.name}</div></div>
+        <div class="profile-item"><div class="profile-label">Country</div><div class="profile-value">${cust.country}</div></div>
+        <div class="profile-item"><div class="profile-label">Occupation</div><div class="profile-value">${cust.occupation}</div></div>
+        <div class="profile-item"><div class="profile-label">Expected Monthly Volume</div><div class="profile-value">$${cust.expected_monthly_volume.toLocaleString()}</div></div>
+        <div class="profile-item"><div class="profile-label">KYC Status</div><div class="profile-value">${cust.kyc_status}</div></div>
+        <div class="profile-item"><div class="profile-label">KYC Current (12mo)</div><div class="profile-value ${kycStaleClass}">${cust.kyc_current_12mo}</div></div>
+        <div class="profile-item"><div class="profile-label">Prior SAR Count</div><div class="profile-value ${sarClass}">${cust.prior_sar_count}</div></div>
+        <div class="profile-item"><div class="profile-label">Prior Alert Count</div><div class="profile-value ${alertClass}">${cust.prior_alert_count}</div></div>
+      </div>
+    </div>
+
+    ${txns.length > 0 ? `
+    <div class="data-panel">
+      <h4>Transactions</h4>
+      <table class="data" id="txnTable">
+        <thead>
+          <tr><th>ID</th><th>Timestamp</th><th>Direction</th><th>Amount</th><th>Counterparty</th></tr>
+        </thead>
+        <tbody>${txnRows}</tbody>
+      </table>
+    </div>
+    ` : ''}
+
+    ${kyc.length > 0 && (currentClaim.id === "missing_kyc_data") ? `
+    <div class="data-panel">
+      <h4>KYC Evidence</h4>
+      <table class="data" id="kycTable">
+        <thead>
+          <tr><th>Item Type</th><th>Status</th></tr>
+        </thead>
+        <tbody>${kycRows}</tbody>
+      </table>
+    </div>
+    ` : ''}
+
+    <div class="action-bar">
+      <button class="verify-btn" id="verifyBtn" onclick="runVerify()">▶ Run Verifier</button>
+      <span class="action-hint">Deterministic check will run in your browser. No AI involved.</span>
+    </div>
+
+    <div class="trace" id="trace"></div>
+    <div class="verdict" id="verdict"></div>
+  `;
+}
+
+// ============================================================
+// VERIFY ANIMATION
+// ============================================================
+
+async function runVerify() {
+  const btn = document.getElementById('verifyBtn');
+  btn.disabled = true;
+  btn.textContent = "◐ Running...";
+
+  const trace = document.getElementById('trace');
+  const verdict = document.getElementById('verdict');
+  trace.classList.remove('visible');
+  verdict.classList.remove('visible', 'pass', 'fail', 'review');
+  trace.innerHTML = '';
+
+  // Clear row highlights
+  document.querySelectorAll('#txnTable tr, #kycTable tr').forEach(r => r.classList.remove('matched', 'evaluating'));
+
+  await sleep(200);
+
+  // Build trace lines
+  const traceLines = buildTrace(currentClaim.id, currentCase.customer);
+  trace.classList.add('visible');
+
+  for (let i = 0; i < traceLines.length; i++) {
+    const line = document.createElement('div');
+    line.className = 'trace-line';
+    line.innerHTML = traceLines[i].html;
+    line.style.animationDelay = (i * 0.05) + 's';
+    trace.appendChild(line);
+    if (traceLines[i].highlight) {
+      const row = document.querySelector(`#txnTable tr[data-txn="${traceLines[i].highlight}"]`);
+      if (row) {
+        row.classList.add('evaluating');
+        await sleep(180);
+        row.classList.remove('evaluating');
+      }
+    }
+    await sleep(60);
+  }
+
+  await sleep(300);
+
+  // Run the actual verifier
+  const result = currentClaim.fn(currentCase.customer);
+
+  // Highlight matched rows
+  result.matched.forEach(id => {
+    const row = document.querySelector(`#txnTable tr[data-txn="${id}"]`);
+    if (row) row.classList.add('matched');
+  });
+
+  // Show verdict
+  verdict.className = `verdict visible ${result.verdict.toLowerCase().replace('_', '-')}`;
+  const verdictClass = result.verdict === "PASS" ? "pass" : result.verdict === "FAIL" ? "fail" : "review";
+  verdict.classList.add(verdictClass);
+  const verdictSubtitle = result.verdict === "PASS"
+    ? "The records back up the AI's claim. A real analyst would review this."
+    : result.verdict === "FAIL"
+    ? "The AI's claim is not supported by the records. The AI cried wolf."
+    : "The check could not complete on the available source data.";
+  verdict.innerHTML = `
+    <div class="verdict-label">Verdict on the AI's claim</div>
+    <div class="verdict-badge">${result.verdict === "PASS" ? "SUPPORTED" : result.verdict === "FAIL" ? "CONTRADICTED" : "NEEDS REVIEW"}</div>
+    <div class="verdict-subtitle">${verdictSubtitle}</div>
+    <div class="verdict-reason">${result.reason}</div>
+  `;
+
+  btn.disabled = false;
+  btn.textContent = "▶ Run Verifier Again";
+}
+
+function buildTrace(claimId, customerId) {
+  const cust = CUSTOMERS[customerId];
+  const txns = TRANSACTIONS[customerId] || [];
+  const lines = [];
+  const c = (cls, text) => `<span class="${cls}">${text}</span>`;
+
+  const claimName = CLAIMS.find(k => k.id === claimId).id;
+  lines.push({ html: c('trace-comment', `# verify_${claimName}(customer_id=${c('trace-val', customerId)})`) });
+
+  if (claimId === "structuring") {
+    lines.push({ html: `${c('trace-fn', 'filter')} transactions where direction=in AND amount in [9000, 9999]` });
+    const eligible = txns.filter(t => t.direction === "in" && t.amount >= 9000 && t.amount <= 9999);
+    eligible.forEach(t => lines.push({ html: `  ↳ ${t.id}: $${t.amount} ✓`, highlight: t.id }));
+    lines.push({ html: `${c('trace-fn', 'scan')} 72-hour windows for 2+ eligible deposits...` });
+    lines.push({ html: `${c('trace-comment', '# eligible deposits found: ')} ${c('trace-val', eligible.length)}` });
+  }
+  else if (claimId === "rapid_movement") {
+    lines.push({ html: `${c('trace-fn', 'sort')} transactions by timestamp` });
+    lines.push({ html: `${c('trace-fn', 'scan')} 24-hour windows for 3+ transactions, both directions, total > $10,000` });
+    txns.forEach(t => lines.push({ html: `  ↳ ${t.id}: ${t.direction} $${t.amount}`, highlight: t.id }));
+  }
+  else if (claimId === "unusual_transaction_volume" || claimId === "expected_activity_mismatch") {
+    const largest = txns.reduce((a, b) => a.amount > b.amount ? a : b);
+    const threshold = claimId === "unusual_transaction_volume" ? 2 * cust.expected_monthly_volume : cust.expected_monthly_volume;
+    lines.push({ html: `expected_monthly_volume = ${c('trace-val', '$' + cust.expected_monthly_volume.toLocaleString())}` });
+    lines.push({ html: `threshold = ${claimId === "unusual_transaction_volume" ? '2 × ' : ''}expected = ${c('trace-val', '$' + threshold.toLocaleString())}` });
+    lines.push({ html: `${c('trace-fn', 'max')} of transaction amounts = ${c('trace-val', '$' + largest.amount.toLocaleString())}`, highlight: largest.id });
+    if (largest.amount > threshold) {
+      lines.push({ html: c('trace-check-pass', `check: $${largest.amount.toLocaleString()} > $${threshold.toLocaleString()} → true`) });
+    } else {
+      lines.push({ html: c('trace-check-fail', `check: $${largest.amount.toLocaleString()} > $${threshold.toLocaleString()} → false`) });
+    }
+  }
+  else if (claimId === "high_risk_country") {
+    lines.push({ html: `${c('trace-fn', 'filter')} transactions where counterparty in [${HIGH_RISK_COUNTRIES.join(', ')}]` });
+    txns.forEach(t => {
+      const flagged = HIGH_RISK_COUNTRIES.includes(t.cp_country);
+      lines.push({ html: `  ↳ ${t.id}: cp_country=${t.cp_country} ${flagged ? c('trace-check-pass', '✓ flagged') : c('trace-comment', '(not flagged)')}`, highlight: t.id });
+    });
+  }
+  else if (claimId === "prior_sar_history") {
+    lines.push({ html: `read customer.prior_sar_count = ${c('trace-val', cust.prior_sar_count)}` });
+    if (cust.prior_sar_count > 0) {
+      lines.push({ html: c('trace-check-pass', `check: prior_sar_count > 0 → true`) });
+    } else {
+      lines.push({ html: c('trace-check-fail', `check: prior_sar_count > 0 → false`) });
+    }
+  }
+  else if (claimId === "prior_alert_history") {
+    lines.push({ html: `read customer.prior_alert_count = ${c('trace-val', cust.prior_alert_count)}` });
+    if (cust.prior_alert_count > 0) {
+      lines.push({ html: c('trace-check-pass', `check: prior_alert_count > 0 → true`) });
+    } else {
+      lines.push({ html: c('trace-check-fail', `check: prior_alert_count > 0 → false`) });
+    }
+  }
+  else if (claimId === "missing_kyc_data") {
+    const evidence = KYC_EVIDENCE[customerId] || [];
+    lines.push({ html: `${c('trace-fn', 'filter')} kyc_evidence where available = false` });
+    evidence.forEach(e => {
+      lines.push({ html: `  ↳ ${e.item_type}: available=${e.available} ${e.available ? '' : c('trace-check-pass', '← missing')}` });
+    });
+  }
+  else if (claimId === "stale_kyc_profile") {
+    lines.push({ html: `read customer.kyc_current_12mo = ${c('trace-val', cust.kyc_current_12mo)}` });
+    if (!cust.kyc_current_12mo) {
+      lines.push({ html: c('trace-check-pass', `check: NOT kyc_current_12mo → true (stale)`) });
+    } else {
+      lines.push({ html: c('trace-check-fail', `check: NOT kyc_current_12mo → false (current)`) });
+    }
+  }
+
+  return lines;
+}
+
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+// Auto-select first claim on load for a smoother first impression
+selectClaim("structuring");
+</script>
+
+</body>
+</html>
