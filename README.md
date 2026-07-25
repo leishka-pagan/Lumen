@@ -31,6 +31,15 @@ The site root (`index.html`) is a copy of the architecture page, so the reposito
 URL lands there. Enabling Pages is a one-time repository setting: **Settings →
 Pages → Deploy from a branch → `main` / `/docs`**.
 
+## Executive deck
+
+The capstone presentation, 21 slides.
+
+- **[View the deck (PDF)](docs/Lumen_Executive_Deck.pdf)** — renders inline on GitHub, no
+  download needed.
+- **[Download the deck (PowerPoint)](https://github.com/leishka-pagan/Lumen/raw/main/docs/Lumen_Executive_Deck.pptx)**
+  — the original `.pptx` (18 MB); opens in PowerPoint, Keynote, or Google Slides.
+
 ## Build principle
 
 Structured claims first. Deterministic verification second. Human approval last.
